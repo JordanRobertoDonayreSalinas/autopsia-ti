@@ -264,29 +264,66 @@
                         </div>
 
                         {{-- Pozo a Tierra --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">
-                                    ¿Cuenta con Pozo a Tierra?
-                                </label>
-                                <select name="pozo_tierra" id="pozo_tierra" onchange="togglePozoTierraCantidad()"
-                                    class="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-indigo-500 focus:ring-indigo-500 uppercase cursor-pointer">
-                                    <option value="NO" {{ old('pozo_tierra', $monitoreo->pozo_tierra ?? 'NO') == 'NO' ? 'selected' : '' }}>NO</option>
-                                    <option value="SI" {{ old('pozo_tierra', $monitoreo->pozo_tierra ?? 'NO') == 'SI' ? 'selected' : '' }}>SÍ</option>
-                                </select>
-                            </div>
-                            <div id="container_pozo_tierra_cantidad" style="{{ old('pozo_tierra', $monitoreo->pozo_tierra ?? 'NO') == 'SI' ? '' : 'display: none;' }}">
-                                <label class="text-xs font-bold text-indigo-600 uppercase mb-2 block">
-                                    Número de Pozos a Tierra
-                                </label>
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <i data-lucide="zap" class="h-4 w-4 text-indigo-500"></i>
+                        <div class="pt-2">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">
+                                        ¿Cuenta con Pozo a Tierra?
+                                    </label>
+                                    <select name="pozo_tierra" id="pozo_tierra" onchange="togglePozoTierraCampos()"
+                                        class="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-indigo-500 focus:ring-indigo-500 uppercase cursor-pointer">
+                                        <option value="NO" {{ old('pozo_tierra', $monitoreo->pozo_tierra ?? 'NO') == 'NO' ? 'selected' : '' }}>NO</option>
+                                        <option value="SI" {{ old('pozo_tierra', $monitoreo->pozo_tierra ?? 'NO') == 'SI' ? 'selected' : '' }}>SÍ</option>
+                                    </select>
+                                </div>
+
+                                <div id="container_pozo_tierra_campos" class="col-span-1 md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4" style="{{ old('pozo_tierra', $monitoreo->pozo_tierra ?? 'NO') == 'SI' ? '' : 'display: none;' }}">
+                                    <div>
+                                        <label class="text-xs font-bold text-indigo-600 uppercase mb-2 block">
+                                            Total Pozos
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i data-lucide="zap" class="h-4 w-4 text-indigo-500"></i>
+                                            </div>
+                                            <input type="number" name="pozo_tierra_cantidad" id="pozo_tierra_cantidad" min="1" max="99"
+                                                value="{{ old('pozo_tierra_cantidad', $monitoreo->pozo_tierra_cantidad ?? '') }}"
+                                                oninput="calcularPozosInoperativos()"
+                                                placeholder="Total"
+                                                class="block w-full pl-9 pr-3 py-3 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm font-black text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500">
+                                        </div>
                                     </div>
-                                    <input type="number" name="pozo_tierra_cantidad" id="pozo_tierra_cantidad" min="1" max="99"
-                                        value="{{ old('pozo_tierra_cantidad', $monitoreo->pozo_tierra_cantidad ?? '') }}"
-                                        placeholder="Ej: 2"
-                                        class="block w-full pl-11 pr-4 py-3 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm font-black text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500">
+
+                                    <div>
+                                        <label class="text-xs font-bold text-emerald-600 uppercase mb-2 block">
+                                            Operativos
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i data-lucide="check-circle" class="h-4 w-4 text-emerald-500"></i>
+                                            </div>
+                                            <input type="number" name="pozo_tierra_operativos" id="pozo_tierra_operativos" min="0" max="99"
+                                                value="{{ old('pozo_tierra_operativos', $monitoreo->pozo_tierra_operativos ?? '') }}"
+                                                oninput="calcularPozosInoperativos()"
+                                                placeholder="Operativos"
+                                                class="block w-full pl-9 pr-3 py-3 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm font-black text-emerald-900 focus:border-emerald-500 focus:ring-emerald-500">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="text-xs font-bold text-rose-600 uppercase mb-2 block">
+                                            Inoperativos (Auto)
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i data-lucide="alert-circle" class="h-4 w-4 text-rose-500"></i>
+                                            </div>
+                                            <input type="number" name="pozo_tierra_inoperativos" id="pozo_tierra_inoperativos" readonly
+                                                value="{{ old('pozo_tierra_inoperativos', $monitoreo->pozo_tierra_inoperativos ?? 0) }}"
+                                                placeholder="Auto"
+                                                class="block w-full pl-9 pr-3 py-3 bg-rose-50 border border-rose-200 rounded-xl text-sm font-black text-rose-900 cursor-not-allowed">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -435,17 +472,40 @@
         $(document).ready(function() {
             lucide.createIcons();
 
-            window.togglePozoTierraCantidad = function() {
+            window.togglePozoTierraCampos = function() {
                 const val = $('#pozo_tierra').val();
                 if (val === 'SI') {
-                    $('#container_pozo_tierra_cantidad').slideDown(200);
+                    $('#container_pozo_tierra_campos').slideDown(200);
                     if (!$('#pozo_tierra_cantidad').val()) {
                         $('#pozo_tierra_cantidad').val(1);
                     }
+                    if ($('#pozo_tierra_operativos').val() === '') {
+                        $('#pozo_tierra_operativos').val(1);
+                    }
+                    calcularPozosInoperativos();
                 } else {
-                    $('#container_pozo_tierra_cantidad').slideUp(200);
+                    $('#container_pozo_tierra_campos').slideUp(200);
                     $('#pozo_tierra_cantidad').val('');
+                    $('#pozo_tierra_operativos').val('');
+                    $('#pozo_tierra_inoperativos').val(0);
                 }
+            };
+
+            window.calcularPozosInoperativos = function() {
+                const total = parseInt($('#pozo_tierra_cantidad').val()) || 0;
+                let operativos = parseInt($('#pozo_tierra_operativos').val());
+
+                if (isNaN(operativos)) {
+                    operativos = 0;
+                }
+
+                if (operativos > total) {
+                    operativos = total;
+                    $('#pozo_tierra_operativos').val(total);
+                }
+
+                const inoperativos = Math.max(0, total - operativos);
+                $('#pozo_tierra_inoperativos').val(inoperativos);
             };
 
             // Cargar equipo existente

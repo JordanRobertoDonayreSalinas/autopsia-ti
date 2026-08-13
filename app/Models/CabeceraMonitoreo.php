@@ -40,7 +40,9 @@ class CabeceraMonitoreo extends Model
         'numero_acta', // Correlativo (1, 2, 3...)
         'anulado',
         'pozo_tierra',
-        'pozo_tierra_cantidad'
+        'pozo_tierra_cantidad',
+        'pozo_tierra_operativos',
+        'pozo_tierra_inoperativos'
     ];
 
     /**

@@ -216,7 +216,11 @@
             <td class="uppercase">{{ $jefe['nombre'] ?? 'N/A' }}</td>
             <td class="bg-label">POZO A TIERRA:</td>
             <td class="uppercase font-bold" style="color: #3730a3;">
-                {{ ($acta->pozo_tierra ?? 'NO') === 'SI' ? ('SÍ (' . ($acta->pozo_tierra_cantidad ?? 1) . ' POZO' . (($acta->pozo_tierra_cantidad ?? 1) > 1 ? 'S' : '') . ')') : 'NO' }}
+                @if(($acta->pozo_tierra ?? 'NO') === 'SI')
+                    SÍ (TOTAL: {{ $acta->pozo_tierra_cantidad ?? 1 }} | OP: {{ $acta->pozo_tierra_operativos ?? 0 }} | INOP: {{ $acta->pozo_tierra_inoperativos ?? 0 }})
+                @else
+                    NO
+                @endif
             </td>
         </tr>
     </table>
