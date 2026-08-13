@@ -1,0 +1,241 @@
+@extends('layouts.usuario')
+
+@section('title', 'Módulo: Farmacia CSMC')
+
+@section('content')
+<div class="py-12 bg-slate-50 min-h-screen">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        
+        {{-- ENCABEZADO SUPERIOR --}}
+        <div class="mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-1">
+                    <span class="px-3 py-1 bg-teal-600 text-white text-[10px] font-black rounded-lg uppercase tracking-widest">Módulo Especializado</span>
+                    <span class="text-slate-400 font-bold text-[10px] uppercase">ID Acta: #{{ str_pad($monitoreo->numero_acta ?? $monitoreo->id, 5, '0', STR_PAD_LEFT) }}</span>
+                </div>
+                <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight">06. Farmacia</h2>
+                <p class="text-slate-500 font-bold uppercase text-xs mt-1">
+                    <i data-lucide="hospital" class="inline-block w-4 h-4 mr-1 text-teal-500"></i>{{ $monitoreo->establecimiento->nombre }}
+                </p>
+            </div>
+            <a href="{{ route('usuario.monitoreo.modulos', $monitoreo->id) }}" class="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 rounded-2xl text-slate-600 font-black text-xs hover:bg-slate-50 transition-all uppercase shadow-sm">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Volver al Panel
+            </a>
+        </div>
+
+        {{-- FORMULARIO --}}
+        <form action="{{ route('usuario.monitoreo.farmacia_esp.store', $monitoreo->id) }}" 
+              method="POST" 
+              enctype="multipart/form-data" 
+              class="space-y-6" 
+              id="form-monitoreo-farmacia-esp">
+            @csrf
+            
+            {{-- DETALLES DEL AMBIENTE --}}
+            <x-esp_1_detalleDeConsultorio :detalle="$detalle" />
+
+            {{-- DATOS DEL PROFESIONAL --}}
+            <x-esp_2_datosProfesional prefix="profesional" :detalle="$detalle" color="teal" />
+            
+            {{-- DOCUMENTACIÓN ADMINISTRATIVA --}}
+            <x-esp_2_1_docAdmin prefix="profesional" :detalle="$detalle" />
+
+            {{-- DETALLE DNI Y FIRMA DIGITAL --}}
+            <x-esp_3_detalleDni :detalle="$detalle" color="teal" />
+
+            {{-- CAPACITACION --}}
+            <div id="wrapper_capacitacion_externo">
+                <x-esp_4_detalleCap :model="json_encode($detalle->contenido ?? [])" />
+            </div>
+            
+            {{-- EQUIPAMIENTO --}}  
+            <x-esp_5_equipos :equipos="$equipos" modulo="farmacia_esp" />
+
+            {{-- GESTIÓN DE STOCK --}}
+            <div class="bg-white border border-slate-200 rounded-[3rem] overflow-hidden shadow-xl shadow-slate-200/40 transition-all duration-700 mb-10 group/card relative">
+                
+                {{-- ENCABEZADO --}}
+                <div class="bg-slate-50/50 border-b border-slate-100 px-10 py-6 flex flex-col lg:flex-row justify-between items-center gap-6 transition-all duration-700">
+                    <div class="flex items-center gap-5">
+                        <div class="h-14 w-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-teal-600 border border-slate-100 transition-all duration-700">
+                            <i data-lucide="package" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-teal-900 font-black text-lg uppercase tracking-tight mb-1">GESTIÓN DE STOCK</h3>
+                            <p class="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Control de inventario y almacenamiento</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- CONTENIDO --}}
+                <div class="p-10 pl-16">
+                    <div class="grid grid-cols-1 gap-6">
+                        @foreach([
+                            'sis_gestion' => ['pregunta' => '¿Cuenta con sistema de gestión para el control de inventario?', 'icon' => 'database'],
+                            'stock_actual' => ['pregunta' => '¿El stock físico coincide con el reporte del sistema?', 'icon' => 'check-square'],
+                            'fua_sismed' => ['pregunta' => '¿Realiza la digitación oportuna en el SISMED?', 'icon' => 'clipboard-list'],
+                            'inventario_anual' => ['pregunta' => '¿Ha realizado el inventario anual de medicamentos e insumos?', 'icon' => 'calendar-check']
+                        ] as $key => $info)
+
+                        <div class="group flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-200 transition-all duration-300 hover:border-teal-300 hover:shadow-lg hover:shadow-teal-500/5 hover:bg-white">
+                            
+                            {{-- Pregunta e Icono --}}
+                            <div class="flex items-center gap-5 mb-4 md:mb-0">
+                                <div class="hidden md:flex h-12 w-12 rounded-2xl bg-white text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 items-center justify-center transition-colors shadow-sm border border-slate-100">
+                                    <i data-lucide="{{ $info['icon'] }}" class="w-6 h-6"></i>
+                                </div>
+                                <span class="text-xs font-bold text-slate-700 uppercase tracking-tight leading-relaxed max-w-lg">
+                                    {{ $info['pregunta'] }}
+                                </span>
+                            </div>
+
+                            {{-- Opciones SÍ / NO --}}
+                            <div class="flex gap-4">
+                                {{-- Botón SÍ --}}
+                                <label class="relative cursor-pointer flex-1 md:flex-none">
+                                    {{-- CORRECCIÓN AQUÍ: Usamos data_get para leer el valor anidado seguramente --}}
+                                    <input type="radio" name="contenido[preguntas][{{ $key }}]" value="SI" 
+                                        {{ data_get($detalle->contenido, "preguntas.$key") === 'SI' ? 'checked' : '' }} 
+                                        class="peer sr-only">
+                                    <div class="px-8 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-400 font-black text-[10px] uppercase tracking-widest transition-all
+                                        peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-checked:ring-4 peer-checked:ring-emerald-500/10 hover:border-slate-300">
+                                        SÍ
+                                    </div>
+                                </label>
+
+                                {{-- Botón NO --}}
+                                <label class="relative cursor-pointer flex-1 md:flex-none">
+                                    {{-- CORRECCIÓN AQUÍ: Usamos data_get para leer el valor anidado seguramente --}}
+                                    <input type="radio" name="contenido[preguntas][{{ $key }}]" value="NO" 
+                                        {{ data_get($detalle->contenido, "preguntas.$key") === 'NO' ? 'checked' : '' }} 
+                                        class="peer sr-only">
+                                    <div class="px-8 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-400 font-black text-[10px] uppercase tracking-widest transition-all
+                                        peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-700 peer-checked:ring-4 peer-checked:ring-rose-500/10 hover:border-slate-300">
+                                        NO
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- SOPORTE--}}
+            <div id="wrapper_soporte_externo">
+                <x-esp_6_soporte :detalle="$detalle" />
+            </div>
+            
+            {{-- COMENTARIOS Y EVIDENCIA FOTOGRAFICA --}}
+            <x-esp_7_comentariosEvid :comentario="(object) ($detalle->contenido ?? [])" />
+
+            {{-- BOTÓN GRANDE DE GUARDADO --}}
+            <div class="pt-10 pb-5 mt-6">
+                <button type="submit" id="btn-submit-action" 
+                        class="w-full group bg-teal-600 text-white p-8 rounded-[3rem] font-black shadow-2xl shadow-teal-200 flex items-center justify-between hover:bg-teal-700 transition-all duration-500 active:scale-[0.98] cursor-pointer">
+                    <div class="flex items-center gap-8 pointer-events-none">
+                        <div class="h-16 w-16 bg-white/20 rounded-3xl flex items-center justify-center group-hover:rotate-12 transition-all shadow-lg border border-white/30">
+                            <i data-lucide="save" id="icon-save-loader" class="w-8 h-8 text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-xl uppercase tracking-[0.3em] leading-none">Confirmar Registro</p>
+                            <p class="text-[10px] text-teal-200 font-bold uppercase mt-3 tracking-widest">Sincronizar Módulo Farmacia Especializada</p>
+                        </div>
+                    </div>
+                    <div class="h-14 w-14 bg-white/10 rounded-full flex items-center justify-center group-hover:bg-white group-hover:text-teal-600 transition-all duration-500">
+                        <i data-lucide="chevron-right" class="w-7 h-7"></i>
+                    </div>
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+<script>
+    // Inicializar iconos al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar iconos
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // --- LÓGICA EXTERNA PARA CONTROLAR COMPONENTES ---
+        // Buscamos el select que está DENTRO del componente 2.1
+        // Como usas prefix="profesional", el ID generado automáticamente es "sihce_profesional"
+        const selectSihceComponente = document.getElementById('sihce_profesional');
+        
+        // Referencias a los bloques que acabamos de crear en el Paso 1
+        const bloqueCap = document.getElementById('wrapper_capacitacion_externo');
+        const bloqueSop = document.getElementById('wrapper_soporte_externo');
+
+        // Función que aplica la visibilidad
+        function aplicarReglasExternas() {
+            if (!selectSihceComponente) return;
+            
+            const valor = selectSihceComponente.value;
+            
+            if (valor === 'NO') {
+                if(bloqueCap) bloqueCap.classList.add('hidden');
+                if(bloqueSop) bloqueSop.classList.add('hidden');
+            } else {
+                if(bloqueCap) bloqueCap.classList.remove('hidden');
+                if(bloqueSop) bloqueSop.classList.remove('hidden');
+            }
+        }
+
+        if (selectSihceComponente) {
+            // 1. Ejecutar al cargar la página (para respetar lo guardado en BD)
+            aplicarReglasExternas();
+
+            // 2. Agregar un "oído" (listener) al evento change
+            selectSihceComponente.addEventListener('change', aplicarReglasExternas);
+        }
+    });
+
+    // Efecto de carga al enviar el formulario (Bloquea el botón)
+    document.getElementById('form-monitoreo-farmacia-esp').onsubmit = function() {
+        const form = this;
+        const btn = document.getElementById('btn-submit-action');
+        const icon = document.getElementById('icon-save-loader');
+        const wrapper = document.getElementById('wrapper_capacitacion_externo');
+        if (wrapper) {
+            // A. Obtener valor de "Recibió Capacitación" (SI/NO)
+            // Buscamos los radios dentro del componente y vemos cuál está marcado
+            const radioSi = wrapper.querySelector('input[type="radio"][value="SI"]');
+            const radioNo = wrapper.querySelector('input[type="radio"][value="NO"]');
+            
+            let valorCap = '';
+            if (radioSi && radioSi.checked) valorCap = 'SI';
+            if (radioNo && radioNo.checked) valorCap = 'NO';
+
+            // B. Obtener valor de "Institución"
+            const selectInst = wrapper.querySelector('select');
+            const valorInst = selectInst ? selectInst.value : '';
+
+            // C. Crear inputs ocultos para enviarlos al controlador
+            // Usamos los nombres que tu controlador espera: capacitacion[recibieron_cap]
+            
+            const inputCap = document.createElement('input');
+            inputCap.type = 'hidden';
+            inputCap.name = 'capacitacion[recibieron_cap]';
+            inputCap.value = valorCap;
+            form.appendChild(inputCap);
+
+            const inputInst = document.createElement('input');
+            inputInst.type = 'hidden';
+            inputInst.name = 'capacitacion[institucion_cap]';
+            inputInst.value = valorInst;
+            form.appendChild(inputInst);
+        }
+        if(btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        
+        if(icon) {
+            icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+        }
+        
+        return true;
+    };
+
+</script>
+@endsection

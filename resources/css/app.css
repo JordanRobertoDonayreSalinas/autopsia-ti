@@ -1,0 +1,36 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* ==========================================================================
+   ESTILOS COMPARTIDOS
+   ========================================================================== */
+.form-label    { @apply block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5; }
+.form-input    { @apply w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none transition-all placeholder:text-slate-300; }
+.form-select   { @apply w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-teal-400 outline-none bg-white; }
+.section-card  { @apply bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6; }
+.section-title { @apply text-base font-black text-slate-800 flex items-center gap-2 mb-5; }
+
+.toggle-wrap   { @apply flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer; }
+.toggle-label  { @apply text-sm font-semibold text-slate-700; }
+
+.tab-btn       { @apply hidden md:inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-all whitespace-nowrap; }
+.tab-btn.active { @apply text-teal-600 border-teal-500!; }
+.tab-panel     { @apply hidden; }
+.tab-panel.active { @apply block; }
+
+.dyn-table     { @apply w-full text-sm border-separate border-spacing-y-1; }
+.dyn-table th  { @apply text-left text-xs font-bold text-slate-500 uppercase tracking-wide pb-2 px-2; }
+.dyn-table td  { @apply px-2 py-1; }
+.dyn-row       { @apply bg-slate-50 rounded-xl; }
+.dyn-row td:first-child { @apply rounded-l-xl; }
+.dyn-row td:last-child  { @apply rounded-r-xl; }
+
