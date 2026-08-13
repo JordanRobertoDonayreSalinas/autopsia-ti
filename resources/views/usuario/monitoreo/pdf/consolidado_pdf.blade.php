@@ -305,7 +305,8 @@
         @if($mod && !in_array($mod->id, $impresos))
             @php 
                 $impresos[] = $mod->id; 
-                $cont = is_string($mod->contenido) ? json_decode($mod->contenido, true) : $mod->contenido; 
+                $rawCont = $mod->contenido;
+                $cont = is_array($rawCont) ? $rawCont : (is_string($rawCont) ? json_decode($rawCont, true) : []); 
             @endphp
             
             <div class="modulo-container">
