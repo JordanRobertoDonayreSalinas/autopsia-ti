@@ -198,41 +198,6 @@
                             <i data-lucide="calendar-days" class="w-4 h-4"></i>
                             <span class="font-medium text-sm">Cronograma de Actividades</span>
                         </a>
-
-                        {{-- Reporte DNI Electrónico --}}
-                        <a href="{{ route('usuario.reportes.dnie') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.reportes.dnie*') ? 'bg-purple-600/10 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="credit-card" class="w-4 h-4"></i>
-                            <span class="font-medium text-sm">Reporte DNI Electrónico</span>
-                        </a>
-
-                        {{-- Auditoría de Consistencia SIHCE --}}
-                        <a href="{{ route('usuario.auditoria.index') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.auditoria.index') ? 'bg-purple-600/10 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="check-square" class="w-4 h-4"></i>
-                            <span class="font-medium text-sm">Auditoría SIHCE</span>
-                        </a>
-
-                        {{-- Auditoría de Equipos y Conectividad --}}
-                        <a href="{{ route('usuario.auditoria.equipos') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.auditoria.equipos') ? 'bg-purple-600/10 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="monitor" class="w-4 h-4"></i>
-                            <span class="font-medium text-sm">Auditoría Equipos</span>
-                        </a>
-
-                        {{-- Auditoría de Duplicidad de Equipos --}}
-                        <a href="{{ route('usuario.auditoria.duplicidad') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.auditoria.duplicidad') ? 'bg-purple-600/10 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="layers" class="w-4 h-4"></i>
-                            <span class="font-medium text-sm">Auditoría Duplicidad</span>
-                        </a>
-
-                        {{-- Reporte Consultorios Medicina --}}
-                        <a href="{{ route('usuario.reportes.consultorios_medicina') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.reportes.consultorios_medicina') ? 'bg-purple-600/10 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="stethoscope" class="w-4 h-4"></i>
-                            <span class="font-medium text-sm">Consultorios Medicina</span>
-                        </a>
                     </div>
                 </div>
                 @endif
