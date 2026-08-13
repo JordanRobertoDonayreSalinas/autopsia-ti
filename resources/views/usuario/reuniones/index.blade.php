@@ -241,11 +241,6 @@
                                             @endif
 
                                             <a href="{{ route('usuario.reuniones.pdf', $item->id) }}" target="_blank" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Ver PDF del Sistema"><i data-lucide="file-text" class="w-4 h-4"></i></a>
-                                            <a href="{{ route('usuario.reuniones.visual-signature', $item->id) }}" 
-                                                 class="btn-firma-visual-hidden hidden p-1.5 rounded-lg text-orange-600 hover:text-orange-900 hover:bg-orange-50 transition-all border border-transparent hover:border-orange-200" 
-                                                 title="Firmar Acta Visualmente">
-                                                 <i data-lucide="pen-tool" class="w-4 h-4"></i>
-                                             </a>
                                             <a href="{{ route('usuario.reuniones.edit', $item->id) }}" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" title="Editar"><i data-lucide="pencil" class="w-4 h-4"></i></a>
                                             
                                             {{-- Botón QR de Asistencia --}}
@@ -507,7 +502,6 @@
 
                     e.preventDefault();
                     
-                    ctxVisualSig.href = `/usuario/actas-reunion/${id}/visual-signature`;
                     ctxEdit.href = `/usuario/actas-reunion/${id}/editar`;
                     ctxPdf.href = `/usuario/actas-reunion/${id}/pdf`;
 

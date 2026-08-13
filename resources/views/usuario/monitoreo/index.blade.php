@@ -469,11 +469,7 @@
                                             <i data-lucide="pencil" class="w-4 h-4"></i>
                                         </a>
                                         
-                                        <a href="{{ route('usuario.monitoreo.visual-signature', $monitoreo->id) }}" 
-                                             class="btn-firma-visual-hidden hidden p-1.5 rounded-lg text-orange-600 hover:text-orange-900 hover:bg-orange-50 transition-all border border-transparent hover:border-orange-200" 
-                                             title="Firmar Acta Visualmente">
-                                              <i data-lucide="pen-tool" class="w-4 h-4"></i>
-                                        </a>
+
 
                                         {{-- FIRMA_VISUAL_OCULTO --}}
                                         @endif
@@ -950,7 +946,6 @@
                 e.preventDefault();
                 
                 // Configurar links
-                ctxVisualSig.href = `/usuario/monitoreo/${id}/visual-signature`;
                 ctxEdit.href = `/usuario/monitoreo/${id}/editar-acta`;
                 ctxPdf.href = `/usuario/monitoreo/${id}/pdf`;
 

@@ -208,22 +208,7 @@
                 </button>
             </div>
 
-            <!-- Opción 1: Firmar Módulo Visualmente (se revela con 'jojojo') -->
-            <div id="swal-opcion-1-firma" class="btn-firma-visual-hidden hidden transition-all duration-300 mx-10 mt-6 p-4 bg-orange-50 border border-orange-200 rounded-2xl text-left">
-                <div class="flex items-start gap-3">
-                    <div class="p-2 bg-orange-500 text-white rounded-xl shadow-sm shrink-0">
-                        <i data-lucide="pen-tool" class="w-5 h-5"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h4 class="text-xs font-black text-orange-900 uppercase tracking-wider">Opción 1: Firmar Módulo Visualmente</h4>
-                        <p class="text-[11px] text-orange-700 font-medium mt-0.5">Diseñe y estampe las firmas interactivamente en este módulo.</p>
-                        <a :href="`{{ url('/usuario/monitoreo/visual-signature-module/' . $acta->id) }}/${currentModule}`" class="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all hover:scale-[1.02]">
-                            <span>Abrir Editor de Firma</span>
-                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
+
             <form action="{{ route('usuario.monitoreo.subir-pdf-firmado', $acta->id) }}" method="POST" enctype="multipart/form-data" class="p-10 space-y-8">
                 @csrf
                 <input type="hidden" name="modulo" :value="currentModule">
