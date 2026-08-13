@@ -407,6 +407,8 @@ class MonitoreoController extends Controller
             $monitoreo->responsable = mb_strtoupper(trim($request->responsable));
             $monitoreo->categoria_congelada = mb_strtoupper(trim($request->categoria));
             $monitoreo->implementador = mb_strtoupper(trim($request->implementador));
+            $monitoreo->pozo_tierra = $request->input('pozo_tierra', 'NO');
+            $monitoreo->pozo_tierra_cantidad = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_cantidad') : null;
             $monitoreo->user_id = Auth::id();
 
             // Guardar fotos

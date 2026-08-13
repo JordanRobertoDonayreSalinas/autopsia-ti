@@ -257,6 +257,34 @@
                                     class="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-indigo-500 focus:ring-indigo-500 uppercase">
                             </div>
                         </div>
+
+                        {{-- Pozo a Tierra --}}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">
+                                    ¿Cuenta con Pozo a Tierra?
+                                </label>
+                                <select name="pozo_tierra" id="pozo_tierra" onchange="togglePozoTierraCantidad()"
+                                    class="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-indigo-500 focus:ring-indigo-500 uppercase cursor-pointer">
+                                    <option value="NO" {{ old('pozo_tierra', 'NO') == 'NO' ? 'selected' : '' }}>NO</option>
+                                    <option value="SI" {{ old('pozo_tierra') == 'SI' ? 'selected' : '' }}>SÍ</option>
+                                </select>
+                            </div>
+                            <div id="container_pozo_tierra_cantidad" style="{{ old('pozo_tierra') == 'SI' ? '' : 'display: none;' }}">
+                                <label class="text-xs font-bold text-indigo-600 uppercase mb-2 block">
+                                    Número de Pozos a Tierra
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <i data-lucide="zap" class="h-4 w-4 text-indigo-500"></i>
+                                    </div>
+                                    <input type="number" name="pozo_tierra_cantidad" id="pozo_tierra_cantidad" min="1" max="99"
+                                        value="{{ old('pozo_tierra_cantidad') }}"
+                                        placeholder="Ej: 2"
+                                        class="block w-full pl-11 pr-4 py-3 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm font-black text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -387,6 +415,19 @@
     <script>
         $(document).ready(function() {
             lucide.createIcons();
+
+            window.togglePozoTierraCantidad = function() {
+                const val = $('#pozo_tierra').val();
+                if (val === 'SI') {
+                    $('#container_pozo_tierra_cantidad').slideDown(200);
+                    if (!$('#pozo_tierra_cantidad').val()) {
+                        $('#pozo_tierra_cantidad').val(1);
+                    }
+                } else {
+                    $('#container_pozo_tierra_cantidad').slideUp(200);
+                    $('#pozo_tierra_cantidad').val('');
+                }
+            };
 
             // 1. Lógica de Imágenes
             $(".file-input").on("change", function() {

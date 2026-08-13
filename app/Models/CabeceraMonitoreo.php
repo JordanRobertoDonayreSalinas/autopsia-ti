@@ -38,7 +38,9 @@ class CabeceraMonitoreo extends Model
         // CAMPOS NUEVOS PARA LA LÓGICA DE SERIES
         'tipo_origen', // 'ESTANDAR' o 'ESPECIALIZADA'
         'numero_acta', // Correlativo (1, 2, 3...)
-        'anulado'
+        'anulado',
+        'pozo_tierra',
+        'pozo_tierra_cantidad'
     ];
 
     /**

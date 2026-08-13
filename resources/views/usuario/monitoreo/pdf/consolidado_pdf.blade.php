@@ -213,7 +213,11 @@
         </tr>
         <tr>
             <td class="bg-label">JEFE DEL ESTABLECIMIENTO:</td>
-            <td class="uppercase" colspan="3">{{ $jefe['nombre'] ?? 'N/A' }}</td>
+            <td class="uppercase">{{ $jefe['nombre'] ?? 'N/A' }}</td>
+            <td class="bg-label">POZO A TIERRA:</td>
+            <td class="uppercase font-bold" style="color: #3730a3;">
+                {{ ($acta->pozo_tierra ?? 'NO') === 'SI' ? ('SÍ (' . ($acta->pozo_tierra_cantidad ?? 1) . ' POZO' . (($acta->pozo_tierra_cantidad ?? 1) > 1 ? 'S' : '') . ')') : 'NO' }}
+            </td>
         </tr>
     </table>
 
