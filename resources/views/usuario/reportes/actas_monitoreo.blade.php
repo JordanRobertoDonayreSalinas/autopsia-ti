@@ -1,6 +1,6 @@
 @extends('layouts.usuario')
 
-@section('title', 'Reporte de Actas de Monitoreo')
+@section('title', 'Reporte de Actas de Diagnóstico Situacional')
 
 @push('styles')
 <style>
@@ -26,11 +26,11 @@
 
 @section('header-content')
     <div>
-        <h1 class="text-xl font-bold text-slate-800 tracking-tight">📊 Reporte de Actas de Monitoreo</h1>
+        <h1 class="text-xl font-bold text-slate-800 tracking-tight">📊 Reporte de Actas de Diagnóstico Situacional</h1>
         <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
             <span>Reportes</span>
             <span class="text-slate-300">•</span>
-            <span>Actas de Monitoreo</span>
+            <span>Actas de Diagnóstico Situacional</span>
         </div>
     </div>
 @endsection

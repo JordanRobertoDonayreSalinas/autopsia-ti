@@ -1,6 +1,6 @@
 @extends('layouts.usuario')
 
-@section('title', 'Actas de Monitoreo')
+@section('title', 'Actas de Diagnóstico Situacional')
 
 @push('styles')
     <style>
@@ -92,7 +92,7 @@
 @endpush
 
 @section('header-content')
-    <h1 class="text-xl font-bold text-slate-800 tracking-tight">Actas de Monitoreo</h1>
+    <h1 class="text-xl font-bold text-slate-800 tracking-tight">Actas de Diagnóstico Situacional</h1>
     <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
         <span>Operaciones</span>
         <span class="text-slate-300">•</span>
@@ -978,7 +978,7 @@
 
             Swal.fire({
                 title: `¿${accion} Acta?`,
-                text: `¿Está seguro que desea ${accion.toLowerCase()} esta acta de monitoreo?`,
+                text: `¿Está seguro que desea ${accion.toLowerCase()} esta acta de diagnóstico situacional?`,
                 icon: icono,
                 showCancelButton: true,
                 confirmButtonText: `Sí, ${accion.toLowerCase()}`,

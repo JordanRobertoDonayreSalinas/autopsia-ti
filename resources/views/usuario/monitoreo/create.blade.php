@@ -1,6 +1,6 @@
 @extends('layouts.usuario')
 
-@section('title', 'Crear Acta de Monitoreo')
+@section('title', 'Crear Acta de Diagnóstico Situacional')
 
 @push('styles')
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
@@ -107,7 +107,7 @@
                 <span
                     class="inline-block py-1 px-3 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-widest mb-3">Nuevo
                     Registro</span>
-                <h1 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Acta de Monitoreo</h1>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Acta de Diagnóstico Situacional</h1>
                 <p class="text-slate-500 text-sm mt-2 max-w-2xl mx-auto">Complete la información del establecimiento y
                     registre al equipo responsable para iniciar el proceso.</p>
             </div>
@@ -399,7 +399,7 @@
                     <button type="submit"
                         class="w-full py-5 bg-indigo-600 rounded-[2rem] text-white font-black text-base uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-[1.01] transition-all flex items-center justify-center gap-3">
                         <i data-lucide="save" class="w-6 h-6"></i>
-                        Guardar Acta de Monitoreo
+                        Guardar Acta de Diagnóstico Situacional
                     </button>
                 </div>
 

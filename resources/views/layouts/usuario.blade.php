@@ -153,7 +153,7 @@
                 <a href="{{ route('usuario.monitoreo.index') }}"
                     class="group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all {{ request()->routeIs('usuario.monitoreo.*') ? 'bg-blue-600/10 text-blue-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
                     <i data-lucide="activity" class="w-5 h-5"></i>
-                    <span class="font-medium">Actas de Monitoreo</span>
+                    <span class="font-medium">Actas de Diagnóstico Situacional</span>
                 </a>
 
                 {{-- ESTABLECIMIENTOS --}}

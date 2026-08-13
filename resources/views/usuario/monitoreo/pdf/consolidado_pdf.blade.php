@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acta de Monitoreo N° {{ ltrim($acta->numero_acta, '0') }}</title>
+    <title>Acta de Diagnóstico Situacional N° {{ ltrim($acta->numero_acta, '0') }}</title>
     <style>
         /* Configuración de Página */
         @page { margin: 1.5cm 1.5cm 2cm 1.5cm; }
@@ -190,12 +190,12 @@
 
     <div id="footer">
         <div class="footer-text">
-            Acta de Monitoreo IPRESS NO ESPECIALIZADAS N° {{ ltrim($acta->numero_acta, '0') }} | <span class="page-number"></span> 
+            Acta de Diagnóstico Situacional IPRESS NO ESPECIALIZADAS N° {{ ltrim($acta->numero_acta, '0') }} | <span class="page-number"></span> 
         </div>
     </div>
 
     <div class="header">
-        <h1>REPORTE CONSOLIDADO DE MONITOREO IPRESS</h1>
+        <h1>REPORTE CONSOLIDADO DE DIAGNÓSTICO SITUACIONAL IPRESS</h1>
         <div class="header-sub">
             <strong>Establecimiento:</strong> {{ strtoupper($acta->establecimiento->nombre ?? 'ESTABLECIMIENTO NO REGISTRADO') }} 
             &nbsp;|&nbsp; 
