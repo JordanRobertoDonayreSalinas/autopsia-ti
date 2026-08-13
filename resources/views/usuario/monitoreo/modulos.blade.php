@@ -143,8 +143,8 @@
 
                     <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
                         <a href="{{ route('usuario.monitoreo.consultorio.show', [$acta->id, $cSlug]) }}" 
-                           class="h-10 px-4 bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all font-black text-[9px] uppercase tracking-widest" title="Editar Formulario">
-                            <i data-lucide="edit-3" class="w-4 h-4"></i> Evaluar
+                           class="h-10 w-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-sm" title="Evaluar / Editar Formulario">
+                            <i data-lucide="edit-3" class="w-5 h-5"></i>
                         </a>
 
                         <a href="{{ route('usuario.monitoreo.consultorio.pdf', [$acta->id, $cSlug]) }}" target="_blank" 
