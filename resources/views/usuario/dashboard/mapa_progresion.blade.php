@@ -449,52 +449,81 @@
             });
         });
 
-        /* Selects geográficos */
+        /* Selects geográficos relacionales */
         function updateRelationalOptions() {
+            var selectRed  = document.getElementById('filtro-red');
             var selectMRed = document.getElementById('filtro-microred');
+            var selectProv = document.getElementById('filtro-provincia');
             var selectDist = document.getElementById('filtro-distrito');
             var selectCat  = document.getElementById('filtro-categoria');
             var selectEst  = document.getElementById('filtro-establecimiento');
 
-            var mredSet = new Set(), distSet = new Set(), catSet = new Set();
+            var redSet  = new Set();
+            var mredSet = new Set();
+            var provSet = new Set();
+            var distSet = new Set();
+            var catSet  = new Set();
+
             establecimientos.forEach(function (e) {
                 var matchDep  = (filtroDepartamento === '' || e.departamento === filtroDepartamento);
-                var matchRed  = (filtroRed === '' || e.red === filtroRed);
-                var matchMRed = (filtroMicrored === '' || e.microred === filtroMicrored);
-                var matchProv = (filtroProvincia === '' || e.provincia === filtroProvincia);
+                var matchRed  = (filtroRed === ''          || e.red === filtroRed);
+                var matchMRed = (filtroMicrored === ''     || e.microred === filtroMicrored);
+                var matchProv = (filtroProvincia === ''    || e.provincia === filtroProvincia);
+
+                if (matchDep) {
+                    if (e.red)       redSet.add(e.red);
+                    if (e.provincia) provSet.add(e.provincia);
+                }
 
                 if (matchDep && matchRed && matchProv) {
                     if (e.microred) mredSet.add(e.microred);
                 }
+
                 if (matchDep && matchRed && matchMRed && matchProv) {
-                    if (e.distrito) distSet.add(e.distrito);
+                    if (e.distrito)  distSet.add(e.distrito);
                     if (e.categoria) catSet.add(e.categoria);
                 }
             });
 
+            // 1. Actualizar REDES
+            selectRed.innerHTML = '<option value="">Todas</option>';
+            Array.from(redSet).sort().forEach(function (r) {
+                selectRed.innerHTML += `<option value="${r}" ${r === filtroRed ? 'selected' : ''}>${r}</option>`;
+            });
+
+            // 2. Actualizar PROVINCIAS
+            selectProv.innerHTML = '<option value="">Todas</option>';
+            Array.from(provSet).sort().forEach(function (p) {
+                selectProv.innerHTML += `<option value="${p}" ${p === filtroProvincia ? 'selected' : ''}>${p}</option>`;
+            });
+
+            // 3. Actualizar MICROREDES
             selectMRed.innerHTML = '<option value="">Todas</option>';
             Array.from(mredSet).sort().forEach(function (mr) {
                 selectMRed.innerHTML += `<option value="${mr}" ${mr === filtroMicrored ? 'selected' : ''}>${mr}</option>`;
             });
 
+            // 4. Actualizar DISTRITOS
             selectDist.innerHTML = '<option value="">Todos</option>';
             Array.from(distSet).sort().forEach(function (d) {
                 selectDist.innerHTML += `<option value="${d}" ${d === filtroDistrito ? 'selected' : ''}>${d}</option>`;
             });
 
+            // 5. Actualizar CATEGORÍAS
             selectCat.innerHTML = '<option value="">Todas</option>';
             Array.from(catSet).sort().forEach(function (c) {
                 selectCat.innerHTML += `<option value="${c}" ${c === filtroCategoria ? 'selected' : ''}>${c}</option>`;
             });
 
+            // 6. Actualizar ESTABLECIMIENTOS
             selectEst.innerHTML = '<option value="">Todos</option>';
             establecimientos.forEach(function (e) {
                 var matchDep  = (filtroDepartamento === '' || e.departamento === filtroDepartamento);
-                var matchRed  = (filtroRed === '' || e.red === filtroRed);
-                var matchMRed = (filtroMicrored === '' || e.microred === filtroMicrored);
-                var matchProv = (filtroProvincia === '' || e.provincia === filtroProvincia);
-                var matchDist = (filtroDistrito === ''  || e.distrito  === filtroDistrito);
-                var matchCat  = (filtroCategoria === '' || e.categoria  === filtroCategoria);
+                var matchRed  = (filtroRed === ''          || e.red === filtroRed);
+                var matchMRed = (filtroMicrored === ''     || e.microred === filtroMicrored);
+                var matchProv = (filtroProvincia === ''    || e.provincia === filtroProvincia);
+                var matchDist = (filtroDistrito === ''     || e.distrito  === filtroDistrito);
+                var matchCat  = (filtroCategoria === ''    || e.categoria  === filtroCategoria);
                 if (matchDep && matchRed && matchMRed && matchProv && matchDist && matchCat) {
                     selectEst.innerHTML += `<option value="${e.id}" ${String(e.id) === filtroEstId ? 'selected' : ''}>${e.nombre}</option>`;
                 }
