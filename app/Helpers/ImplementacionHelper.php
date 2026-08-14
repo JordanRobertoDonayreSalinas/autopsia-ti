@@ -9,7 +9,7 @@ class ImplementacionHelper
      */
     public static function getModulos()
     {
-        return [
+        $all = [
             'ges_adm' => [
                 'nombre' => 'Gestión Administrativa',
                 'tabla' => 'ges_adm_actas',
@@ -102,5 +102,11 @@ class ImplementacionHelper
                 'modelo_implementador' => \App\Models\Implementacion\MentalImplementador::class,
             ],
         ];
+
+        return array_filter($all, function($item) {
+            if (empty($item['modelo'])) return false;
+            $file = base_path(str_replace(['App\\', '\\'], ['app/', '/'], $item['modelo']) . '.php');
+            return file_exists($file);
+        });
     }
 }

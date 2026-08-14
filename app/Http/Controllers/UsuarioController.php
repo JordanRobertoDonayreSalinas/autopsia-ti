@@ -34,7 +34,8 @@ class UsuarioController extends Controller
         
         foreach ($modulos as $mod) {
             $modelo = $mod['modelo'];
-            if (class_exists($modelo)) {
+            $file = base_path(str_replace(['App\\', '\\'], ['app/', '/'], $modelo) . '.php');
+            if (file_exists($file) && class_exists($modelo)) {
                 $aniosMod = $modelo::whereNotNull('fecha')->selectRaw('YEAR(fecha) as anio')->distinct()->pluck('anio');
                 $aniosCollector = $aniosCollector->merge($aniosMod);
             }
@@ -784,7 +785,8 @@ class UsuarioController extends Controller
 
         foreach ($modulos as $config) {
             $modelo = $config['modelo'];
-            if (!class_exists($modelo)) continue;
+            $file = base_path(str_replace(['App\\', '\\'], ['app/', '/'], $modelo) . '.php');
+            if (!file_exists($file) || !class_exists($modelo)) continue;
 
             $query = $modelo::select('codigo_establecimiento');
             if (Schema::hasColumn((new $modelo)->getTable(), 'anulado')) {
