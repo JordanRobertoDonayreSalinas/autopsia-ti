@@ -194,12 +194,119 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
 
-        document.getElementById('form-monitoreo-final').onsubmit = function () {
+        document.getElementById('form-monitoreo-final').onsubmit = function (e) {
+            let faltantes = [];
+
+            // 1. DATOS GENERALES
+            const fechaInput = document.querySelector('input[name="contenido[fecha]"]');
+            if (!fechaInput || !fechaInput.value.trim()) {
+                faltantes.push("DATOS GENERALES: Fecha de Monitoreo");
+            }
+
+            const turnoInput = document.querySelector('input[name="contenido[turno]"]:checked');
+            if (!turnoInput) {
+                faltantes.push("DATOS GENERALES: Turno (Mañana / Tarde)");
+            }
+
+            const tipoConsultorio = document.querySelector('select[name="contenido[tipo_consultorio]"]');
+            if (!tipoConsultorio || !tipoConsultorio.value.trim()) {
+                faltantes.push("DATOS GENERALES: Tipo de Consultorio");
+            }
+
+            const pisoInput = document.querySelector('input[name="contenido[piso]"]');
+            if (!pisoInput || !pisoInput.value.trim() || parseInt(pisoInput.value) < 1) {
+                faltantes.push("DATOS GENERALES: Número de Piso");
+            }
+
+            // 2. EQUIPOS DE CÓMPUTO
+            const filasEquipos = document.querySelectorAll('tbody[id^="body_equipos_"] tr:not([id^="no_data_"])');
+            filasEquipos.forEach((row, i) => {
+                const desc = row.querySelector('input[name*="[descripcion]"]');
+                const cant = row.querySelector('input[name*="[cantidad]"]');
+                const est = row.querySelector('select[name*="[estado]"]');
+                const prop = row.querySelector('select[name*="[propio]"]');
+
+                if (desc && !desc.value.trim()) {
+                    faltantes.push(`EQUIPOS DE CÓMPUTO: Descripción en fila #${i + 1}`);
+                }
+                if (cant && (!cant.value || parseInt(cant.value) < 1)) {
+                    faltantes.push(`EQUIPOS DE CÓMPUTO: Cantidad en fila #${i + 1}`);
+                }
+                if (est && !est.value.trim()) {
+                    faltantes.push(`EQUIPOS DE CÓMPUTO: Estado en fila #${i + 1}`);
+                }
+                if (prop && !prop.value.trim()) {
+                    faltantes.push(`EQUIPOS DE CÓMPUTO: Propiedad en fila #${i + 1}`);
+                }
+                // Excepciones permitidas por el usuario: N° Serie u Observación por fila son Opcionales
+            });
+
+            // 3. TIPO DE CONECTIVIDAD
+            const tipoConectividad = document.getElementById('tipo_conectividad_input')?.value;
+            if (!tipoConectividad || !tipoConectividad.trim()) {
+                faltantes.push("TIPO DE CONECTIVIDAD: Seleccione opción (WIFI, CABLEADO o SIN CONECTIVIDAD)");
+            } else {
+                if (tipoConectividad === 'WIFI') {
+                    const wifiFuente = document.getElementById('wifi_fuente_input')?.value;
+                    if (!wifiFuente || !wifiFuente.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Procedencia de WiFi (Establecimiento o Personal)");
+                    }
+                }
+
+                if (tipoConectividad === 'WIFI' || tipoConectividad === 'CABLEADO') {
+                    const operador = document.getElementById('operador_servicio_select')?.value;
+                    if (!operador || !operador.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Operador de Servicio de Internet");
+                    }
+
+                    const velDescarga = document.getElementById('velocidad_descarga_input')?.value;
+                    if (!velDescarga || !velDescarga.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Descarga");
+                    }
+
+                    const velSubida = document.getElementById('velocidad_subida_input')?.value;
+                    if (!velSubida || !velSubida.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Subida");
+                    }
+                }
+            }
+
+            // Excepciones explícitas permitidas por requerimiento del usuario:
+            // - N° Serie / C.Pat y Observación en Equipos de Cómputo (opcionales)
+            // - Observaciones Generales en la Sección 6 (opcionales)
+            // - Fotografía / Evidencia en la Sección 6 (opcionales)
+
+            if (faltantes.length > 0) {
+                e.preventDefault();
+                let htmlList = '<ul class="text-left text-xs space-y-1.5 mt-2 font-bold text-slate-700 bg-rose-50 p-4 rounded-2xl border border-rose-200 shadow-inner max-h-60 overflow-y-auto custom-scroll">';
+                faltantes.forEach(item => {
+                    htmlList += `<li class="flex items-center gap-2 text-rose-700"><span class="text-rose-500 font-black">•</span> ${item}</li>`;
+                });
+                htmlList += '</ul>';
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Formulario Incompleto',
+                    html: `<p class="text-xs text-slate-500 font-semibold mb-2">Se requieren los siguientes datos para poder guardar la evaluación:</p>${htmlList}`,
+                    confirmButtonText: 'Completar Campos Requeridos',
+                    confirmButtonColor: '#4F46E5',
+                    customClass: {
+                        popup: 'rounded-[2.5rem] p-6'
+                    }
+                });
+
+                return false;
+            }
+
             const btn = document.getElementById('btn-submit-action');
             const icon = document.getElementById('icon-save-loader');
-            btn.disabled = true;
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-            icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+            if (icon) {
+                icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+            }
             return true;
         };
     </script>
