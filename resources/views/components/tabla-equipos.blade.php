@@ -618,9 +618,6 @@
             tbody.innerHTML = '';
         }
 
-        const isLaptop = hw.is_laptop || hw.tipo === 'LAPTOP';
-
-        // Parsear Marca/Modelo, Procesador y Tarjeta de Video del objeto de respuesta
         let marcaModelo = hw.marca_modelo || '';
         let cpuNombre = hw.procesador_nombre || '';
         let gpuNombre = hw.gpu || '';
@@ -636,18 +633,23 @@
             if (matchGpu) gpuNombre = matchGpu[1].trim();
         }
 
-        if (!marcaModelo) marcaModelo = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
+        // Detección reforzada de Laptop por tipo, booleano o modelo (Notebook, EliteBook, ThinkPad, Book, etc.)
+        const textoCompletoModelo = (marcaModelo + ' ' + (hw.so || '') + ' ' + (hw.tipo || '')).toLowerCase();
+        const esLaptop = hw.is_laptop === true || hw.is_laptop === 'true' || hw.tipo === 'LAPTOP' ||
+            /notebook|laptop|book|pad|surface|pavilion|envy|latitude|thinkpad|ideapad|zenbook|vivobook|gram|macbook|elitebook/i.test(textoCompletoModelo);
+
+        if (!marcaModelo) marcaModelo = esLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
         marcaModelo = marcaModelo.replace(/^([a-z0-9]+)\s+\1\b/i, '$1').trim();
         if (!cpuNombre) cpuNombre = (hw.procesador || 'Procesador Genérico').replace(/^PROCESADOR:\s*/i, '');
         if (!gpuNombre) gpuNombre = 'Intel(R) Graphics';
 
         // 1. Fila Principal: LAPTOP o CPU (Bien Patrimonial Principal)
-        const descPrincipal = isLaptop ? 'LAPTOP' : 'CPU';
+        const descPrincipal = esLaptop ? 'LAPTOP' : 'CPU';
         const obsPrincipal = `MARCA/MODELO: ${marcaModelo}`;
         window.agregarFilaConDatos(modulo, descPrincipal, obsPrincipal, 'OPERATIVO', 'EXCLUSIVO');
 
-        // 2. Monitor y Teclado (Solo si es PC de Escritorio)
-        if (!isLaptop) {
+        // 2. Monitor y Teclado (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP SE OMITEN POR ESTAR INTEGRADOS)
+        if (!esLaptop) {
             if (hw.monitor && hw.monitor !== 'NO' && hw.monitor !== 'INTEGRADO') {
                 window.agregarFilaConDatos(modulo, 'MONITOR', hw.monitor, 'OPERATIVO', 'EXCLUSIVO');
             }

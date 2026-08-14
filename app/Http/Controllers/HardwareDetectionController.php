@@ -131,6 +131,21 @@ For Each b In batterySet
     isLaptop = True
 Next
 
+Set chassisSet = wmi.ExecQuery("Select ChassisTypes from Win32_SystemEnclosure")
+For Each c In chassisSet
+    If Not IsNull(c.ChassisTypes) Then
+        For Each ct In c.ChassisTypes
+            If ct = 8 Or ct = 9 Or ct = 10 Or ct = 11 Or ct = 12 Or ct = 14 Or ct = 30 Or ct = 31 Or ct = 32 Then
+                isLaptop = True
+            End If
+        Next
+    End If
+Next
+
+If InStr(1, marcaModelo, "Notebook", 1) > 0 Or InStr(1, marcaModelo, "Laptop", 1) > 0 Or InStr(1, marcaModelo, "Book", 1) > 0 Or InStr(1, marcaModelo, "Pad", 1) > 0 Or InStr(1, marcaModelo, "Surface", 1) > 0 Or InStr(1, marcaModelo, "EliteBook", 1) > 0 Then
+    isLaptop = True
+End If
+
 tipoEquipo = "CPU"
 If isLaptop Then tipoEquipo = "LAPTOP"
 
