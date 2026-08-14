@@ -68,81 +68,55 @@
 @endpush
 
 @section('content')
-    <div id="page-wrapper" class="max-w-7xl mx-auto space-y-5">
+    <div id="page-wrapper" class="max-w-7xl         {{-- ══ PANEL SUPERIOR: KPIs de Diagnóstico Situacional ══ --}}
+        <div id="seccion-kpis" class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-        {{-- ══ PANEL SUPERIOR: KPIs de Progresión ══ --}}
-        <div id="seccion-kpis" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-
-            {{-- Etapa 0 --}}
+            {{-- Total IPRESS --}}
             <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</span>
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total IPRESS</span>
                     <span class="w-3 h-3 rounded-full bg-slate-400 shadow-sm"></span>
                 </div>
                 <div id="stats-total" class="text-3xl font-black text-slate-700">{{ $contadores['total'] }}</div>
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total IPRESS</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Establecimientos Georreferenciados</div>
                 <div class="mt-3 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div class="stage-bar h-full bg-slate-400 rounded-full"
-                         style="width: 100%"></div>
+                    <div class="stage-bar h-full bg-slate-400 rounded-full" style="width: 100%"></div>
                 </div>
             </div>
 
-            {{-- Sin Inicio --}}
-            <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm group">
+            {{-- Sin Diagnóstico --}}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm group">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">Sin Inicio</span>
-                    <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sin Diagnóstico</span>
+                    <span class="w-3 h-3 rounded-full bg-slate-300"></span>
                 </div>
-                <div id="stats-etapa0" class="text-2xl font-black text-slate-400 group-hover:text-slate-500 transition-colors">{{ $contadores['etapa0'] }}</div>
-                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1">Sin Inicio</div>
+                <div id="stats-sin-diagnostico" class="text-3xl font-black text-slate-400 group-hover:text-slate-500 transition-colors">{{ $contadores['sin_diagnostico'] }}</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Pendientes de Evaluación</div>
+                <div class="mt-3 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="stage-bar h-full bg-slate-300 rounded-full" style="width: {{ $contadores['total'] > 0 ? round(($contadores['sin_diagnostico'] / $contadores['total']) * 100) : 0 }}%"></div>
+                </div>
             </div>
 
-            {{-- Etapa 1 --}}
-            <div class="bg-white rounded-2xl border border-blue-100 p-5 shadow-sm group">
+            {{-- Con Diagnóstico Situacional --}}
+            <div class="bg-white rounded-2xl border border-indigo-100 p-5 shadow-sm group bg-gradient-to-br from-white to-indigo-50/30">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-blue-400 uppercase tracking-widest">Implementado</span>
-                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Con Diagnóstico Situacional</span>
+                    <span class="w-3 h-3 rounded-full bg-indigo-600 animate-pulse shadow-sm"></span>
                 </div>
-                <div id="stats-etapa1" class="text-2xl font-black text-blue-500 group-hover:text-blue-600 transition-colors">{{ $contadores['etapa1'] }}</div>
-                <div class="text-[9px] font-bold text-blue-400 uppercase tracking-tight mt-1">Total EESS</div>
+                <div id="stats-con-diagnostico" class="text-3xl font-black text-indigo-600 group-hover:text-indigo-700 transition-colors">{{ $contadores['con_diagnostico'] }}</div>
+                <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mt-1">Evaluaciones Registradas</div>
+                <div class="mt-3 bg-indigo-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="stage-bar h-full bg-indigo-600 rounded-full" style="width: {{ $contadores['total'] > 0 ? round(($contadores['con_diagnostico'] / $contadores['total']) * 100) : 0 }}%"></div>
+                </div>
             </div>
 
-            {{-- Etapa 2 --}}
-            <div class="bg-white rounded-2xl border border-amber-100 p-5 shadow-sm group">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Asistencia</span>
-                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                </div>
-                <div id="stats-etapa2" class="text-2xl font-black text-amber-500 group-hover:text-amber-600 transition-colors">{{ $contadores['etapa2'] }}</div>
-                <div class="text-[9px] font-bold text-amber-500 uppercase tracking-tight mt-1">Total EESS</div>
-            </div>
-
-            {{-- Etapa 3 --}}
-            <div class="bg-white rounded-2xl border border-violet-100 p-5 shadow-sm group">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-violet-500 uppercase tracking-widest">Diag. Situacional</span>
-                    <span class="w-2 h-2 rounded-full bg-violet-500"></span>
-                </div>
-                <div id="stats-etapa3" class="text-2xl font-black text-violet-500 group-hover:text-violet-600 transition-colors">{{ $contadores['etapa3'] }}</div>
-                <div class="text-[9px] font-bold text-violet-500 uppercase tracking-tight mt-1">Total EESS</div>
-            </div>
-
-            {{-- Etapa 4 --}}
-            <div class="bg-white rounded-2xl border border-emerald-100 p-5 shadow-sm group">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Ciclo Completo</span>
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                </div>
-                <div id="stats-etapa4" class="text-2xl font-black text-emerald-500 group-hover:text-emerald-600 transition-colors">{{ $contadores['etapa4'] }}</div>
-                <div class="text-[9px] font-bold text-emerald-500 uppercase tracking-tight mt-1">Total EESS</div>
-            </div>
         </div>
 
         {{-- ══ PANEL DE CONTROL + FILTROS ══ --}}
         <div id="seccion-filtros" class="bg-white rounded-2xl shadow-sm border border-slate-200 transition-all duration-300">
             <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors" onclick="document.getElementById('filtros-content').classList.toggle('hidden'); document.getElementById('icon-filtros-toggle').classList.toggle('rotate-180');">
                 <div class="flex items-center gap-2">
-                    <i data-lucide="filter" class="w-4 h-4 text-emerald-500"></i>
+                    <i data-lucide="filter" class="w-4 h-4 text-indigo-500"></i>
                     <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-widest">Filtros de Búsqueda</h3>
                 </div>
                 <button type="button" class="text-slate-400 hover:text-slate-600 transition-colors">
@@ -153,29 +127,20 @@
             <div id="filtros-content" class="p-6 hidden">
                 <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
 
-                {{-- Filtros por etapa --}}
+                {{-- Filtros por estado --}}
                 <div class="space-y-3">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <i data-lucide="filter" class="w-3 h-3"></i> Filtrar por Etapa
+                        <i data-lucide="filter" class="w-3 h-3"></i> Estado de Diagnóstico
                     </h3>
                     <div class="flex flex-wrap gap-2" id="filtros-etapa">
-                        <button data-etapa="" class="btn-etapa activo px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-800 text-white transition-all">
+                        <button data-etapa="" class="btn-etapa activo px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-800 text-white transition-all">
                             Todas
                         </button>
-                        <button data-etapa="0" class="btn-etapa px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-slate-400"></span> Sin Inicio
+                        <button data-etapa="0" class="btn-etapa px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-slate-400"></span> Sin Diagnóstico
                         </button>
-                        <button data-etapa="1" class="btn-etapa px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> Implementados
-                        </button>
-                        <button data-etapa="2" class="btn-etapa px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-amber-500"></span> Con Asistencia
-                        </button>
-                        <button data-etapa="3" class="btn-etapa px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-violet-50 text-violet-700 hover:bg-violet-100 transition-all flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-violet-500"></span> Con Diagnóstico Situacional
-                        </button>
-                        <button data-etapa="4" class="btn-etapa px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Ciclo Completo
+                        <button data-etapa="1" class="btn-etapa px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span> Con Diagnóstico Situacional
                         </button>
                     </div>
                 </div>
@@ -250,8 +215,8 @@
                     {{-- BOTÓN MODO FOCO --}}
                     <div class="flex items-end">
                         <button id="btn-foco" title="Ver solo mapa"
-                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wide bg-slate-900 text-white hover:bg-emerald-600 transition-all shadow-sm">
-                            <svg id="icon-expand" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wide bg-slate-900 text-white hover:bg-indigo-600 transition-all shadow-sm">
+                            <svg id="icon-expand" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
                             <span id="label-foco">Ver solo mapa</span>
                         </button>
                     </div>
@@ -270,48 +235,26 @@
             <div id="mapa-progresion" class="h-full w-full"></div>
 
             {{-- LEYENDA FLOTANTE --}}
-            <div class="absolute bottom-5 right-5 z-[1000] bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-slate-100 min-w-[190px]">
+            <div class="absolute bottom-5 right-5 z-[1000] bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-slate-100 min-w-[210px]">
                 <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <i data-lucide="layers" class="w-3 h-3"></i> Etapa de Progresión
+                    <i data-lucide="layers" class="w-3 h-3"></i> Diagnóstico Situacional
                 </h4>
                 <div class="space-y-2.5">
                     <div class="flex items-center gap-3">
                         <span class="w-3.5 h-3.5 rounded-full bg-slate-400 border-2 border-white shadow-sm flex-shrink-0"></span>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-600 leading-none">Sin inicio</p>
-                            <p class="text-[9px] text-slate-400">Sin ningún acta</p>
+                            <p class="text-[10px] font-bold text-slate-600 leading-none">Sin Diagnóstico</p>
+                            <p class="text-[9px] text-slate-400">Pendiente de evaluación</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm flex-shrink-0"></span>
+                        <span class="w-5 h-5 rounded-full bg-indigo-600 border-2 border-white shadow-sm flex-shrink-0 animate-pulse"></span>
                         <div>
-                            <p class="text-[10px] font-bold text-blue-700 leading-none">Implementado</p>
-                            <p class="text-[9px] text-blue-400">Listo para Asistencia</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="w-5 h-5 rounded-full bg-amber-500 border-2 border-white shadow-sm flex-shrink-0"></span>
-                        <div>
-                            <p class="text-[10px] font-bold text-amber-700 leading-none">Con Asistencia</p>
-                            <p class="text-[9px] text-amber-400">Listo para Diagnóstico Situacional</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="w-6 h-6 rounded-full bg-violet-500 border-2 border-white shadow-sm flex-shrink-0"></span>
-                        <div>
-                            <p class="text-[10px] font-bold text-violet-700 leading-none">Con Diagnóstico Situacional</p>
-                            <p class="text-[9px] text-violet-400">Diagnóstico activo</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="w-7 h-7 rounded-full bg-emerald-500 border-2 border-white shadow-sm flex-shrink-0 animate-pulse"></span>
-                        <div>
-                            <p class="text-[10px] font-bold text-emerald-700 leading-none">⭐ Ciclo Completo</p>
-                            <p class="text-[9px] text-emerald-400">Las 3 etapas cubiertas</p>
+                            <p class="text-[10px] font-bold text-indigo-700 leading-none">Con Diagnóstico Situacional</p>
+                            <p class="text-[9px] text-indigo-400">Con actas registradas</p>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             {{-- Conteo flotante superior izquierdo --}}
@@ -350,39 +293,14 @@
 
         /* ── Configuración visual por etapa ── */
         var etapaConfig = {
-            0: { color: '#94a3b8', size: 9,  label: 'Sin Inicio' },
-            1: { color: '#3b82f6', size: 13, label: 'Implementado' },
-            2: { color: '#f59e0b', size: 17, label: 'Con Asistencia' },
-            3: { color: '#8b5cf6', size: 21, label: 'Con Diagnóstico Situacional' },
-            4: { color: '#22c55e', size: 26, label: 'Ciclo Completo' },
+            0: { color: '#94a3b8', size: 10, label: 'Sin Diagnóstico' },
+            1: { color: '#4f46e5', size: 22, label: 'Con Diagnóstico Situacional' },
         };
 
         /* ── Popup HTML por establecimiento ── */
         function buildPopup(e) {
             var cfg = etapaConfig[e.etapa];
-
-            /* Checkboxes de etapas */
-            var check = function(ok, label) {
-                return `<div class="flex items-center gap-2">
-                    <span class="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${ok ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-300'}">
-                        ${ok ? '✓' : '○'}
-                    </span>
-                    <span class="text-[10px] font-semibold ${ok ? 'text-slate-700' : 'text-slate-400'}">${label}</span>
-                </div>`;
-            };
-
-            /* Módulos implementados */
-            var modulosHtml = '';
-            if (e.modulos_impl && e.modulos_impl.length > 0) {
-                modulosHtml = `<div class="mt-2 flex flex-wrap gap-1">` +
-                    e.modulos_impl.map(function(m) {
-                        return `<span class="text-[8px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">${m}</span>`;
-                    }).join('') +
-                `</div>`;
-            }
-
-            /* Etiqueta de etapa */
-            var colorClass = { 0: 'bg-slate-100 text-slate-600', 1: 'bg-blue-100 text-blue-700', 2: 'bg-amber-100 text-amber-700', 3: 'bg-violet-100 text-violet-700', 4: 'bg-emerald-100 text-emerald-700 font-black' };
+            var colorClass = { 0: 'bg-slate-100 text-slate-600', 1: 'bg-indigo-100 text-indigo-700 font-black' };
 
             return `
             <div class="bg-white min-w-[240px] max-w-[280px]">
@@ -394,12 +312,15 @@
                     </span>
                 </div>
                 <div class="px-4 py-3 space-y-1.5">
-                    ${check(e.tiene_impl, 'Implementación' + (e.total_impl > 0 ? ' (' + e.total_impl + ' mód.)' : ''))}
-                    ${modulosHtml}
-                    ${check(e.tiene_asist, 'Asistencia Técnica' + (e.total_asistencias > 0 ? ' (' + e.total_asistencias + ' actas)' : ''))}
-                    ${check(e.tiene_monitoreo, 'Diagnóstico Situacional' + (e.total_monitoreos > 0 ? ' (' + e.total_monitoreos + ' actas)' : ''))}
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${e.tiene_monitoreo ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-300'}">
+                            ${e.tiene_monitoreo ? '✓' : '○'}
+                        </span>
+                        <span class="text-[11px] font-bold ${e.tiene_monitoreo ? 'text-indigo-700' : 'text-slate-400'}">
+                            ${e.tiene_monitoreo ? 'Actas de Diagnóstico (' + e.total_monitoreos + ')' : 'Sin Actas de Diagnóstico'}
+                        </span>
+                    </div>
                 </div>
-                ${e.etapa < 4 ? `<div class="px-4 pb-3"><p class="text-[9px] text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg">Siguiente: ${e.etapa === 0 ? '→ Necesita Implementación' : e.etapa === 1 ? '→ Programar Asistencia Técnica' : e.etapa === 2 ? '→ Programar Diagnóstico Situacional' : '→ Diagnóstico Situacional / Continuar'}</p></div>` : `<div class="px-4 pb-3"><p class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg">⭐ Ciclo completo alcanzado</p></div>`}
             </div>`;
         }
 
@@ -417,24 +338,22 @@
                 radius:      cfg.size / 2,
                 fillColor:   cfg.color,
                 color:       '#fff',
-                weight:      e.etapa === 4 ? 3 : 2,
+                weight:      e.etapa === 1 ? 3 : 2,
                 opacity:     1,
                 fillOpacity: 0.9,
-                className:   e.etapa === 4 ? 'marker-completo' : ''
+                className:   e.etapa === 1 ? 'marker-completo' : ''
             }).addTo(map).bindPopup(buildPopup(e), { className: 'custom-popup', maxWidth: 300 });
 
             markers.push({
-                marker:    m,
-                id:        e.id,
-                etapa:     e.etapa,
-                tiene_impl:      !!e.tiene_impl,
-                tiene_asist:     !!e.tiene_asist,
+                marker:          m,
+                id:              e.id,
+                etapa:           e.etapa,
                 tiene_monitoreo: !!e.tiene_monitoreo,
-                red:       e.red       || '',
-                microred:  e.microred  || '',
-                provincia: e.provincia  || '',
-                distrito:  e.distrito   || '',
-                categoria: e.categoria  || '',
+                red:             e.red       || '',
+                microred:        e.microred  || '',
+                provincia:       e.provincia  || '',
+                distrito:        e.distrito   || '',
+                categoria:       e.categoria  || '',
             });
         });
 
@@ -450,10 +369,10 @@
         var badgeCount = document.getElementById('badge-count');
 
         function applyFilters() {
-            var group      = L.featureGroup();
-            var visibleCnt = 0;
+            var group           = L.featureGroup();
+            var visibleCnt      = 0;
             var totalGeografico = 0;
-            var counts = { 0:0, 1:0, 2:0, 3:0, 4:0 };
+            var counts          = { 0:0, 1:0 };
 
             markers.forEach(function (m) {
                 var matchEtapa = (filtroEtapa === '' || String(m.etapa) === filtroEtapa);
@@ -474,24 +393,17 @@
                     group.removeLayer(m.marker);
                 }
                 
-                // Los counts superiores en modo exclusivo SIEMPRE se calculan independientemente del botón de etapa presionado
-                // esto evita que las demás tarjetas se pongan en cero al clickear una, para poder saltar libremente
                 if (matchRed && matchMRed && matchProv && matchDist && matchCat && matchEst) {
                     totalGeografico++;
                     if (m.etapa === 0) counts[0]++;
                     if (m.etapa === 1) counts[1]++;
-                    if (m.etapa === 2) counts[2]++;
-                    if (m.etapa === 3) counts[3]++;
-                    if (m.etapa === 4) counts[4]++;
                 }
             });
 
             // Actualizar números en cards Superiores
-            document.getElementById('stats-total').textContent  = totalGeografico;
-            document.getElementById('stats-etapa0').textContent = counts[0];
-            document.getElementById('stats-etapa1').textContent = counts[1];
-            document.getElementById('stats-etapa2').textContent = counts[2];
-            document.getElementById('stats-etapa3').textContent = counts[3];
+            document.getElementById('stats-total').textContent           = totalGeografico;
+            document.getElementById('stats-sin-diagnostico').textContent = counts[0];
+            document.getElementById('stats-con-diagnostico').textContent = counts[1];entById('stats-etapa3').textContent = counts[3];
             document.getElementById('stats-etapa4').textContent = counts[4];
 
             badgeCount.textContent = visibleCnt;

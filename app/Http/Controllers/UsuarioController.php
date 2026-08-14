@@ -50,42 +50,20 @@ class UsuarioController extends Controller
             ->whereNotNull('longitud')
             ->get(['id', 'codigo', 'nombre', 'distrito', 'provincia', 'categoria', 'red', 'microred', 'latitud', 'longitud'])
             ->map(function ($est) use ($ctx) {
-                $tieneImpl      = $ctx->codigosConImplementacion->contains($est->codigo);
-                $tieneAsist     = in_array($est->id, $ctx->idsConAsistencia);
                 $tieneMonitoreo = in_array($est->id, $ctx->idsConMonitoreo);
+                $etapa          = $tieneMonitoreo ? 1 : 0; // 0 = Sin Diagnostico, 1 = Con Diagnostico Situacional
 
-                // Etapa de progresión (0-4)
-                if ($tieneImpl && $tieneAsist && $tieneMonitoreo) {
-                    $etapa = 4; // Ciclo completo
-                } elseif ($tieneMonitoreo) {
-                    $etapa = 3; // Con Monitoreo
-                } elseif ($tieneAsist) {
-                    $etapa = 2; // Con Asistencia
-                } elseif ($tieneImpl) {
-                    $etapa = 1; // Solo Implementado
-                } else {
-                    $etapa = 0; // Sin inicio
-                }
-
-                $est->etapa              = $etapa;
-                $est->tiene_impl         = $tieneImpl;
-                $est->tiene_asist        = $tieneAsist;
-                $est->tiene_monitoreo    = $tieneMonitoreo;
-                $est->modulos_impl       = $ctx->modulosPorCodigo[$est->codigo] ?? [];
-                $est->total_impl         = count($est->modulos_impl);
-                $est->total_asistencias  = (int)($ctx->totalAsistenciaPorId[$est->id] ?? 0);
-                $est->total_monitoreos   = (int)($ctx->totalMonitoreoPorId[$est->id] ?? 0);
+                $est->etapa            = $etapa;
+                $est->tiene_monitoreo  = $tieneMonitoreo;
+                $est->total_monitoreos = (int)($ctx->totalMonitoreoPorId[$est->id] ?? 0);
                 return $est;
             });
 
-        // ── Contadores ESTRICTAMENTE EXCLUYENTES por etapa ──────────────────────────────
+        // ── Contadores por Diagnóstico Situacional ──────────────────────────────
         $contadores = [
-            'total'     => $establecimientosMap->count(),
-            'etapa0'    => $establecimientosMap->where('etapa', 0)->count(),
-            'etapa1'    => $establecimientosMap->where('etapa', 1)->count(),
-            'etapa2'    => $establecimientosMap->where('etapa', 2)->count(),
-            'etapa3'    => $establecimientosMap->where('etapa', 3)->count(),
-            'etapa4'    => $establecimientosMap->where('etapa', 4)->count(),
+            'total'           => $establecimientosMap->count(),
+            'sin_diagnostico' => $establecimientosMap->where('etapa', 0)->count(),
+            'con_diagnostico' => $establecimientosMap->where('etapa', 1)->count(),
         ];
 
         // ── Filtros ────────────────────────────────────────────────────────
@@ -779,44 +757,6 @@ class UsuarioController extends Controller
      */
     private function getProgressionContext($anioFiltro = 'todos')
     {
-        $modulos = \App\Helpers\ImplementacionHelper::getModulos();
-        $codigosConImplementacion = collect();
-        $modulosPorCodigo = [];
-
-        foreach ($modulos as $config) {
-            $modelo = $config['modelo'];
-            $file = base_path(str_replace(['App\\', '\\'], ['app/', '/'], $modelo) . '.php');
-            if (!file_exists($file) || !class_exists($modelo)) continue;
-
-            $query = $modelo::select('codigo_establecimiento');
-            if (Schema::hasColumn((new $modelo)->getTable(), 'anulado')) {
-                $query->where(function($q) {
-                    $q->where('anulado', 0)->orWhereNull('anulado');
-                });
-            }
-            if ($anioFiltro !== 'todos') {
-                $query->whereYear('fecha', '<=', $anioFiltro);
-            }
-
-            $actas = $query->get();
-            foreach ($actas as $acta) {
-                $cod = $acta->codigo_establecimiento;
-                if (!$cod) continue;
-                $codigosConImplementacion->push($cod);
-                if (!isset($modulosPorCodigo[$cod])) $modulosPorCodigo[$cod] = [];
-                if (!in_array($config['nombre'], $modulosPorCodigo[$cod])) {
-                    $modulosPorCodigo[$cod][] = $config['nombre'];
-                }
-            }
-        }
-
-        $codigosConImplementacion = $codigosConImplementacion->unique()->values();
-
-        // Asistencia (Depurado)
-        $idsConAsistencia = [];
-        $totalAsistenciaPorId = collect();
-
-        // Monitoreo
         $queryMon = CabeceraMonitoreo::where(function($q) {
             $q->where('anulado', 0)->orWhereNull('anulado');
         });
@@ -829,11 +769,7 @@ class UsuarioController extends Controller
             ->groupBy('establecimiento_id')->pluck('total', 'establecimiento_id');
 
         return (object) [
-            'codigosConImplementacion' => $codigosConImplementacion,
-            'modulosPorCodigo' => $modulosPorCodigo,
-            'idsConAsistencia' => $idsConAsistencia,
-            'totalAsistenciaPorId' => $totalAsistenciaPorId,
-            'idsConMonitoreo' => $idsConMonitoreo,
+            'idsConMonitoreo'     => $idsConMonitoreo,
             'totalMonitoreoPorId' => $totalMonitoreoPorId
         ];
     }
