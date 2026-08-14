@@ -1,15 +1,15 @@
 @extends('layouts.usuario')
 
-@section('title', 'Mapa de Progresión ICATEC')
+@section('title', 'Mapa de Diagnóstico Situacional')
 
 @section('header-content')
     <h1 class="text-xl font-bold text-slate-800 tracking-tight">
-        Mapa de Progresión
+        Mapa de Diagnóstico Situacional
     </h1>
     <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
         <span>Plataforma</span>
         <span class="text-slate-300">•</span>
-        <span>Mapa de Progresión — Implementación → Asistencia → Monitoreo</span>
+        <span>Mapa General de Diagnóstico Situacional IPRESS</span>
     </div>
 @endsection
 

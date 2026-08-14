@@ -112,7 +112,7 @@
                         <a href="{{ route('usuario.dashboard.general') }}"
                             class="group relative flex items-center gap-3 px-4 py-2 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.general') ? 'bg-teal-600/10 text-teal-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
                             <i data-lucide="git-merge" class="w-4 h-4"></i>
-                            <span class="text-sm font-medium">Mapa de Progresión</span>
+                            <span class="text-sm font-medium">Mapa de Diagnóstico Situacional</span>
                         </a>
                         <a href="{{ route('usuario.dashboard.equipos') }}"
                             class="group relative flex items-center gap-3 px-4 py-2 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.equipos') ? 'bg-teal-600/10 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
