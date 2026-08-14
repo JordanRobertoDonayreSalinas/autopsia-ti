@@ -158,6 +158,15 @@
                     </div>
                     
                     <div class="flex flex-col gap-1">
+                        <label class="text-[9px] font-black text-slate-400 uppercase">Departamento</label>
+                        <select id="filtro-departamento" class="text-xs border-slate-200 rounded-xl px-3 py-2 focus:ring-indigo-500 transition font-bold text-indigo-700 bg-indigo-50/50">
+                            <option value="">Todos</option>
+                            @foreach($departamentos as $dep)
+                                <option value="{{ $dep }}">{{ $dep }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
                         <label class="text-[9px] font-black text-slate-400 uppercase">Red</label>
                         <select id="filtro-red" class="text-xs border-slate-200 rounded-xl px-3 py-2 focus:ring-indigo-500 transition">
                             <option value="">Todas</option>
@@ -349,22 +358,24 @@
                 id:              e.id,
                 etapa:           e.etapa,
                 tiene_monitoreo: !!e.tiene_monitoreo,
-                red:             e.red       || '',
-                microred:        e.microred  || '',
-                provincia:       e.provincia  || '',
-                distrito:        e.distrito   || '',
-                categoria:       e.categoria  || '',
+                departamento:    e.departamento || '',
+                red:             e.red          || '',
+                microred:        e.microred     || '',
+                provincia:       e.provincia    || '',
+                distrito:        e.distrito     || '',
+                categoria:       e.categoria    || '',
             });
         });
 
         /* ── FILTROS ── */
-        var filtroEtapa     = '';
-        var filtroRed       = '';
-        var filtroMicrored  = '';
-        var filtroProvincia = '';
-        var filtroDistrito  = '';
-        var filtroCategoria = '';
-        var filtroEstId     = '';
+        var filtroEtapa        = '';
+        var filtroDepartamento = '';
+        var filtroRed          = '';
+        var filtroMicrored     = '';
+        var filtroProvincia    = '';
+        var filtroDistrito     = '';
+        var filtroCategoria    = '';
+        var filtroEstId        = '';
 
         var badgeCount = document.getElementById('badge-count');
 
@@ -377,6 +388,7 @@
             markers.forEach(function (m) {
                 var matchEtapa = (filtroEtapa === '' || String(m.etapa) === filtroEtapa);
 
+                var matchDep   = (filtroDepartamento === '' || m.departamento === filtroDepartamento);
                 var matchRed   = (filtroRed   === '' || m.red   === filtroRed);
                 var matchMRed  = (filtroMicrored === '' || m.microred === filtroMicrored);
                 var matchProv  = (filtroProvincia === '' || m.provincia === filtroProvincia);
@@ -384,7 +396,7 @@
                 var matchCat   = (filtroCategoria === '' || m.categoria  === filtroCategoria);
                 var matchEst   = (filtroEstId === ''     || String(m.id) === filtroEstId);
 
-                if (matchEtapa && matchRed && matchMRed && matchProv && matchDist && matchCat && matchEst) {
+                if (matchEtapa && matchDep && matchRed && matchMRed && matchProv && matchDist && matchCat && matchEst) {
                     if (!map.hasLayer(m.marker)) map.addLayer(m.marker);
                     group.addLayer(m.marker);
                     visibleCnt++;
@@ -393,7 +405,7 @@
                     group.removeLayer(m.marker);
                 }
                 
-                if (matchRed && matchMRed && matchProv && matchDist && matchCat && matchEst) {
+                if (matchDep && matchRed && matchMRed && matchProv && matchDist && matchCat && matchEst) {
                     totalGeografico++;
                     if (m.etapa === 0) counts[0]++;
                     if (m.etapa === 1) counts[1]++;
@@ -403,8 +415,7 @@
             // Actualizar números en cards Superiores
             document.getElementById('stats-total').textContent           = totalGeografico;
             document.getElementById('stats-sin-diagnostico').textContent = counts[0];
-            document.getElementById('stats-con-diagnostico').textContent = counts[1];entById('stats-etapa3').textContent = counts[3];
-            document.getElementById('stats-etapa4').textContent = counts[4];
+            document.getElementById('stats-con-diagnostico').textContent = counts[1];
 
             badgeCount.textContent = visibleCnt;
 
@@ -414,10 +425,16 @@
                         if (String(m.id) === filtroEstId) { map.setView(m.marker.getLatLng(), 15); m.marker.openPopup(); }
                     });
                 } else if (group.getLayers().length > 0) {
-                    var anyFilter = filtroEtapa || filtroRed || filtroMicrored || filtroProvincia || filtroDistrito || filtroCategoria;
+                    var anyFilter = filtroEtapa || filtroDepartamento || filtroRed || filtroMicrored || filtroProvincia || filtroDistrito || filtroCategoria;
                     if (anyFilter) map.fitBounds(group.getBounds(), { padding: [50, 50], maxZoom: 13 });
                 }
             }
+        }
+
+        /* Auto encuadre inicial de marcadores */
+        if (markers.length > 0) {
+            var initialGroup = L.featureGroup(markers.map(function(m){ return m.marker; }));
+            map.fitBounds(initialGroup.getBounds(), { padding: [40, 40] });
         }
 
         /* Botones de etapa */
@@ -441,21 +458,20 @@
 
             var mredSet = new Set(), distSet = new Set(), catSet = new Set();
             establecimientos.forEach(function (e) {
-                var matchRed = (filtroRed === '' || e.red === filtroRed);
+                var matchDep  = (filtroDepartamento === '' || e.departamento === filtroDepartamento);
+                var matchRed  = (filtroRed === '' || e.red === filtroRed);
                 var matchMRed = (filtroMicrored === '' || e.microred === filtroMicrored);
                 var matchProv = (filtroProvincia === '' || e.provincia === filtroProvincia);
 
-                if (matchRed && matchProv) {
+                if (matchDep && matchRed && matchProv) {
                     if (e.microred) mredSet.add(e.microred);
                 }
-                if (matchRed && matchMRed && matchProv) {
+                if (matchDep && matchRed && matchMRed && matchProv) {
                     if (e.distrito) distSet.add(e.distrito);
                     if (e.categoria) catSet.add(e.categoria);
                 }
             });
 
-            // Conservar valores seleccionados si siguen siendo válidos lo omito para simplicidad
-            
             selectMRed.innerHTML = '<option value="">Todas</option>';
             Array.from(mredSet).sort().forEach(function (mr) {
                 selectMRed.innerHTML += `<option value="${mr}" ${mr === filtroMicrored ? 'selected' : ''}>${mr}</option>`;
@@ -473,21 +489,29 @@
 
             selectEst.innerHTML = '<option value="">Todos</option>';
             establecimientos.forEach(function (e) {
-                var matchRed = (filtroRed === '' || e.red === filtroRed);
+                var matchDep  = (filtroDepartamento === '' || e.departamento === filtroDepartamento);
+                var matchRed  = (filtroRed === '' || e.red === filtroRed);
                 var matchMRed = (filtroMicrored === '' || e.microred === filtroMicrored);
                 var matchProv = (filtroProvincia === '' || e.provincia === filtroProvincia);
                 var matchDist = (filtroDistrito === ''  || e.distrito  === filtroDistrito);
                 var matchCat  = (filtroCategoria === '' || e.categoria  === filtroCategoria);
-                if (matchRed && matchMRed && matchProv && matchDist && matchCat) {
+                if (matchDep && matchRed && matchMRed && matchProv && matchDist && matchCat) {
                     selectEst.innerHTML += `<option value="${e.id}" ${String(e.id) === filtroEstId ? 'selected' : ''}>${e.nombre}</option>`;
                 }
             });
         }
 
         document.getElementById('filtro-anio').addEventListener('change', function () {
-            // Este filtro recarga la página porque afecta la consulta a base de datos
             window.location.href = "{{ route('usuario.dashboard.general') }}?anio=" + this.value;
         });
+
+        const selectDepEl = document.getElementById('filtro-departamento');
+        if (selectDepEl) {
+            selectDepEl.addEventListener('change', function () {
+                filtroDepartamento = this.value; filtroRed = ''; filtroMicrored = ''; filtroProvincia = ''; filtroDistrito = ''; filtroCategoria = ''; filtroEstId = '';
+                updateRelationalOptions(); applyFilters();
+            });
+        }
 
         document.getElementById('filtro-red').addEventListener('change', function () {
             filtroRed = this.value; filtroMicrored = ''; filtroDistrito = ''; filtroCategoria = ''; filtroEstId = '';

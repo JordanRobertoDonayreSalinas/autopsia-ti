@@ -48,7 +48,7 @@ class UsuarioController extends Controller
         // ── Unificar en establecimientos con coordenadas ───────────────────
         $establecimientosMap = Establecimiento::whereNotNull('latitud')
             ->whereNotNull('longitud')
-            ->get(['id', 'codigo', 'nombre', 'distrito', 'provincia', 'categoria', 'red', 'microred', 'latitud', 'longitud'])
+            ->get(['id', 'codigo', 'nombre', 'departamento', 'distrito', 'provincia', 'categoria', 'red', 'microred', 'latitud', 'longitud'])
             ->map(function ($est) use ($ctx) {
                 $tieneMonitoreo = in_array($est->id, $ctx->idsConMonitoreo);
                 $etapa          = $tieneMonitoreo ? 1 : 0; // 0 = Sin Diagnostico, 1 = Con Diagnostico Situacional
@@ -69,15 +69,17 @@ class UsuarioController extends Controller
         // ── Filtros ────────────────────────────────────────────────────────
         $baseFiltros = Establecimiento::whereNotNull('latitud')->whereNotNull('longitud');
         
-        $provincias = (clone $baseFiltros)->whereNotNull('provincia')->distinct()->orderBy('provincia')->pluck('provincia');
-        $redes      = (clone $baseFiltros)->whereNotNull('red')->distinct()->orderBy('red')->pluck('red');
-        $microredes = (clone $baseFiltros)->whereNotNull('microred')->distinct()->orderBy('microred')->pluck('microred');
-        $categorias = (clone $baseFiltros)->whereNotNull('categoria')->distinct()->orderBy('categoria')->pluck('categoria');
-        $distritos  = (clone $baseFiltros)->whereNotNull('distrito')->distinct()->orderBy('distrito')->pluck('distrito');
+        $departamentos = (clone $baseFiltros)->whereNotNull('departamento')->where('departamento', '!=', '')->distinct()->orderBy('departamento')->pluck('departamento');
+        $provincias    = (clone $baseFiltros)->whereNotNull('provincia')->where('provincia', '!=', '')->distinct()->orderBy('provincia')->pluck('provincia');
+        $redes         = (clone $baseFiltros)->whereNotNull('red')->where('red', '!=', '')->distinct()->orderBy('red')->pluck('red');
+        $microredes    = (clone $baseFiltros)->whereNotNull('microred')->where('microred', '!=', '')->distinct()->orderBy('microred')->pluck('microred');
+        $categorias    = (clone $baseFiltros)->whereNotNull('categoria')->where('categoria', '!=', '')->distinct()->orderBy('categoria')->pluck('categoria');
+        $distritos     = (clone $baseFiltros)->whereNotNull('distrito')->where('distrito', '!=', '')->distinct()->orderBy('distrito')->pluck('distrito');
 
         return view('usuario.dashboard.mapa_progresion', compact(
             'establecimientosMap',
             'contadores',
+            'departamentos',
             'provincias',
             'redes',
             'microredes',
