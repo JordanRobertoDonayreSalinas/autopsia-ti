@@ -85,15 +85,15 @@
             </div>
 
             {{-- Sin Diagnóstico --}}
-            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm group">
+            <div class="bg-white rounded-2xl border border-rose-100 p-5 shadow-sm group bg-gradient-to-br from-white to-rose-50/30">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sin Diagnóstico</span>
-                    <span class="w-3 h-3 rounded-full bg-slate-300"></span>
+                    <span class="text-[9px] font-black text-rose-500 uppercase tracking-widest">Sin Diagnóstico</span>
+                    <span class="w-3 h-3 rounded-full bg-rose-500 shadow-sm"></span>
                 </div>
-                <div id="stats-sin-diagnostico" class="text-3xl font-black text-slate-400 group-hover:text-slate-500 transition-colors">{{ $contadores['sin_diagnostico'] }}</div>
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Pendientes de Evaluación</div>
-                <div class="mt-3 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div class="stage-bar h-full bg-slate-300 rounded-full" style="width: {{ $contadores['total'] > 0 ? round(($contadores['sin_diagnostico'] / $contadores['total']) * 100) : 0 }}%"></div>
+                <div id="stats-sin-diagnostico" class="text-3xl font-black text-rose-600 group-hover:text-rose-700 transition-colors">{{ $contadores['sin_diagnostico'] }}</div>
+                <div class="text-[10px] font-bold text-rose-400 uppercase tracking-wider mt-1">Pendientes de Evaluación</div>
+                <div class="mt-3 bg-rose-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="stage-bar h-full bg-rose-500 rounded-full" style="width: {{ $contadores['total'] > 0 ? round(($contadores['sin_diagnostico'] / $contadores['total']) * 100) : 0 }}%"></div>
                 </div>
             </div>
 
@@ -250,17 +250,17 @@
                 </h4>
                 <div class="space-y-2.5">
                     <div class="flex items-center gap-3">
-                        <span class="w-3.5 h-3.5 rounded-full bg-slate-400 border-2 border-white shadow-sm flex-shrink-0"></span>
+                        <span class="w-3.5 h-3.5 rounded-full bg-rose-500 border-2 border-white shadow-sm flex-shrink-0"></span>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-600 leading-none">Sin Diagnóstico</p>
-                            <p class="text-[9px] text-slate-400">Pendiente de evaluación</p>
+                            <p class="text-[10px] font-bold text-rose-700 leading-none">Sin Diagnóstico</p>
+                            <p class="text-[9px] text-rose-400 font-medium">Pendiente de evaluación</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="w-5 h-5 rounded-full bg-indigo-600 border-2 border-white shadow-sm flex-shrink-0 animate-pulse"></span>
                         <div>
                             <p class="text-[10px] font-bold text-indigo-700 leading-none">Con Diagnóstico Situacional</p>
-                            <p class="text-[9px] text-indigo-400">Con actas registradas</p>
+                            <p class="text-[9px] text-indigo-400 font-medium">Con actas registradas</p>
                         </div>
                     </div>
                 </div>
@@ -302,14 +302,14 @@
 
         /* ── Configuración visual por etapa ── */
         var etapaConfig = {
-            0: { color: '#94a3b8', size: 10, label: 'Sin Diagnóstico' },
+            0: { color: '#ef4444', size: 12, label: 'Sin Diagnóstico' },
             1: { color: '#4f46e5', size: 22, label: 'Con Diagnóstico Situacional' },
         };
 
         /* ── Popup HTML por establecimiento ── */
         function buildPopup(e) {
             var cfg = etapaConfig[e.etapa];
-            var colorClass = { 0: 'bg-slate-100 text-slate-600', 1: 'bg-indigo-100 text-indigo-700 font-black' };
+            var colorClass = { 0: 'bg-rose-100 text-rose-700 font-bold', 1: 'bg-indigo-100 text-indigo-700 font-black' };
 
             return `
             <div class="bg-white min-w-[240px] max-w-[280px]">
