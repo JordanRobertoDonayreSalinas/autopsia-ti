@@ -202,7 +202,9 @@
                     this.msgEstado = "Buscando...";
                     this.encontrado = false;
                     try {
-                        let response = await fetch(`/usuario/monitoreo/modulo/triaje/buscar-profesional/${doc}`);
+                        {{-- OJO: esta ruta no está registrada en routes/web.php, así que responde 404
+                             aunque la URL base ya sea la correcta. Queda pendiente de definir. --}}
+                        let response = await fetch(`{{ url('/usuario/monitoreo/modulo/triaje/buscar-profesional') }}/${doc}`);
                         let data = await response.json();
                         if (data.success) {
                             this.entidad.tipo_doc = data.data.tipo_doc || 'DNI';

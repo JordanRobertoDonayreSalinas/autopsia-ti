@@ -495,7 +495,7 @@
                 if (testAborted) break;
                 const start = performance.now();
                 try {
-                    await fetch(`/api/speedtest/ping?t=${Date.now()}_${i}`, { cache: 'no-store' });
+                    await fetch(`{{ url('/api/speedtest/ping') }}?t=${Date.now()}_${i}`, { cache: 'no-store' });
                     const rtt = performance.now() - start;
                     pings.push(rtt);
                 } catch (e) {
@@ -522,7 +522,7 @@
                 if (testAborted) break;
                 const start = performance.now();
                 try {
-                    const res = await fetch(`/api/speedtest/download?size=${sz}&t=${Date.now()}`, { cache: 'no-store' });
+                    const res = await fetch(`{{ url('/api/speedtest/download') }}?size=${sz}&t=${Date.now()}`, { cache: 'no-store' });
                     const blob = await res.blob();
                     const durationSec = (performance.now() - start) / 1000;
                     const bytes = blob.size;
@@ -560,7 +560,7 @@
                 const start = performance.now();
 
                 try {
-                    const res = await fetch(`/api/speedtest/upload?t=${Date.now()}`, {
+                    const res = await fetch(`{{ url('/api/speedtest/upload') }}?t=${Date.now()}`, {
                         method: 'POST',
                         body: dummyData,
                         headers: { 'Content-Type': 'application/octet-stream' }

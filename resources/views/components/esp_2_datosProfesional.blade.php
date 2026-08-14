@@ -304,7 +304,7 @@
             lucide.createIcons();
 
             // 1er paso: Buscar solo localmente
-            fetch(`/usuario/monitoreo/profesional/buscar/${doc}?local_only=1`)
+            fetch(`{{ url('/usuario/monitoreo/profesional/buscar') }}/${doc}?local_only=1`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.exists) {
@@ -394,7 +394,7 @@
                             });
                             
                             // 2do paso: Buscar en la API externa (ya sin local_only)
-                            fetch(`/usuario/monitoreo/profesional/buscar/${doc}`)
+                            fetch(`{{ url('/usuario/monitoreo/profesional/buscar') }}/${doc}`)
                                 .then(res => res.json())
                                 .then(dataExt => {
                                     Swal.close();

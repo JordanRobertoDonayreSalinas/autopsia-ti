@@ -86,6 +86,166 @@
             font-family: Inter, sans-serif;
             font-size: 11px;
         }
+
+        /* ══════════════════════════════════════════════════════════════
+           RESPONSIVE · PC · Laptop · Tablet · Móvil
+           ══════════════════════════════════════════════════════════════ */
+
+        /* El editor ocupa exactamente el alto disponible del layout (que ya descuenta
+           su cabecera). Con 100vh se desbordaba y la barra de zoom quedaba fuera. */
+        #tablet-editor-container {
+            height: 100%;
+            min-height: 480px;
+        }
+
+        /* En pantalla completa manda el viewport */
+        #tablet-editor-container:fullscreen {
+            height: 100dvh;
+            min-height: 0;
+            margin: 0;
+            width: 100%;
+        }
+
+        /* Barras deslizables sin scrollbar visible */
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Tira de herramientas: en pantallas angostas se desliza en horizontal */
+        .tool-strip {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tool-strip>button {
+            flex: 0 0 auto;
+            scroll-snap-align: center;
+        }
+
+        /* Cuando la tira no cabe, el borde se desvanece para indicar que se desliza */
+        @media (max-width: 1279px) {
+            .tool-strip {
+                -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+                mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+            }
+        }
+
+        /* El panel de herramientas se vuelve una hoja inferior (bottom-sheet) en tablet/móvil */
+        @media (max-width: 1023px) {
+            /* Se anula el relleno del layout: en pantallas chicas cada píxel cuenta */
+            #tablet-editor-container {
+                margin: -2rem;
+                width: calc(100% + 4rem);
+                height: calc(100% + 4rem);
+                min-height: 0;
+            }
+
+            #tools-sidebar {
+                top: auto !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                max-height: 60dvh !important;
+                border-radius: 1.5rem 1.5rem 0 0 !important;
+                padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)) !important;
+            }
+
+            /* Objetivos táctiles cómodos (mínimo recomendado 40-44px) */
+            #tools-sidebar button,
+            #tools-sidebar select,
+            #tools-sidebar input[type="text"],
+            #tools-sidebar input[type="number"] {
+                min-height: 42px;
+            }
+
+            #tools-sidebar input[type="range"] {
+                height: 22px;
+            }
+
+            /* Filtros y acciones se pliegan en menús desplegables.
+               Se anclan a la barra completa (no al botón, que está a la izquierda y
+               dejaría el panel fuera de pantalla): los envoltorios pasan a static. */
+            #topbar-filters-wrap,
+            #topbar-actions-wrap {
+                position: static;
+            }
+
+            #topbar-filters-menu,
+            #topbar-actions-menu {
+                position: absolute;
+                top: calc(100% + 0.35rem);
+                left: 0.5rem;
+                right: 0.5rem;
+                width: auto;
+                z-index: 60;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.6rem;
+                background: #fff;
+                border: 1px solid #e2e8f0;
+                border-radius: 1rem;
+                padding: 0.75rem;
+                box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+                max-height: 70dvh;
+                overflow-y: auto;
+            }
+
+            #topbar-actions-menu>* {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            /* El mini-mapa nunca debe tapar el lienzo en pantallas chicas */
+            /* Se eleva por encima de la barra de zoom para no solaparse, y cede la
+               capa superior a los controles y a la hoja de herramientas */
+            #minimap-panel {
+                width: min(88vw, 18rem) !important;
+                bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+                right: 12px !important;
+                z-index: 20 !important;
+            }
+
+            #minimap-container {
+                height: 150px !important;
+            }
+        }
+
+        /* Móvil: barra inferior y paneles aún más compactos */
+        @media (max-width: 639px) {
+            #tools-sidebar {
+                max-height: 68dvh !important;
+            }
+
+            #minimap-panel {
+                width: calc(100vw - 24px) !important;
+                left: 12px !important;
+                right: 12px !important;
+            }
+        }
+
+        /* En dispositivos táctiles no hay hover: se desactiva el desplazamiento de los botones */
+        @media (hover: none) {
+            .tool-btn:hover {
+                transform: none;
+            }
+        }
+
+        /* Impide el zoom por doble-tap sobre el lienzo en iOS */
+        #blueprint-canvas {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
     </style>
 @endpush
 
@@ -99,9 +259,27 @@
         $lng = $acta->establecimiento->longitud;
         $hasCoords = !is_null($lat) && !is_null($lng);
         $nombreEstab = e($acta->establecimiento->nombre);
+        /* Sin escapar: se serializa con @json para el letrero del portón */
+        $nombreEstabRaw = $acta->establecimiento->nombre;
     @endphp
 
     <script>
+        /* Respaldo de roundRect para navegadores que aún no lo traen
+           (tablets con iOS 15 o Chrome antiguo): sin él, el croquis no se dibujaría. */
+        if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                let rad = Array.isArray(r) ? r[0] : (r || 0);
+                rad = Math.min(rad, Math.abs(w) / 2, Math.abs(h) / 2);
+                this.moveTo(x + rad, y);
+                this.arcTo(x + w, y, x + w, y + h, rad);
+                this.arcTo(x + w, y + h, x, y + h, rad);
+                this.arcTo(x, y + h, x, y, rad);
+                this.arcTo(x, y, x + w, y, rad);
+                this.closePath();
+                return this;
+            };
+        }
+
         document.addEventListener('alpine:init', () => {
             Alpine.data('tabletEditor', () => {
                 let canvas, ctx;
@@ -123,21 +301,126 @@
                 let resizeStartX = 0, resizeStartY = 0;
                 let resizeOrigX = 0, resizeOrigY = 0;
                 let resizeOrigW = 0, resizeOrigH = 0;
-                const RH = 7; // handle half-size px
+
+                /* ═══════════════════════════════════════════════════════════════
+                   LENGUAJE GRÁFICO DEL CROQUIS
+                   Un único sitio donde viven colores, tintas y grosores. Todos los
+                   elementos se dibujan con el mismo criterio: relleno muy claro,
+                   contorno de color medio y tinta oscura para textos e iconos.
+                   ═══════════════════════════════════════════════════════════════ */
+                const THEME = {
+                    paper: '#ffffff',
+                    grid: '#f1f5f9',        // retícula menor
+                    gridMajor: '#e2e8f0',   // retícula mayor (cada 5 casillas)
+                    ink: '#0f172a',
+                    inkSoft: '#94a3b8',
+                    select: '#4f46e5',
+                    link: '#60a5fa',        // cableado de red
+                    linkInk: '#2563eb',
+                };
+
+                /* fill: relleno · stroke: contorno · ink: textos e iconos · accent: detalles */
+                const STYLES = {
+                    ambiente: {
+                        consultorio: { fill: '#f0fdf4', stroke: '#4ade80', ink: '#166534', accent: '#22c55e' },
+                        consultorio_fisico: { fill: '#f0fdf4', stroke: '#4ade80', ink: '#166534', accent: '#22c55e' },
+                        consultorio_funcional: { fill: '#fffbeb', stroke: '#fbbf24', ink: '#92400e', accent: '#f59e0b', dashed: true },
+                        emergencias: { fill: '#fef2f2', stroke: '#f87171', ink: '#991b1b', accent: '#ef4444' },
+                        quirofano: { fill: '#eff6ff', stroke: '#60a5fa', ink: '#1e40af', accent: '#3b82f6' },
+                        administracion: { fill: '#faf5ff', stroke: '#c084fc', ink: '#6b21a8', accent: '#a855f7' },
+                        'baño': { fill: '#ecfeff', stroke: '#22d3ee', ink: '#155e75', accent: '#06b6d4' },
+                        _default: { fill: '#f8fafc', stroke: '#cbd5e1', ink: '#334155', accent: '#94a3b8' },
+                    },
+                    pasillo: { _default: { fill: '#fafafa', stroke: '#d4d4d8', ink: '#52525b', accent: '#a1a1aa' } },
+                    hardware: {
+                        pozo: { fill: '#ecfdf5', stroke: '#34d399', ink: '#065f46', accent: '#10b981' },
+                        punto_red: { fill: '#ecfdf5', stroke: '#34d399', ink: '#065f46', accent: '#10b981' },
+                        ups: { fill: '#ecfdf5', stroke: '#34d399', ink: '#065f46', accent: '#10b981' },
+                        _default: { fill: '#eff6ff', stroke: '#93c5fd', ink: '#1d4ed8', accent: '#3b82f6' },
+                    },
+                    /* Las puertas se leen mejor como hueco en el muro: fondo neutro y
+                       el propio símbolo aporta el color. El portón va en negro. */
+                    puerta: {
+                        externa: { fill: '#f8fafc', stroke: '#475569', ink: '#0b0f19', accent: '#1f2937' },
+                        _default: { fill: '#f8fafc', stroke: '#94a3b8', ink: '#334155', accent: '#0284c7' },
+                    },
+                    calle: {
+                        avenida: { fill: '#e5e7eb', stroke: '#9ca3af', ink: '#374151', accent: '#fbbf24' },
+                        jiron: { fill: '#eceef1', stroke: '#b6bcc5', ink: '#4b5563', accent: '#fbbf24' },
+                        pasaje: { fill: '#f3f4f6', stroke: '#cbd5e1', ink: '#6b7280', accent: '#cbd5e1' },
+                        _default: { fill: '#eceef1', stroke: '#b6bcc5', ink: '#4b5563', accent: '#fbbf24' },
+                    },
+                    sistema: {
+                        tua: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        sihce: { fill: '#eff6ff', stroke: '#93c5fd', ink: '#1e40af', accent: '#1d4ed8' },
+                        sismed: { fill: '#f0fdfa', stroke: '#5eead4', ink: '#115e59', accent: '#0d9488' },
+                        hisminsa: { fill: '#fff7ed', stroke: '#fdba74', ink: '#9a3412', accent: '#c2410c' },
+                        sisgalenplus: { fill: '#eff6ff', stroke: '#93c5fd', ink: '#1e3a8a', accent: '#2563eb' },
+                        _default: { fill: '#f8fafc', stroke: '#cbd5e1', ink: '#334155', accent: '#64748b' },
+                    },
+                    _default: { _default: { fill: '#ffffff', stroke: '#cbd5e1', ink: '#334155', accent: '#94a3b8' } },
+                };
+
+                /* Nombre corto de cada equipo, para cuando la descripción no cabe bajo el icono */
+                const HW_LABEL = {
+                    pc: 'CPU', laptop: 'LAPTOP', tablet: 'TABLET', monitor: 'MONITOR',
+                    teclado: 'TECLADO', mouse: 'MOUSE', impresora: 'IMPRESORA',
+                    ticketera: 'TICKETERA', escaner: 'LECTOR', ups: 'UPS',
+                    router: 'ROUTER', ap: 'ACCESS POINT', switch: 'SWITCH',
+                    pozo: 'POZO TIERRA', punto_red: 'PUNTO RED', equipo: 'EQUIPO',
+                };
+
+                /* Estado del equipo en el inventario: tiñe el equipo para verlo de un vistazo */
+                const ESTADO_STYLES = {
+                    REGULAR: { fill: '#fffbeb', stroke: '#fcd34d', ink: '#b45309', accent: '#f59e0b' },
+                    INOPERATIVO: { fill: '#fef2f2', stroke: '#fca5a5', ink: '#b91c1c', accent: '#ef4444' },
+                };
 
                 return {
                     elements: @json($contenido['elementos'] ?? []),
                     connections: @json($contenido['conexiones'] ?? []),
                     tool: 'ambiente',
-                    hwType: 'router',
+                    hwType: 'pc',
+                    /* Catálogo del panel de Equipamiento TI */
+                    equiposComputo: [
+                        { tipo: 'pc', label: 'CPU', icon: 'cpu' },
+                        { tipo: 'laptop', label: 'Laptop', icon: 'laptop' },
+                        { tipo: 'monitor', label: 'Monitor', icon: 'monitor' },
+                        { tipo: 'teclado', label: 'Teclado', icon: 'keyboard' },
+                        { tipo: 'mouse', label: 'Mouse', icon: 'mouse' },
+                        { tipo: 'impresora', label: 'Impresora', icon: 'printer' },
+                        { tipo: 'ticketera', label: 'Ticketera', icon: 'receipt' },
+                        { tipo: 'escaner', label: 'Lector DNIe', icon: 'scan-line' },
+                        { tipo: 'tablet', label: 'Tablet', icon: 'tablet' },
+                    ],
+                    equiposRed: [
+                        { tipo: 'router', label: 'Router', icon: 'router' },
+                        { tipo: 'ap', label: 'Access Point', icon: 'rss' },
+                        { tipo: 'switch', label: 'Switch', icon: 'layers' },
+                        { tipo: 'punto_red', label: 'Punto Red', icon: 'share-2' },
+                        { tipo: 'pozo', label: 'Pozo Tierra', icon: 'anchor' },
+                        { tipo: 'ups', label: 'UPS', icon: 'battery-charging' },
+                    ],
+                    get hwLabelActual() {
+                        const todos = [...this.equiposComputo, ...this.equiposRed];
+                        const eq = todos.find(e => e.tipo === this.hwType);
+                        return eq ? eq.label : 'Equipo';
+                    },
                     layers: { furniture: true, network: true, power: true, calles: false },
                     tileCache: {},
                     tileOpacity: 0.5,
                     tileZoom: 21.5,
                     mapOffsetX: @json($contenido['mapOffsetX'] ?? 0),
                     mapOffsetY: @json($contenido['mapOffsetY'] ?? 0),
+                    /* Punto del plano donde se ancla el mapa base. Se fija en el primer
+                       dibujo y se guarda, para que el fondo no baile al cambiar de
+                       tamaño el lienzo (pantalla completa, otro dispositivo…). */
+                    mapAnchorX: @json($contenido['mapAnchorX'] ?? null),
+                    mapAnchorY: @json($contenido['mapAnchorY'] ?? null),
                     geoLat: {{ $hasCoords ? $lat : 'null' }},
                     geoLng: {{ $hasCoords ? $lng : 'null' }},
+                    /* Nombre del establecimiento del acta: va en el letrero del portón */
+                    estabNombre: @json($nombreEstabRaw ?? ''),
                     name: '',
                     roomSubtype: 'consultorio_fisico',
                     doorSubtype: 'interna',
@@ -151,6 +434,19 @@
                     connectionStart: null,
                     sidebarOpen: true,
                     panelVisible: true,
+                    /* ─ Responsive / táctil ─ */
+                    isMobile: false,        // < 1024px  (tablet vertical y móvil)
+                    isCompact: false,       // < 640px   (móvil)
+                    isTouch: false,         // dispositivo sin mouse
+                    showFilters: false,     // popover de "Filtros de vista" en pantallas angostas
+                    showActions: false,     // popover de acciones (guardar / exportar) en móvil
+                    panMode: false,         // modo mano: arrastrar el lienzo con un dedo/clic
+                    _pinchDist: 0,
+                    _pinchCX: 0,
+                    _pinchCY: 0,
+                    _isPinching: false,
+                    _rafId: null,           // repintado agendado (un frame)
+                    _hintVisible: false,    // pista de gestos táctiles
                     isSaving: false,
                     isFullscreen: false,
                     history: [],
@@ -179,8 +475,12 @@
                     _pendingCursorX: 0,
                     _pendingCursorY: 0,
                     _colabActaId: {{ $acta->id }},
-                    _syncUrl: '{{ route("usuario.croquis.sync", ["actaId" => $acta->id]) }}',
-                    _leaveUrl: '{{ route("usuario.croquis.leave", ["actaId" => $acta->id]) }}',
+                    /* Sin colaboración en tiempo real en este proyecto: las rutas croquis.sync
+                       y croquis.leave no existen aquí. Con las URLs vacías el polling no arranca
+                       y 'colaboradores' queda siempre vacío, así que el editor funciona en modo
+                       de un solo usuario. */
+                    _syncUrl: '',
+                    _leaveUrl: '',
                     _csrfToken: '{{ csrf_token() }}',
                     deletedIds: [],              // IDs borrados localmente para sincronizar
                     _lastColabHash: '',          // Hash del estado remoto para detect cambios
@@ -193,6 +493,9 @@
 
                     /* ─── Lifecycle ─── */
                     init() {
+                        this._applyBreakpoint(true);
+                        this._setupDialogs();
+
                         this.$nextTick(() => {
                             canvas = document.getElementById('blueprint-canvas');
                             if (!canvas) { console.error('Canvas not found'); return; }
@@ -200,7 +503,18 @@
                             this.resizeCanvas();
                             this.draw();
                             this._refreshIcons();
-                            window.addEventListener('resize', () => this.resizeCanvas());
+                            window.addEventListener('resize', () => { this._applyBreakpoint(); this.resizeCanvas(); });
+                            /* Al rotar el dispositivo el viewport tarda en estabilizarse */
+                            window.addEventListener('orientationchange', () => {
+                                setTimeout(() => { this._applyBreakpoint(); this.resizeCanvas(); this.autoFit(); }, 250);
+                            });
+
+                            /* Entrar o salir de pantalla completa cambia el tamaño del lienzo.
+                               También cubre la salida con Esc, que no pasa por el botón. */
+                            document.addEventListener('fullscreenchange', () => {
+                                this.isFullscreen = !!document.fullscreenElement;
+                                setTimeout(() => { this._applyBreakpoint(); this.resizeCanvas(); }, 120);
+                            });
 
                             /* Global pointer listeners for sidebar drag */
                             window.addEventListener('pointermove', (e) => this._onWindowPointerMove(e));
@@ -226,6 +540,12 @@
 
                             /* Auto-ajuste inicial para encuadrar el diseño */
                             setTimeout(() => this.autoFit(), 120);
+
+                            /* Pista de gestos, solo en pantallas táctiles */
+                            if (this.isTouch) {
+                                this._hintVisible = true;
+                                setTimeout(() => { this._hintVisible = false; }, 6000);
+                            }
                         });
 
                         /* Notificar al servidor cuando el usuario cierra/navega */
@@ -235,11 +555,66 @@
                             this.$nextTick(() => setTimeout(() => { this.resizeCanvas(); this._refreshIcons(); }, 350));
                         });
                         this.$watch('tool', () => this.$nextTick(() => this._refreshIcons()));
+                        this.$watch('hwType', () => this.$nextTick(() => this._refreshIcons()));
                         this.$watch('selectedId', () => this.$nextTick(() => this._refreshIcons()));
                     },
 
                     _refreshIcons() {
                         if (window.lucide) window.lucide.createIcons();
+                    },
+
+                    /* ─── Diálogos dentro del editor ───
+                       En pantalla completa el navegador solo pinta el elemento a pantalla
+                       completa y sus descendientes: un modal colgado de <body> queda
+                       invisible y obliga a salir para responderlo. Se fija el destino de
+                       todos los diálogos al propio editor. */
+                    _setupDialogs() {
+                        if (!window.Swal || window.Swal.__croquisDialogPatch) return;
+
+                        const original = window.Swal.fire.bind(window.Swal);
+                        const destino = () =>
+                            document.fullscreenElement ||
+                            document.getElementById('tablet-editor-container') ||
+                            undefined;
+
+                        window.Swal.fire = (...args) => {
+                            if (args.length && typeof args[0] === 'object' && args[0] !== null) {
+                                /* Si quien llama ya indicó un destino, se respeta */
+                                return original({ target: destino(), ...args[0] });
+                            }
+                            const [title, text, icon] = args;   // firma corta: (título, texto, icono)
+                            return original({ target: destino(), title, text, icon });
+                        };
+                        window.Swal.__croquisDialogPatch = true;
+                    },
+
+                    /* ─── Breakpoints (PC / laptop / tablet / móvil) ─── */
+                    _applyBreakpoint(initial = false) {
+                        const w = window.innerWidth;
+                        const wasMobile = this.isMobile;
+                        this.isMobile = w < 1024;
+                        this.isCompact = w < 640;
+                        this.isTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+                        if (initial) {
+                            /* En tablet/móvil el panel arranca oculto para no tapar el croquis */
+                            this.sidebarOpen = !this.isMobile;
+                        } else if (this.isMobile !== wasMobile) {
+                            this.sidebarOpen = !this.isMobile;
+                            this.showFilters = false;
+                            this.showActions = false;
+                        }
+                    },
+
+                    /* Alterna el panel de herramientas (hoja inferior en móvil) */
+                    toggleSidebar() {
+                        this.sidebarOpen = !this.sidebarOpen;
+                        if (this.sidebarOpen) { this.showFilters = false; this.showActions = false; }
+                    },
+
+                    /* Tras colocar un elemento desde la hoja inferior conviene cerrarla */
+                    _autoCloseSheet() {
+                        if (this.isMobile) this.sidebarOpen = false;
                     },
 
                     /* ─── Fullscreen Toggle ─── */
@@ -374,7 +749,9 @@
                         this.hoveredEl = this.elements.find(el => this._isPointInElement(el, x, y)) || null;
                     },
 
-                    _isPointInElement(el, px, py, padding = 4) {
+                    _isPointInElement(el, px, py, padding = null) {
+                        /* Margen de acierto constante en pantalla y más amplio con el dedo */
+                        if (padding === null) padding = (this.isTouch ? 10 : 4) / (this.canvasZoom || 1);
                         const cx = el.x + el.w / 2;
                         const cy = el.y + el.h / 2;
                         const rot = (el.rot || 0) * Math.PI / 180;
@@ -453,6 +830,9 @@
                         if (!el) return;
                         this._snapshot();
                         el.piso = n;
+                        el._ts = Date.now();
+                        /* Los equipos del ambiente cambian de piso con él */
+                        this._childrenOf(el.id).forEach(ch => { ch.piso = n; ch._ts = Date.now(); });
                         this.draw();
                     },
                     /* Count elements per piso */
@@ -466,8 +846,9 @@
                         const isDoorExt = (type === 'puerta' && this.doorSubtype === 'externa');
                         const calleW = this.calleSubtype === 'avenida' ? 500 : (this.calleSubtype === 'jiron' ? 400 : 300);
                         const calleH = this.calleSubtype === 'avenida' ? 80 : (this.calleSubtype === 'jiron' ? 60 : 40);
-                        const w = type === 'hardware' ? 50 : (type === 'pasillo' ? 300 : (type === 'puerta' ? (isDoorExt ? 50 : 25) : (type === 'calle' ? calleW : (type === 'sistema' ? 80 : 120))));
-                        const h = type === 'hardware' ? 40 : (type === 'pasillo' ? 60 : (type === 'puerta' ? (isDoorExt ? 50 : 25) : (type === 'calle' ? calleH : (type === 'sistema' ? 70 : 100))));
+                        /* El acceso principal es un portón: nace ancho, como en la realidad */
+                        const w = type === 'hardware' ? 62 : (type === 'pasillo' ? 300 : (type === 'puerta' ? (isDoorExt ? 180 : 40) : (type === 'calle' ? calleW : (type === 'sistema' ? 80 : 120))));
+                        const h = type === 'hardware' ? 58 : (type === 'pasillo' ? 60 : (type === 'puerta' ? (isDoorExt ? 70 : 40) : (type === 'calle' ? calleH : (type === 'sistema' ? 70 : 100))));
                         /* Use drop coords if provided (drag & drop), otherwise random */
                         const rx = dropX !== null
                             ? Math.max(0, Math.round((dropX - w / 2) / GRID) * GRID)
@@ -491,7 +872,8 @@
                             parentId,
                             piso: this.currentPiso,
                             subtype: type === 'ambiente' ? this.roomSubtype : (type === 'hardware' ? this.hwType : (type === 'puerta' ? this.doorSubtype : (type === 'calle' ? this.calleSubtype : (type === 'sistema' ? this.sistemaType : null)))),
-                            name: this.name || (type === 'hardware' ? this.hwType.toUpperCase() : (type === 'ambiente' ? (this.roomSubtype?.toUpperCase() || 'AMBIENTE') : (type === 'puerta' ? '' : (type === 'calle' ? (this.calleSubtype === 'avenida' ? 'Av. ' : (this.calleSubtype === 'jiron' ? 'Jr. ' : 'Psj. ')) : (type === 'sistema' ? this.sistemaType.toUpperCase() : type.toUpperCase()))))),
+                            /* El equipo estrena el nombre corto de su tipo (CPU, LECTOR…) */
+                            name: this.name || (type === 'hardware' ? (HW_LABEL[this.hwType] || this.hwType.toUpperCase()) : (type === 'ambiente' ? (this.roomSubtype?.toUpperCase() || 'AMBIENTE') : (type === 'puerta' ? '' : (type === 'calle' ? (this.calleSubtype === 'avenida' ? 'Av. ' : (this.calleSubtype === 'jiron' ? 'Jr. ' : 'Psj. ')) : (type === 'sistema' ? this.sistemaType.toUpperCase() : type.toUpperCase()))))),
                             x: rx, y: ry, w, h,
                             rot: 0,
                             attrs: { ...this.attrs },
@@ -522,41 +904,194 @@
                     },
                     resetZoom() { this.canvasZoom = 1.0; this.panX = 0; this.panY = 0; this.draw(); },
 
-                    /* ─── Auto-Fit / Centrar Vista ─── */
+                    /* ─── Ajustar el croquis a la pantalla ───
+                       Encuadra lo que se está viendo —el piso actual— dentro de la zona
+                       del lienzo que no tapan los paneles flotantes. */
                     autoFit() {
-                        if (this.elements.length === 0) {
+                        const visibles = this.elements.filter(e => (e.piso || 1) === this.currentPiso);
+                        if (!visibles.length) {
                             this.resetZoom();
                             return;
                         }
 
                         /* Calculate Bounding Box of items */
                         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                        this.elements.forEach(el => {
-                            minX = Math.min(minX, el.x); minY = Math.min(minY, el.y);
+                        visibles.forEach(el => {
+                            /* El portón lleva el letrero del establecimiento por encima:
+                               cuenta para el encuadre o quedaría cortado */
+                            let top = el.y;
+                            if ((el.type || '').toLowerCase() === 'puerta' &&
+                                (el.subtype || '').toLowerCase() === 'externa' && this.estabNombre) {
+                                top -= Math.max(6, el.h * 0.1) + Math.max(8, Math.min(el.w * 0.062, 13)) * 2;
+                            }
+                            minX = Math.min(minX, el.x); minY = Math.min(minY, top);
                             maxX = Math.max(maxX, el.x + el.w); maxY = Math.max(maxY, el.y + el.h);
                         });
 
-                        const bW = maxX - minX;
-                        const bH = maxY - minY;
+                        const bW = Math.max(1, maxX - minX);
+                        const bH = Math.max(1, maxY - minY);
                         const lw = this.logicalW;
                         const lh = this.logicalH;
-                        const PAD = 60; // Logical padding
 
-                        /* Scale to fit */
-                        const scaleX = (lw - PAD * 2) / bW;
-                        const scaleY = (lh - PAD * 2) / bH;
-                        const newZoom = Math.min(2.0, Math.min(scaleX, scaleY));
-                        this.canvasZoom = isFinite(newZoom) ? Math.max(0.1, newZoom) : 1.0;
+                        /* Márgenes ocupados por los paneles que flotan sobre el lienzo:
+                           herramientas a la izquierda, pisos a la derecha y la barra de
+                           zoom abajo. Sin descontarlos, el croquis queda debajo de ellos. */
+                        const panelAbierto = this.sidebarOpen && this.panelVisible;
+                        const izq = (!this.isMobile && panelAbierto) ? 312 : 24;
+                        const der = this.isCompact ? 52 : 72;   // panel de pisos
+                        const arr = 24;
+                        const aba = this.isCompact ? 72 : 88;   // barra de zoom
 
-                        /* Center it */
-                        this.panX = lw / 2 - (minX + bW / 2) * this.canvasZoom;
-                        this.panY = lh / 2 - (minY + bH / 2) * this.canvasZoom;
+                        const utilW = Math.max(140, lw - izq - der);
+                        const utilH = Math.max(140, lh - arr - aba);
+
+                        /* Escala para que quepa dentro de esa zona, con un respiro del 3%
+                           para que el croquis no quede pegado al borde */
+                        const newZoom = Math.min(2.0, (utilW / bW) * 0.97, (utilH / bH) * 0.97);
+                        this.canvasZoom = isFinite(newZoom) && newZoom > 0 ? Math.max(0.05, newZoom) : 1.0;
+
+                        /* Centrado en la zona útil, no en el lienzo entero */
+                        this.panX = izq + utilW / 2 - (minX + bW / 2) * this.canvasZoom;
+                        this.panY = arr + utilH / 2 - (minY + bH / 2) * this.canvasZoom;
 
                         this.draw();
                     },
 
-                    /* ─── Main Draw ─── */
+                    /* ═══════════ Utilidades de dibujo ═══════════ */
+
+                    /* ═══════════ Elementos agrupados ═══════════
+                       Un equipo colocado dentro de un ambiente forma parte de él: se mueve,
+                       gira y se borra con el ambiente, y no se selecciona por separado. */
+
+                    _childrenOf(id) { return this.elements.filter(e => e.parentId === id); },
+
+                    _isChild(el) {
+                        return !!el.parentId && this.elements.some(p => p.id === el.parentId);
+                    },
+
+                    /* Gira el elemento y lleva consigo a sus hijos, que rotan alrededor
+                       del centro del padre y sobre sí mismos. */
+                    _applyRotation(el, nuevaRot) {
+                        const prev = el.rot || 0;
+                        const next = ((+nuevaRot) % 360 + 360) % 360;
+                        el.rot = next;
+
+                        const delta = next - prev;
+                        if (!delta) return;
+
+                        const rad = delta * Math.PI / 180;
+                        const cos = Math.cos(rad), sin = Math.sin(rad);
+                        const cx = el.x + el.w / 2, cy = el.y + el.h / 2;
+
+                        this._childrenOf(el.id).forEach(ch => {
+                            const dx = ch.x + ch.w / 2 - cx;
+                            const dy = ch.y + ch.h / 2 - cy;
+                            ch.x = cx + (dx * cos - dy * sin) - ch.w / 2;
+                            ch.y = cy + (dx * sin + dy * cos) - ch.h / 2;
+                            ch.rot = ((ch.rot || 0) + delta) % 360;
+                            ch._ts = Date.now();
+                        });
+                    },
+
+                    /* Estilo del elemento según tipo, subtipo y —en equipos— su estado */
+                    _style(el) {
+                        const type = (el.type || '').toLowerCase();
+                        if (type === 'hardware' && el.estado) {
+                            const est = ESTADO_STYLES[String(el.estado).toUpperCase()];
+                            if (est) return est;
+                        }
+                        const fam = STYLES[type] || STYLES._default;
+                        return fam[(el.subtype || '').toLowerCase()] || fam._default || STYLES._default._default;
+                    },
+
+                    /* Convierte píxeles de pantalla a unidades del plano: el trazo
+                       conserva el mismo grosor visual con cualquier zoom */
+                    _px(v) { return v / (this.canvasZoom || 1); },
+
+                    /* Nivel de detalle: 0 solo siluetas · 1 silueta y rótulo · 2 todo */
+                    _lod() {
+                        const z = this.canvasZoom || 1;
+                        return z < 0.32 ? 0 : (z < 0.62 ? 1 : 2);
+                    },
+
+                    /* ¿Un texto de este tamaño sería legible en pantalla? */
+                    _readable(sizeInPlan) { return sizeInPlan * (this.canvasZoom || 1) >= 6; },
+
+                    /* Recorta el texto al ancho disponible añadiendo elipsis */
+                    _fitText(text, maxW) {
+                        if (ctx.measureText(text).width <= maxW) return text;
+                        let t = text;
+                        while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+                        return t.length > 1 ? t + '…' : '';
+                    },
+
+                    /* Rótulo del elemento: una sola línea, centrada y recortada */
+                    _drawLabel(el, st, opts = {}) {
+                        const size = opts.size || 12;
+                        if (!this._readable(size)) return;
+                        const text = (opts.text ?? (el.name || el.subtype || el.type || '')).toUpperCase();
+                        if (!text) return;
+
+                        ctx.save();
+                        ctx.font = `700 ${size}px Inter, system-ui, Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const maxW = el.w - 12;
+                        const label = this._fitText(text, maxW);
+                        if (!label) { ctx.restore(); return; }
+
+                        const cx = el.x + el.w / 2;
+                        const y = opts.y ?? (el.y + size * 0.95 + 4);
+
+                        /* Banda clara detrás del texto: lo separa del contenido sin ensuciar */
+                        if (opts.plate !== false) {
+                            const tw = ctx.measureText(label).width;
+                            ctx.fillStyle = 'rgba(255,255,255,0.82)';
+                            ctx.beginPath();
+                            ctx.roundRect(cx - tw / 2 - 5, y - size * 0.72, tw + 10, size * 1.45, size * 0.5);
+                            ctx.fill();
+                        }
+                        ctx.fillStyle = opts.color || st.ink;
+                        ctx.fillText(label, cx, y);
+                        ctx.restore();
+                    },
+
+                    /* Marco de trabajo para un pictograma: centra y normaliza el trazo.
+                       El dibujo se hace siempre dentro de una caja de 24x24 (de -12 a 12). */
+                    _icon(cx, cy, size, color, weight, paint) {
+                        const s = size / 24;
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        ctx.scale(s, s);
+                        ctx.strokeStyle = color;
+                        ctx.fillStyle = color;
+                        ctx.lineWidth = (weight || 1.8) / s;
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        paint(ctx);
+                        ctx.restore();
+                    },
+
+                    /* ─── Redibujado ───
+                       draw() agenda un único repintado por frame: durante un arrastre se
+                       generan decenas de eventos por segundo y repintar en todos ellos
+                       hace que el croquis se sienta lento, sobre todo en tablet y móvil.
+                       _flushDraw() fuerza el repintado inmediato cuando hace falta leer
+                       el lienzo (exportar PNG, guardar). */
                     draw() {
+                        if (this._rafId) return;
+                        this._rafId = requestAnimationFrame(() => {
+                            this._rafId = null;
+                            this._render();
+                        });
+                    },
+                    _flushDraw() {
+                        if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+                        this._render();
+                    },
+
+                    /* ─── Main Draw ─── */
+                    _render() {
                         if (!ctx || !canvas) return;
                         const lw = this.logicalW;
                         const lh = this.logicalH;
@@ -580,67 +1115,70 @@
                         /* Capa de mapa base (tiles OSM) */
                         if (this.layers.calles && this.geoLat !== null) this.drawStreetBase(lw, lh);
 
-                        /* Infinite Grid (drawing based on visible logical area) */
-                        ctx.strokeStyle = '#f1f5f9';
-                        ctx.lineWidth = 1 / this.canvasZoom; /* Constant visual thickness */
+                        /* ── Retícula en dos niveles: la menor se retira al alejarse,
+                              de modo que el plano nunca se ve emborronado ── */
+                        const z = this.canvasZoom || 1;
                         const step = 40;
-                        const xMin = Math.floor((-this.panX / this.canvasZoom) / step) * step;
-                        const yMin = Math.floor((-this.panY / this.canvasZoom) / step) * step;
-                        const xMax = xMin + lw / this.canvasZoom + step;
-                        const yMax = yMin + lh / this.canvasZoom + step;
+                        const xMin = Math.floor((-this.panX / z) / step) * step;
+                        const yMin = Math.floor((-this.panY / z) / step) * step;
+                        const xMax = xMin + lw / z + step;
+                        const yMax = yMin + lh / z + step;
 
-                        for (let x = xMin; x <= xMax; x += step) {
-                            ctx.beginPath(); ctx.moveTo(x, yMin); ctx.lineTo(x, yMax); ctx.stroke();
-                        }
-                        for (let y = yMin; y <= yMax; y += step) {
-                            ctx.beginPath(); ctx.moveTo(xMin, y); ctx.lineTo(xMax, y); ctx.stroke();
-                        }
+                        const gridPass = (mult, color, width) => {
+                            const s = step * mult;
+                            ctx.strokeStyle = color;
+                            ctx.lineWidth = this._px(width);
+                            ctx.beginPath();
+                            for (let x = Math.floor(xMin / s) * s; x <= xMax; x += s) {
+                                ctx.moveTo(x, yMin); ctx.lineTo(x, yMax);
+                            }
+                            for (let y = Math.floor(yMin / s) * s; y <= yMax; y += s) {
+                                ctx.moveTo(xMin, y); ctx.lineTo(xMax, y);
+                            }
+                            ctx.stroke();
+                        };
+                        if (z >= 0.45) gridPass(1, THEME.grid, 1);
+                        gridPass(5, THEME.gridMajor, 1);
 
                         if (this.layers.network) this.drawConnections();
 
-                        /* ── Ghost floor (adjacent piso at low opacity) ── */
+                        /* ── Silueta del piso contiguo: solo el contorno, para que sirva
+                              de referencia sin competir con el piso actual ── */
                         if (this.showGhostFloor && this.totalPisos > 1) {
                             const ghostPiso = this.currentPiso > 1 ? this.currentPiso - 1 : this.currentPiso + 1;
                             const ghostEls = this.elements.filter(e => (e.piso || 1) === ghostPiso);
                             if (ghostEls.length > 0) {
                                 ctx.save();
-                                ctx.globalAlpha = 0.12;
+                                ctx.strokeStyle = '#cbd5e1';
+                                ctx.lineWidth = this._px(1);
+                                ctx.setLineDash([this._px(5), this._px(4)]);
                                 ghostEls.forEach(el => {
                                     this.drawRoundedRect(el.x, el.y, el.w, el.h, 6);
-                                    ctx.fillStyle = '#94a3b8';
-                                    ctx.strokeStyle = '#64748b';
-                                    ctx.lineWidth = 1;
-                                    ctx.fill(); ctx.stroke();
+                                    ctx.stroke();
                                 });
-                                ctx.restore();
-                                /* Ghost label */
-                                ctx.save();
-                                ctx.globalAlpha = 0.20;
-                                ctx.font = 'bold 8px Inter,Arial';
-                                ctx.fillStyle = '#475569';
-                                ctx.textAlign = 'center';
-                                ghostEls.forEach(el => {
-                                    ctx.fillText(`P${ghostPiso}`, el.x + el.w / 2, el.y + el.h / 2 + 3);
-                                });
+                                ctx.setLineDash([]);
                                 ctx.restore();
                             }
                         }
 
-                        /* ── Floor watermark (centered in current view) ── */
+                        /* ── Marca de agua del piso ── */
                         ctx.save();
-                        ctx.globalAlpha = 0.045;
-                        const waterFS = Math.min(lw, lh) * 0.28 / this.canvasZoom;
-                        ctx.font = `bold ${waterFS}px Inter,Arial`;
-                        ctx.fillStyle = '#4f46e5';
+                        ctx.globalAlpha = 0.05;
+                        const waterFS = Math.min(lw, lh) * 0.26 / z;
+                        ctx.font = `800 ${waterFS}px Inter, system-ui, Arial`;
+                        ctx.fillStyle = THEME.select;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        const vcx = (lw / 2 - this.panX) / this.canvasZoom;
-                        const vcy = (lh / 2 - this.panY) / this.canvasZoom;
-                        ctx.fillText(`P${this.currentPiso}`, vcx, vcy);
+                        ctx.fillText(`P${this.currentPiso}`, (lw / 2 - this.panX) / z, (lh / 2 - this.panY) / z);
                         ctx.restore();
 
                         /* ── Only draw elements of the current floor ── */
                         const floorEls = this.elements.filter(e => (e.piso || 1) == this.currentPiso);
+
+                        /* Ambientes que ya contienen equipos: en ellos el mobiliario
+                           esquemático solo estorbaría al equipamiento dibujado dentro */
+                        const conContenido = new Set();
+                        this.elements.forEach(e => { if (e.parentId) conContenido.add(e.parentId); });
 
                         floorEls.forEach(el => {
                             ctx.save();
@@ -649,88 +1187,69 @@
                             ctx.rotate(rotRad);
                             ctx.translate(-(el.x + el.w / 2), -(el.y + el.h / 2));
 
-                            let fill = '#ffffff', stroke = '#475569';
                             const type = (el.type || '').toLowerCase();
                             const subtype = (el.subtype || '').toLowerCase();
+                            const st = this._style(el);
+                            const isSel = el.id === this.selectedId;
+                            const lod = this._lod();
 
-                            if (type === 'ambiente') {
-                                switch (subtype) {
-                                    case 'consultorio':          // backward compat
-                                    case 'consultorio_fisico': fill = '#bbf7d0'; stroke = '#16a34a'; break;
-                                    case 'consultorio_funcional': fill = '#fef3c7'; stroke = '#d97706'; break;
-                                    case 'emergencias': fill = '#fecaca'; stroke = '#dc2626'; break;
-                                    case 'quirofano': fill = '#bae6fd'; stroke = '#0284c7'; break;
-                                    case 'administracion': fill = '#e9d5ff'; stroke = '#9333ea'; break;
-                                    case 'baño': fill = '#cffafe'; stroke = '#0891b2'; break;
-                                    default: fill = '#f1f5f9'; stroke = '#94a3b8'; break;
-                                }
-                            } else if (type === 'pasillo') {
-                                fill = '#f8fafc'; stroke = '#64748b';
-                            } else if (type === 'hardware') {
-                                if (subtype === 'pozo') { fill = '#d1fae5'; stroke = '#059669'; }
-                                else { fill = '#dbeafe'; stroke = '#2563eb'; }
-                            } else if (type === 'calle') {
-                                switch (subtype) {
-                                    case 'avenida': fill = '#d1d5db'; stroke = '#6b7280'; break;
-                                    case 'jiron': fill = '#e5e7eb'; stroke = '#9ca3af'; break;
-                                    case 'pasaje': fill = '#f3f4f6'; stroke = '#9ca3af'; break;
-                                    default: fill = '#e5e7eb'; stroke = '#9ca3af'; break;
-                                }
-                            } else if (type === 'puerta') {
-                                if (subtype === 'externa') { fill = '#fee2e2'; stroke = '#b91c1c'; }
-                                else { fill = '#fef9c3'; stroke = '#ca8a04'; }
-                            } else if (type === 'sistema') {
-                                switch (subtype) {
-                                    case 'tua': fill = '#ede9fe'; stroke = '#7c3aed'; break;
-                                    case 'sihce': fill = '#dbeafe'; stroke = '#1d4ed8'; break;
-                                    case 'sismed': fill = '#ccfbf1'; stroke = '#0d9488'; break;
-                                    case 'hisminsa': fill = '#fed7aa'; stroke = '#c2410c'; break;
-                                    case 'sisgalenplus': fill = '#dbeafe'; stroke = '#2563eb'; break;
-                                    default: fill = '#f1f5f9'; stroke = '#64748b'; break;
-                                }
+                            /* ── Cuerpo: relleno claro y contorno fino y nítido.
+                                  Sin sombras: a cualquier zoom el plano se ve limpio.
+                                  Las vías no llevan marco: la propia calzada es la forma ── */
+                            const radius = type === 'hardware' ? Math.min(14, Math.min(el.w, el.h) * 0.28) : 8;
+                            if (type !== 'calle') {
+                                ctx.fillStyle = st.fill;
+                                ctx.strokeStyle = isSel ? THEME.select : st.stroke;
+                                ctx.lineWidth = this._px(isSel ? 2.4 : 1.4);
+                                if (st.dashed && !isSel) ctx.setLineDash([this._px(7), this._px(5)]);
+
+                                this.drawRoundedRect(el.x, el.y, el.w, el.h, radius);
+                                ctx.fill();
+                                ctx.stroke();
+                                ctx.setLineDash([]);
                             }
 
-                            ctx.shadowBlur = el.id === this.selectedId ? 15 : 4;
-                            ctx.shadowColor = el.id === this.selectedId ? 'rgba(79,70,229,0.4)' : 'rgba(0,0,0,0.1)';
-                            ctx.shadowOffsetY = 2;
-                            ctx.lineWidth = el.id === this.selectedId ? 4 : 2.5;
-                            ctx.strokeStyle = el.id === this.selectedId ? '#fbbf24' : stroke;
-                            ctx.fillStyle = fill;
-
-                            /* Consultorio funcional: borde discontinuo para diferenciarlo visualmente */
-                            const isFuncional = subtype === 'consultorio_funcional';
-                            if (isFuncional && el.id !== this.selectedId) {
-                                ctx.setLineDash([6, 4]);
+                            /* Halo suave de selección, por fuera del contorno */
+                            if (isSel) {
+                                ctx.save();
+                                ctx.strokeStyle = 'rgba(79,70,229,0.22)';
+                                ctx.lineWidth = this._px(6);
+                                this.drawRoundedRect(el.x, el.y, el.w, el.h, radius);
+                                ctx.stroke();
+                                ctx.restore();
                             }
 
-                            this.drawRoundedRect(el.x, el.y, el.w, el.h, type === 'hardware' ? 20 : 6);
-                            ctx.fill(); ctx.stroke();
-                            ctx.setLineDash([]);
-
-                            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-
-                            if (type === 'hardware') this.drawHardwareSymbol(el);
-                            else if (type === 'puerta') this.drawDoorSymbol(el);
+                            /* ── Contenido: se retira cuando la vista está muy alejada ── */
+                            if (type === 'puerta') this.drawDoorSymbol(el);
                             else if (type === 'calle') this.drawCalleSymbol(el);
-                            else if (type === 'sistema') this.drawSistemaSymbol(el);
-                            else {
-                                if (this.layers.furniture) this.drawFurnitureIcons(el);
-                                if (this.layers.network || this.layers.power) this.drawServiceIcons(el);
+                            else if (lod >= 1) {
+                                if (type === 'hardware') this.drawHardwareSymbol(el);
+                                else if (type === 'sistema') this.drawSistemaSymbol(el);
+                                else {
+                                    if (this.layers.furniture && lod >= 2 && !conContenido.has(el.id)) this.drawFurnitureIcons(el);
+                                    if (this.layers.network || this.layers.power) this.drawServiceIcons(el);
+                                }
                             }
 
-                            /* Badge FÍS / FUNC para consultorios */
-                            if (type === 'ambiente' &&
+                            /* Distintivo FÍSICO / FUNCIONAL. No aplica a las salas traídas de
+                               los módulos: ahí el tipo lo define el propio servicio. */
+                            if (lod >= 2 && type === 'ambiente' && !el._slug &&
                                 (subtype === 'consultorio_fisico' || subtype === 'consultorio_funcional' || subtype === 'consultorio')) {
                                 this.drawConsultorioBadge(el, subtype);
                             }
 
-                            /* Label */
-                            ctx.fillStyle = type === 'calle' ? '#374151' : (type === 'hardware' ? '#2563eb' : (type === 'sistema' ? '#1e1b4b' : '#1e293b'));
-                            ctx.font = type === 'calle' ? 'bold 11px Inter, Arial' : 'bold 10px Inter, Arial';
-                            ctx.textAlign = 'center';
-                            const displayName = (el.name || subtype || type || 'Sin Nombre').toUpperCase();
-                            if (type !== 'sistema' && !(type === 'puerta' && !el.name)) {
-                                ctx.fillText(displayName, el.x + el.w / 2, type === 'hardware' ? el.y - 10 : el.y + (type === 'calle' ? el.h / 2 + 4 : 18));
+                            /* ── Rótulo ── */
+                            if (type === 'calle') {
+                                this._drawCalleLabel(el);
+                            } else if (type === 'hardware') {
+                                /* El nombre del equipo se dibuja bajo su icono, dentro de la caja */
+                            } else if (type === 'sistema') {
+                                /* el nombre del sistema ya va dentro del símbolo */
+                            } else if (type === 'puerta') {
+                                if (el.name) this._drawLabel(el, st, { size: 10, y: el.y - 8, plate: false });
+                            } else {
+                                /* El nombre del ambiente es la referencia principal del plano */
+                                this._drawLabel(el, st, { size: 13 });
                             }
                             ctx.restore();
 
@@ -740,16 +1259,16 @@
                                 const cy2 = el.y + el.h / 2;
                                 const r = el.rot || 0;
                                 const rRad2 = r * Math.PI / 180;
-                                /* Handle sits 36px above top-center in element-local space */
-                                const handleDist = el.h / 2 + 36;
+                                /* El tirador se mantiene a 34px visuales del borde superior */
+                                const handleDist = el.h / 2 + this._px(34);
                                 const hx = cx2 - Math.sin(rRad2) * handleDist;
                                 const hy = cy2 - Math.cos(rRad2) * handleDist;
 
-                                /* Stem line */
+                                /* Tallo */
                                 ctx.save();
-                                ctx.strokeStyle = '#4f46e5';
-                                ctx.lineWidth = 1.5;
-                                ctx.setLineDash([4, 3]);
+                                ctx.strokeStyle = THEME.select;
+                                ctx.lineWidth = this._px(1.2);
+                                ctx.setLineDash([this._px(4), this._px(3)]);
                                 ctx.beginPath();
                                 ctx.moveTo(cx2 - Math.sin(rRad2) * (el.h / 2), cy2 - Math.cos(rRad2) * (el.h / 2));
                                 ctx.lineTo(hx, hy);
@@ -757,34 +1276,30 @@
                                 ctx.setLineDash([]);
                                 ctx.restore();
 
-                                /* Circle background */
+                                /* Disco del tirador */
+                                const hR = this._px(this.isTouch ? 15 : 12);
                                 ctx.save();
                                 ctx.beginPath();
-                                ctx.arc(hx, hy, 13, 0, Math.PI * 2);
-                                ctx.fillStyle = '#4f46e5';
-                                ctx.shadowBlur = 10;
-                                ctx.shadowColor = 'rgba(79,70,229,0.5)';
+                                ctx.arc(hx, hy, hR, 0, Math.PI * 2);
+                                ctx.fillStyle = THEME.select;
                                 ctx.fill();
-                                ctx.shadowBlur = 0;
+                                ctx.strokeStyle = '#ffffff';
+                                ctx.lineWidth = this._px(2);
+                                ctx.stroke();
                                 ctx.restore();
 
-                                /* Rotation arrow SVG-path imitated on canvas */
-                                ctx.save();
-                                ctx.translate(hx, hy);
-                                ctx.strokeStyle = 'white';
-                                ctx.lineWidth = 2;
-                                ctx.lineCap = 'round';
-                                /* Arc */
-                                ctx.beginPath();
-                                ctx.arc(0, 0, 6, -Math.PI * 0.9, Math.PI * 0.1);
-                                ctx.stroke();
-                                /* Arrowhead at end of arc */
-                                ctx.beginPath();
-                                ctx.moveTo(6 * Math.cos(Math.PI * 0.1) - 3, 6 * Math.sin(Math.PI * 0.1) - 2);
-                                ctx.lineTo(6 * Math.cos(Math.PI * 0.1) + 2, 6 * Math.sin(Math.PI * 0.1) + 3);
-                                ctx.lineTo(6 * Math.cos(Math.PI * 0.1) + 4, 6 * Math.sin(Math.PI * 0.1) - 3);
-                                ctx.stroke();
-                                ctx.restore();
+                                /* Flecha de giro */
+                                this._icon(hx, hy, hR * 1.5, '#ffffff', 2.4, (c) => {
+                                    c.beginPath();
+                                    c.arc(0, 0, 7, -Math.PI * 0.85, Math.PI * 0.35);
+                                    c.stroke();
+                                    const ax = 7 * Math.cos(Math.PI * 0.35), ay = 7 * Math.sin(Math.PI * 0.35);
+                                    c.beginPath();
+                                    c.moveTo(ax - 4.5, ay - 1);
+                                    c.lineTo(ax, ay + 3.5);
+                                    c.lineTo(ax + 4, ay - 1.5);
+                                    c.stroke();
+                                });
 
                                 /* Store handle position for hit-testing */
                                 el._hx = hx; el._hy = hy;
@@ -800,10 +1315,67 @@
                         /* End zoom+opacity transform */
                         ctx.restore();
 
+                        /* ── Leyenda de estados (en coordenadas de pantalla) ── */
+                        this._drawEstadoLegend(floorEls, lw, lh);
+
                         /* ── Cursores de colaboradores (fuera del zoom transform) ── */
                         this._drawRemoteCursors();
                     },
 
+
+                    /* ── Leyenda del estado de los equipos ──
+                       Solo aparece cuando hay equipos que no están operativos: si todo
+                       está bien no hay nada que explicar y el plano queda despejado. */
+                    _drawEstadoLegend(floorEls, lw, lh) {
+                        const hay = { REGULAR: 0, INOPERATIVO: 0, OPERATIVO: 0 };
+                        floorEls.forEach(e => {
+                            if ((e.type || '').toLowerCase() !== 'hardware') return;
+                            const est = String(e.estado || '').toUpperCase();
+                            if (hay[est] !== undefined) hay[est] += (parseInt(e.cantidad, 10) || 1);
+                        });
+                        if (!hay.REGULAR && !hay.INOPERATIVO) return;
+
+                        const filas = [
+                            ['OPERATIVO', '#3b82f6', hay.OPERATIVO],
+                            ['REGULAR', '#f59e0b', hay.REGULAR],
+                            ['INOPERATIVO', '#ef4444', hay.INOPERATIVO],
+                        ].filter(f => f[2] > 0);
+
+                        const FS = 9, PAD = 9, LH = 15, DOT = 4;
+                        ctx.save();
+                        ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+                        ctx.font = `700 ${FS}px Inter, system-ui, Arial`;
+                        const textW = Math.max(...filas.map(f => ctx.measureText(`${f[0]}  ${f[2]}`).width));
+                        const bw = textW + PAD * 2 + DOT * 2 + 8;
+                        const bh = PAD * 2 + filas.length * LH + 12;
+                        const bx = 12, by = lh - bh - 12;
+
+                        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                        ctx.strokeStyle = 'rgba(148,163,184,0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10);
+                        ctx.fill(); ctx.stroke();
+
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.font = `700 ${FS - 1}px Inter, system-ui, Arial`;
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('ESTADO DE EQUIPOS', bx + PAD, by + PAD + 3);
+
+                        filas.forEach((f, i) => {
+                            const y = by + PAD + 18 + i * LH;
+                            ctx.fillStyle = f[1];
+                            ctx.beginPath(); ctx.arc(bx + PAD + DOT, y, DOT, 0, Math.PI * 2); ctx.fill();
+                            ctx.fillStyle = '#334155';
+                            ctx.font = `600 ${FS}px Inter, system-ui, Arial`;
+                            ctx.fillText(f[0], bx + PAD + DOT * 2 + 6, y);
+                            ctx.fillStyle = '#94a3b8';
+                            ctx.textAlign = 'right';
+                            ctx.fillText(String(f[2]), bx + bw - PAD, y);
+                            ctx.textAlign = 'left';
+                        });
+                        ctx.restore();
+                    },
 
                     /* ── 8 resize handles around selected element ── */
                     _resizeHandlePositions(el) {
@@ -820,11 +1392,19 @@
                         };
                     },
 
+                    /* Radio del tirador en coordenadas del croquis: tamaño constante en pantalla,
+                       más generoso cuando se maneja con el dedo */
+                    _handleRadius() {
+                        const base = this.isTouch ? 13 : 7;
+                        return base / (this.canvasZoom || 1);
+                    },
+
                     drawResizeHandles(el) {
                         const ecx = el.x + el.w / 2;
                         const ecy = el.y + el.h / 2;
                         const rot = (el.rot || 0) * Math.PI / 180;
                         const cosR = Math.cos(rot), sinR = Math.sin(rot);
+                        const RH = this._handleRadius();
 
                         const handles = this._resizeHandlePositions(el);
                         Object.values(handles).forEach(({ hx, hy }) => {
@@ -838,7 +1418,7 @@
                             ctx.rotate(rot);
                             ctx.fillStyle = 'white';
                             ctx.strokeStyle = '#4f46e5';
-                            ctx.lineWidth = 2;
+                            ctx.lineWidth = 2 / (this.canvasZoom || 1);
                             ctx.shadowBlur = 4;
                             ctx.shadowColor = 'rgba(79,70,229,0.3)';
                             ctx.beginPath();
@@ -860,10 +1440,12 @@
                         const lx = ecx + dx * cosR - dy * sinR;
                         const ly = ecy + dx * sinR + dy * cosR;
 
+                        const RH = this._handleRadius();
+                        const TOL = 3 / (this.canvasZoom || 1);
                         const handles = this._resizeHandlePositions(el);
                         for (const [name, { hx, hy }] of Object.entries(handles)) {
-                            if (lx >= hx - RH - 3 && lx <= hx + RH + 3 &&
-                                ly >= hy - RH - 3 && ly <= hy + RH + 3) return name;
+                            if (lx >= hx - RH - TOL && lx <= hx + RH + TOL &&
+                                ly >= hy - RH - TOL && ly <= hy + RH + TOL) return name;
                         }
                         return null;
                     },
@@ -887,44 +1469,67 @@
                         ctx.closePath();
                     },
 
+                    /* ── Mapa base de calles (OpenStreetMap) ──
+                       El mapa se ancla a un punto FIJO del plano, no al centro del lienzo:
+                       si dependiera del tamaño del lienzo, se desplazaría respecto a los
+                       elementos al entrar en pantalla completa o al cambiar de dispositivo.
+                       El ancla se fija la primera vez y se guarda con el croquis. */
                     drawStreetBase(lw, lh) {
                         if (this.geoLat === null || this.geoLng === null) return;
 
+                        if (this.mapAnchorX === null || this.mapAnchorX === undefined ||
+                            this.mapAnchorY === null || this.mapAnchorY === undefined) {
+                            this.mapAnchorX = Math.round(lw / 2);
+                            this.mapAnchorY = Math.round(lh / 2);
+                        }
+                        const ax = this.mapAnchorX, ay = this.mapAnchorY;
+
                         const LAT = this.geoLat;
                         const LNG = this.geoLng;
-                        const TILE_ZOOM = 19;   /* Max OSM native zoom */
-                        const SIM_ZOOM = parseFloat(this.tileZoom);  /* Zoom simulado controlable */
+                        const TILE_ZOOM = 19;   /* Máximo zoom nativo de OSM */
+                        const SIM_ZOOM = parseFloat(this.tileZoom);
                         const SCALE = Math.pow(2, SIM_ZOOM - TILE_ZOOM);
                         const T = 256;
 
-                        /* Simplest WebMercator Projector at TILE_ZOOM */
+                        /* Proyección WebMercator en TILE_ZOOM */
                         const latRad = LAT * Math.PI / 180;
                         const n = Math.pow(2, TILE_ZOOM);
                         const xTileExact = (LNG + 180) / 360 * n;
                         const yTileExact = (1.0 - Math.log(Math.tan(latRad) + (1 / Math.cos(latRad))) / Math.PI) / 2.0 * n;
 
-                        /* Center of canvas in logical zoom 19 coordinates + local offsets */
+                        /* Píxel del mapa que cae sobre el ancla, más el micro-ajuste manual */
                         const cx = xTileExact * T + (this.mapOffsetX || 0);
                         const cy = yTileExact * T + (this.mapOffsetY || 0);
 
-                        /* Range of tiles needed for logical canvas size, adjusted by SCALE */
-                        const txMin = Math.floor((cx - lw / (2 * SCALE)) / T);
-                        const tyMin = Math.floor((cy - lh / (2 * SCALE)) / T);
-                        const txMax = Math.ceil((cx + lw / (2 * SCALE)) / T);
-                        const tyMax = Math.ceil((cy + lh / (2 * SCALE)) / T);
+                        /* Tramo del plano que se está viendo ahora mismo */
+                        const v0 = this._screenToCanvas(0, 0);
+                        const v1 = this._screenToCanvas(lw, lh);
 
-                        console.log(`[OSM] Overzoom ${SCALE}x. Drawing ${txMax - txMin + 1}x${tyMax - tyMin + 1} tiles around ${LAT}, ${LNG}`);
+                        /* …traducido a píxeles del mapa */
+                        const gx0 = (v0.x - ax) / SCALE + cx, gx1 = (v1.x - ax) / SCALE + cx;
+                        const gy0 = (v0.y - ay) / SCALE + cy, gy1 = (v1.y - ay) / SCALE + cy;
+
+                        let txMin = Math.floor(gx0 / T), txMax = Math.ceil(gx1 / T);
+                        let tyMin = Math.floor(gy0 / T), tyMax = Math.ceil(gy1 / T);
+
+                        /* Tope de seguridad: al alejarse mucho, el área visible abarcaría
+                           cientos de teselas y no tiene sentido pedirlas todas */
+                        const MAX_TILES = 120;
+                        while ((txMax - txMin + 1) * (tyMax - tyMin + 1) > MAX_TILES) {
+                            if (txMax - txMin >= tyMax - tyMin) { txMin++; txMax--; }
+                            else { tyMin++; tyMax--; }
+                            if (txMax < txMin || tyMax < tyMin) return;
+                        }
 
                         const subs = ['a', 'b', 'c'];
 
                         for (let tx = txMin; tx <= txMax; tx++) {
                             for (let ty = tyMin; ty <= tyMax; ty++) {
-                                const sub = subs[(tx + ty) % 3];
+                                const sub = subs[Math.abs(tx + ty) % 3];
                                 const url = `https://${sub}.tile.openstreetmap.org/${TILE_ZOOM}/${tx}/${ty}.png`;
 
-                                /* Top left pixel of this tile scaled and centered */
-                                const dx = (tx * T - cx) * SCALE + lw / 2;
-                                const dy = (ty * T - cy) * SCALE + lh / 2;
+                                const dx = (tx * T - cx) * SCALE + ax;
+                                const dy = (ty * T - cy) * SCALE + ay;
                                 const size = T * SCALE;
 
                                 if (this.tileCache[url] instanceof HTMLImageElement && this.tileCache[url].complete) {
@@ -938,10 +1543,10 @@
                                     img.crossOrigin = 'anonymous';
                                     img.onload = () => {
                                         this.tileCache[url] = img;
-                                        this.draw(); /* trigger redraw when loaded */
+                                        this.draw(); /* redibujar cuando llegue la tesela */
                                     };
                                     img.onerror = () => {
-                                        console.error('[OSM] Failed to load tile:', url);
+                                        console.error('[OSM] No se pudo cargar la tesela:', url);
                                         this.tileCache[url] = null;
                                     };
                                     img.src = url;
@@ -949,598 +1554,880 @@
                             }
                         }
 
-                        /* Marcador GPS: círculo rojo en canvas center */
+                        /* Marcador GPS del establecimiento, sobre el propio ancla */
                         ctx.save();
                         ctx.beginPath();
-                        ctx.arc(lw / 2, lh / 2, 8, 0, Math.PI * 2);
+                        ctx.arc(ax, ay, this._px(8), 0, Math.PI * 2);
                         ctx.fillStyle = 'rgba(239,68,68,0.85)';
                         ctx.strokeStyle = 'white';
-                        ctx.lineWidth = 3;
+                        ctx.lineWidth = this._px(3);
                         ctx.fill(); ctx.stroke();
-                        ctx.fillStyle = 'white';
-                        ctx.font = 'bold 9px Inter,Arial';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('GPS', lw / 2, lh / 2 + 3.5);
+                        if (this._readable(9)) {
+                            ctx.fillStyle = 'white';
+                            ctx.font = '700 9px Inter, system-ui, Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('GPS', ax, ay + 0.5);
+                        }
                         ctx.restore();
                     },
 
+                    /* Punto donde la línea toca el borde del elemento, mirando hacia (tx,ty).
+                       Evita que el cableado se meta por debajo de las cajas. */
+                    _anchorOn(el, tx, ty) {
+                        const cx = el.x + el.w / 2, cy = el.y + el.h / 2;
+                        const dx = tx - cx, dy = ty - cy;
+                        if (!dx && !dy) return { x: cx, y: cy };
+                        const hw = el.w / 2 + 2, hh = el.h / 2 + 2;
+                        const scale = Math.min(hw / Math.abs(dx || 1e-6), hh / Math.abs(dy || 1e-6));
+                        return { x: cx + dx * scale, y: cy + dy * scale };
+                    },
+
+                    /* Cableado: recorrido en ángulo recto, como en un plano de instalaciones */
                     drawConnections() {
                         if (!ctx) return;
-                        ctx.strokeStyle = '#3b82f6'; ctx.setLineDash([5, 5]); ctx.lineWidth = 2;
+                        const piso = this.currentPiso;
+
+                        ctx.save();
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+
+                        const route = (ax, ay, bx, by) => {
+                            /* Codo en L: tramo horizontal y luego vertical, con esquina suavizada */
+                            const r = Math.min(14, Math.abs(bx - ax) / 2, Math.abs(by - ay) / 2);
+                            ctx.beginPath();
+                            ctx.moveTo(ax, ay);
+                            if (r > 2) {
+                                ctx.lineTo(bx - Math.sign(bx - ax) * r, ay);
+                                ctx.quadraticCurveTo(bx, ay, bx, ay + Math.sign(by - ay) * r);
+                            } else {
+                                ctx.lineTo(bx, ay);
+                            }
+                            ctx.lineTo(bx, by);
+                            ctx.stroke();
+                        };
+
                         this.connections.forEach(conn => {
                             const el1 = this.elements.find(e => e.id === conn.from);
                             const el2 = this.elements.find(e => e.id === conn.to);
-                            if (el1 && el2) {
+                            if (!el1 || !el2) return;
+                            if ((el1.piso || 1) !== piso || (el2.piso || 1) !== piso) return;
+
+                            const c1 = { x: el1.x + el1.w / 2, y: el1.y + el1.h / 2 };
+                            const c2 = { x: el2.x + el2.w / 2, y: el2.y + el2.h / 2 };
+                            const a = this._anchorOn(el1, c2.x, c2.y);
+                            const b = this._anchorOn(el2, c1.x, c1.y);
+
+                            /* Trazo grueso claro por debajo: separa el cable del fondo */
+                            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+                            ctx.lineWidth = this._px(4.5);
+                            route(a.x, a.y, b.x, b.y);
+
+                            ctx.strokeStyle = THEME.link;
+                            ctx.lineWidth = this._px(1.8);
+                            route(a.x, a.y, b.x, b.y);
+
+                            /* Terminales */
+                            ctx.fillStyle = THEME.linkInk;
+                            [a, b].forEach(p => {
                                 ctx.beginPath();
-                                ctx.moveTo(el1.x + el1.w / 2, el1.y + el1.h / 2);
-                                ctx.lineTo(el2.x + el2.w / 2, el2.y + el2.h / 2);
-                                ctx.stroke();
-                            }
+                                ctx.arc(p.x, p.y, this._px(2.6), 0, Math.PI * 2);
+                                ctx.fill();
+                            });
                         });
+
+                        /* Cable en curso mientras se arrastra */
                         if (this.isConnecting && this.connectionStart) {
                             const startEl = this.elements.find(e => e.id === this.connectionStart);
                             if (startEl) {
                                 const rect = canvas.getBoundingClientRect();
-                                const cx = this._lastMouseClientX - rect.left;
-                                const cy = this._lastMouseClientY - rect.top;
+                                const p = this._screenToCanvas(
+                                    this._lastMouseClientX - rect.left,
+                                    this._lastMouseClientY - rect.top
+                                );
+                                const a = this._anchorOn(startEl, p.x, p.y);
+                                ctx.strokeStyle = THEME.linkInk;
+                                ctx.lineWidth = this._px(1.8);
+                                ctx.setLineDash([this._px(6), this._px(5)]);
                                 ctx.beginPath();
-                                ctx.moveTo(startEl.x + startEl.w / 2, startEl.y + startEl.h / 2);
-                                ctx.lineTo(cx, cy);
+                                ctx.moveTo(a.x, a.y);
+                                ctx.lineTo(p.x, p.y);
                                 ctx.stroke();
+                                ctx.setLineDash([]);
                             }
                         }
-                        ctx.setLineDash([]);
+                        ctx.restore();
                     },
 
-                    /* ─── Furniture icons per subtype ─── */
+                    /* ─── Mobiliario esquemático ───
+                       Todo se traza en proporción al ambiente (nunca en medidas fijas, que
+                       se desbordaban en salas pequeñas) y ocupa la mitad inferior, dejando
+                       la superior libre para el rótulo. */
                     drawFurnitureIcons(el) {
-                        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1;
-                        const cx = el.x + el.w / 2, cy = el.y + el.h / 2;
-                        const subtype = (el.subtype || '').toLowerCase();
-                        switch (subtype) {
-                            case 'consultorio':          // backward compat
-                            case 'consultorio_fisico':
-                                /* desk (sólido) */
-                                ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1.2;
-                                ctx.strokeRect(el.x + 10, el.y + 30, el.w - 20, 22);
-                                /* chair circle */
-                                ctx.beginPath(); ctx.arc(cx, el.y + 68, 6, 0, Math.PI * 2); ctx.stroke();
-                                break;
+                        const st = this._style(el);
+                        const sub = (el.subtype || '').toLowerCase();
 
-                            case 'consultorio_funcional':
-                                /* mesa plegable / multipropósito: rectángulo + línea central punteada */
-                                ctx.strokeStyle = '#d97706'; ctx.lineWidth = 1.2;
-                                ctx.setLineDash([4, 3]);
-                                ctx.strokeRect(el.x + 14, el.y + 32, el.w - 28, 18);
-                                ctx.setLineDash([]);
-                                /* línea central (mesa compartida) */
-                                ctx.beginPath();
-                                ctx.moveTo(cx, el.y + 32);
-                                ctx.lineTo(cx, el.y + 50);
-                                ctx.stroke();
-                                /* silla izq */
-                                ctx.beginPath(); ctx.arc(cx - 18, el.y + 64, 5, 0, Math.PI * 2); ctx.stroke();
-                                /* silla der */
-                                ctx.beginPath(); ctx.arc(cx + 18, el.y + 64, 5, 0, Math.PI * 2); ctx.stroke();
-                                break;
-                            case 'emergencias':
-                                /* stretcher */
-                                ctx.strokeRect(cx - 20, cy - 8, 40, 16);
-                                ctx.beginPath(); ctx.arc(cx + 20, cy, 8, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-                                break;
-                            case 'quirofano':
-                                /* operating table */
-                                ctx.strokeRect(cx - 25, cy - 6, 50, 12);
-                                /* overhead lamp cross */
-                                ctx.beginPath(); ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy - 10); ctx.stroke();
-                                ctx.beginPath(); ctx.moveTo(cx - 5, cy - 15); ctx.lineTo(cx + 5, cy - 15); ctx.stroke();
-                                break;
-                            case 'administracion':
-                                /* L-desk */
-                                ctx.strokeRect(el.x + 8, el.y + 28, el.w - 30, 18);
-                                ctx.strokeRect(el.x + el.w - 28, el.y + 28, 20, 30);
-                                break;
-                            case 'baño':
-                                /* toilet oval */
-                                ctx.beginPath(); ctx.ellipse(cx, cy, 10, 14, 0, 0, Math.PI * 2); ctx.stroke();
-                                ctx.strokeRect(cx - 10, el.y + 28, 20, 10);
-                                break;
-                            default:
-                                /* generic table */
-                                ctx.strokeRect(el.x + 10, el.y + 30, el.w - 20, el.h - 50);
-                        }
-                    },
+                        /* Zona útil: sin el carril del rótulo ni los márgenes */
+                        const pad = Math.min(12, el.w * 0.09, el.h * 0.09);
+                        const zx = el.x + pad, zw = el.w - pad * 2;
+                        const zy = el.y + el.h * 0.34, zh = el.h * 0.66 - pad;
+                        if (zw < 16 || zh < 14) return;
 
-                    /* ── Badge FÍS / FUNC para diferenciar consultorio físico del funcional ── */
-                    drawConsultorioBadge(el, subtype) {
-                        const isFuncional = subtype === 'consultorio_funcional';
-                        const bgColor = isFuncional ? '#d97706' : '#16a34a';
-                        const label = isFuncional ? 'FUNC' : 'FÍS';
+                        const cx = zx + zw / 2, cy = zy + zh / 2;
+                        const line = this._px(1.2);
 
                         ctx.save();
-                        ctx.font = 'bold 7px Inter, Arial';
-                        const tw = ctx.measureText(label).width;
-                        const ph = 10, pw = tw + 8;
-                        const bx = el.x + el.w - pw - 4;
-                        const by = el.y + 4;
+                        /* Nada puede salirse del ambiente */
+                        this.drawRoundedRect(el.x + 1, el.y + 1, el.w - 2, el.h - 2, 7);
+                        ctx.clip();
 
-                        /* Pill background */
-                        ctx.fillStyle = bgColor;
-                        ctx.beginPath();
-                        ctx.roundRect(bx, by, pw, ph, 4);
-                        ctx.fill();
+                        ctx.strokeStyle = st.accent;
+                        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+                        ctx.lineWidth = line;
+                        ctx.globalAlpha = 0.9;
 
-                        /* Text */
-                        ctx.fillStyle = 'white';
+                        /* Mueble rectangular con relleno claro */
+                        const box = (x, y, w, h, r = 3) => {
+                            ctx.beginPath();
+                            ctx.roundRect(x, y, w, h, r);
+                            ctx.fill();
+                            ctx.stroke();
+                        };
+                        /* Asiento */
+                        const seat = (x, y, r) => {
+                            ctx.beginPath();
+                            ctx.arc(x, y, r, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.stroke();
+                        };
+
+                        switch (sub) {
+                            case 'consultorio':
+                            case 'consultorio_fisico': {
+                                /* Escritorio con la silla del profesional y la del paciente */
+                                const dw = Math.min(zw * 0.6, 130), dh = Math.min(zh * 0.3, 24);
+                                const dy = cy - dh / 2;
+                                const sr = Math.min(6, zh * 0.11);
+                                box(cx - dw / 2, dy, dw, dh);
+                                seat(cx, dy - sr * 1.5, sr);
+                                seat(cx, dy + dh + sr * 1.5, sr * 0.92);
+                                break;
+                            }
+                            case 'consultorio_funcional': {
+                                /* Mesa compartida con dos puestos enfrentados */
+                                const dw = Math.min(zw * 0.6, 130), dh = Math.min(zh * 0.3, 24);
+                                const sr = Math.min(5.5, zh * 0.1);
+                                ctx.setLineDash([this._px(5), this._px(4)]);
+                                box(cx - dw / 2, cy - dh / 2, dw, dh);
+                                ctx.setLineDash([]);
+                                ctx.beginPath();
+                                ctx.moveTo(cx, cy - dh / 2);
+                                ctx.lineTo(cx, cy + dh / 2);
+                                ctx.stroke();
+                                seat(cx - dw * 0.26, cy - dh / 2 - sr * 1.4, sr);
+                                seat(cx + dw * 0.26, cy + dh / 2 + sr * 1.4, sr);
+                                break;
+                            }
+                            case 'emergencias': {
+                                /* Camilla con cabecera */
+                                const bw = Math.min(zw * 0.62, 90), bh = Math.min(zh * 0.42, 30);
+                                box(cx - bw / 2, cy - bh / 2, bw, bh, 5);
+                                ctx.beginPath();
+                                ctx.moveTo(cx - bw / 2 + bw * 0.22, cy - bh / 2);
+                                ctx.lineTo(cx - bw / 2 + bw * 0.22, cy + bh / 2);
+                                ctx.stroke();
+                                break;
+                            }
+                            case 'quirofano': {
+                                /* Mesa quirúrgica y lámpara cenital */
+                                const bw = Math.min(zw * 0.6, 86), bh = Math.min(zh * 0.28, 20);
+                                box(cx - bw / 2, cy - bh / 2 + zh * 0.08, bw, bh, 4);
+                                const lr = Math.min(11, zh * 0.2);
+                                ctx.beginPath();
+                                ctx.arc(cx, zy + zh * 0.2, lr, 0, Math.PI * 2);
+                                ctx.fill(); ctx.stroke();
+                                ctx.beginPath();
+                                ctx.moveTo(cx - lr * 0.5, zy + zh * 0.2); ctx.lineTo(cx + lr * 0.5, zy + zh * 0.2);
+                                ctx.moveTo(cx, zy + zh * 0.2 - lr * 0.5); ctx.lineTo(cx, zy + zh * 0.2 + lr * 0.5);
+                                ctx.stroke();
+                                break;
+                            }
+                            case 'administracion': {
+                                /* Escritorio en L con silla */
+                                const aw = Math.min(zw * 0.62, zw - 10), ah = Math.min(zh * 0.26, 20);
+                                const bw = Math.min(zw * 0.2, 24), bh = Math.min(zh * 0.55, 46);
+                                box(zx + 2, zy + zh * 0.1, aw, ah);
+                                box(zx + 2 + aw - bw, zy + zh * 0.1, bw, bh);
+                                seat(zx + 2 + aw * 0.45, zy + zh * 0.1 + ah + Math.min(11, zh * 0.18), Math.min(5.5, zh * 0.1));
+                                break;
+                            }
+                            case 'baño': {
+                                /* Inodoro y lavamanos */
+                                const r = Math.min(9, zw * 0.14, zh * 0.2);
+                                ctx.beginPath();
+                                ctx.ellipse(cx - zw * 0.16, cy, r, r * 1.3, 0, 0, Math.PI * 2);
+                                ctx.fill(); ctx.stroke();
+                                box(cx - zw * 0.16 - r, cy - r * 1.3 - Math.min(9, zh * 0.16), r * 2, Math.min(8, zh * 0.14), 2);
+                                ctx.beginPath();
+                                ctx.arc(cx + zw * 0.2, cy, r * 0.85, 0, Math.PI * 2);
+                                ctx.fill(); ctx.stroke();
+                                break;
+                            }
+                            default: {
+                                /* Mesa genérica */
+                                box(cx - zw * 0.3, cy - Math.min(zh * 0.18, 14), zw * 0.6, Math.min(zh * 0.36, 28));
+                            }
+                        }
+                        ctx.restore();
+                    },
+
+                    /* ── Distintivo FÍSICO / FUNCIONAL, discreto, en la esquina superior ── */
+                    drawConsultorioBadge(el, subtype) {
+                        const isFuncional = subtype === 'consultorio_funcional';
+                        const st = this._style(el);
+                        const label = isFuncional ? 'FUNC' : 'FÍS';
+                        const fs = 8;
+                        if (!this._readable(fs) || el.w < 60) return;
+
+                        ctx.save();
+                        ctx.font = `700 ${fs}px Inter, system-ui, Arial`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
+                        const tw = ctx.measureText(label).width;
+                        const ph = fs + 5, pw = tw + 10;
+                        const bx = el.x + el.w - pw - 5;
+                        const by = el.y + 5;
+
+                        ctx.fillStyle = st.accent;
+                        ctx.globalAlpha = 0.14;
+                        ctx.beginPath(); ctx.roundRect(bx, by, pw, ph, ph / 2); ctx.fill();
+                        ctx.globalAlpha = 1;
+                        ctx.strokeStyle = st.accent;
+                        ctx.lineWidth = this._px(0.9);
+                        ctx.beginPath(); ctx.roundRect(bx, by, pw, ph, ph / 2); ctx.stroke();
+
+                        ctx.fillStyle = st.ink;
                         ctx.fillText(label, bx + pw / 2, by + ph / 2 + 0.5);
                         ctx.restore();
                     },
 
 
+                    /* ─── Servicios del ambiente (luz · wifi · puntos de red) ───
+                       Una sola tira compacta en la esquina inferior derecha, con iconos
+                       monocromos sobre fondo blanco: informa sin llenar el plano de color. */
                     drawServiceIcons(el) {
-                        /* Badge size and starting position (bottom-right area) */
-                        const BADGE = 14;   /* badge circle radius */
-                        const PAD = 6;
-                        let bx = el.x + el.w - PAD - BADGE;  /* start from right */
-                        const by = el.y + el.h - PAD - BADGE;
+                        const items = [];
+                        if (el.attrs?.light && this.layers.power) items.push('light');
+                        if (el.attrs?.wifi && this.layers.network) items.push('wifi');
+                        if (el.attrs?.red > 0 && this.layers.network) items.push('red');
+                        if (!items.length) return;
 
-                        /* ── Lightning bolt (luz eléctrica) ── */
-                        if (el.attrs?.light && this.layers.power) {
+                        const COLORS = { light: '#f59e0b', wifi: '#2563eb', red: '#10b981' };
+                        const s = Math.max(11, Math.min(15, Math.min(el.w, el.h) * 0.13));
+                        const gap = s * 0.42;
+                        const padIn = s * 0.42;
+                        const count = items.length;
+                        const stripW = count * s + (count - 1) * gap + padIn * 2;
+                        const stripH = s + padIn * 2;
+                        if (el.w < stripW + 10 || el.h < stripH + 10) return;
+
+                        const x0 = el.x + el.w - stripW - 6;
+                        const y0 = el.y + el.h - stripH - 6;
+
+                        ctx.save();
+                        /* Bandeja blanca */
+                        ctx.fillStyle = 'rgba(255,255,255,0.94)';
+                        ctx.strokeStyle = 'rgba(148,163,184,0.45)';
+                        ctx.lineWidth = this._px(0.9);
+                        ctx.beginPath();
+                        ctx.roundRect(x0, y0, stripW, stripH, stripH / 2);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        items.forEach((kind, i) => {
+                            const cx = x0 + padIn + s / 2 + i * (s + gap);
+                            const cy = y0 + stripH / 2;
+                            const col = COLORS[kind];
+
+                            if (kind === 'light') {
+                                /* Rayo */
+                                this._icon(cx, cy, s, col, 1.6, (c) => {
+                                    c.beginPath();
+                                    c.moveTo(2.5, -9); c.lineTo(-5, 1); c.lineTo(-0.5, 1);
+                                    c.lineTo(-2.5, 9); c.lineTo(5, -1); c.lineTo(0.5, -1);
+                                    c.closePath();
+                                    c.fill();
+                                });
+                            } else if (kind === 'wifi') {
+                                /* Ondas */
+                                this._icon(cx, cy, s, col, 2, (c) => {
+                                    [4, 7.5, 11].forEach(r => {
+                                        c.beginPath();
+                                        c.arc(0, 6, r, Math.PI * 1.22, Math.PI * 1.78);
+                                        c.stroke();
+                                    });
+                                    c.beginPath();
+                                    c.arc(0, 6, 1.6, 0, Math.PI * 2);
+                                    c.fill();
+                                });
+                            } else {
+                                /* Toma de red y número de puntos */
+                                this._icon(cx, cy, s, col, 1.7, (c) => {
+                                    c.beginPath();
+                                    c.roundRect(-6, -7, 12, 11, 1.5);
+                                    c.stroke();
+                                    c.beginPath();
+                                    c.moveTo(-8, 4); c.lineTo(8, 4); c.lineTo(8, 8); c.lineTo(-8, 8);
+                                    c.closePath();
+                                    c.fill();
+                                    [-3, 0, 3].forEach(px => {
+                                        c.beginPath();
+                                        c.moveTo(px, -4); c.lineTo(px, 0);
+                                        c.stroke();
+                                    });
+                                });
+                                if (el.attrs.red > 1 && this._readable(s * 0.62)) {
+                                    ctx.font = `700 ${s * 0.62}px Inter, system-ui, Arial`;
+                                    ctx.fillStyle = col;
+                                    ctx.textAlign = 'left';
+                                    ctx.textBaseline = 'middle';
+                                    ctx.fillText('×' + el.attrs.red, cx + s * 0.52, cy + s * 0.02);
+                                }
+                            }
+                        });
+                        ctx.restore();
+                    },
+
+                    /* ─── Equipamiento TI ───
+                       Todos los equipos comparten el mismo lenguaje: pictograma plano
+                       dibujado dentro de una caja de 24×24, trazo uniforme y color del
+                       tipo. Así el plano se lee de un vistazo aunque haya muchos. */
+                    _hardwareGlyph(sub) {
+                        const G = {
+                            router: (c) => {
+                                c.beginPath(); c.roundRect(-10, -1, 20, 9, 2); c.stroke();
+                                c.beginPath(); c.moveTo(-4, 3.5); c.lineTo(4, 3.5); c.stroke();
+                                c.beginPath(); c.moveTo(-5, -1); c.lineTo(-8, -9); c.stroke();
+                                c.beginPath(); c.moveTo(5, -1); c.lineTo(8, -9); c.stroke();
+                            },
+                            ap: (c) => {
+                                [4.5, 8.5, 12].forEach(r => {
+                                    c.beginPath(); c.arc(0, 7, r, Math.PI * 1.2, Math.PI * 1.8); c.stroke();
+                                });
+                                c.beginPath(); c.arc(0, 7, 2, 0, Math.PI * 2); c.fill();
+                            },
+                            switch: (c) => {
+                                c.beginPath(); c.roundRect(-11, -3, 22, 9, 2); c.stroke();
+                                [-6.5, -2, 2.5, 7].forEach(x => {
+                                    c.beginPath(); c.moveTo(x, -3); c.lineTo(x, -8); c.stroke();
+                                });
+                                c.beginPath(); c.arc(8, 1.5, 1.2, 0, Math.PI * 2); c.fill();
+                            },
+                            pozo: (c) => {
+                                c.beginPath(); c.moveTo(0, -11); c.lineTo(0, -2); c.stroke();
+                                c.beginPath(); c.arc(0, -11, 2, 0, Math.PI * 2); c.fill();
+                                [[10, -2], [6.5, 3], [3, 8]].forEach(([hw, y]) => {
+                                    c.beginPath(); c.moveTo(-hw, y); c.lineTo(hw, y); c.stroke();
+                                });
+                            },
+                            punto_red: (c) => {
+                                c.beginPath(); c.roundRect(-8, -9, 16, 13, 2); c.stroke();
+                                c.beginPath();
+                                c.moveTo(-10, 4); c.lineTo(10, 4); c.lineTo(10, 9); c.lineTo(-10, 9);
+                                c.closePath(); c.fill();
+                                [-3.5, 0, 3.5].forEach(x => {
+                                    c.beginPath(); c.moveTo(x, -5); c.lineTo(x, 0); c.stroke();
+                                });
+                            },
+                            pc: (c) => {
+                                c.beginPath(); c.roundRect(-6, -11, 12, 22, 2); c.stroke();
+                                c.beginPath(); c.moveTo(-3, -7); c.lineTo(3, -7); c.stroke();
+                                c.beginPath(); c.arc(0, 5, 1.8, 0, Math.PI * 2); c.fill();
+                            },
+                            laptop: (c) => {
+                                c.beginPath(); c.roundRect(-9, -8, 18, 12, 1.5); c.stroke();
+                                c.beginPath();
+                                c.moveTo(-12, 6); c.lineTo(12, 6); c.lineTo(10, 9); c.lineTo(-10, 9);
+                                c.closePath(); c.stroke();
+                            },
+                            tablet: (c) => {
+                                c.beginPath(); c.roundRect(-7, -11, 14, 22, 2); c.stroke();
+                                c.beginPath(); c.arc(0, 8, 1.3, 0, Math.PI * 2); c.fill();
+                            },
+                            monitor: (c) => {
+                                c.beginPath(); c.roundRect(-11, -9, 22, 15, 2); c.stroke();
+                                c.beginPath(); c.moveTo(0, 6); c.lineTo(0, 9); c.stroke();
+                                c.beginPath(); c.moveTo(-5, 10); c.lineTo(5, 10); c.stroke();
+                            },
+                            teclado: (c) => {
+                                c.beginPath(); c.roundRect(-12, -5, 24, 11, 2); c.stroke();
+                                [-8, -4, 0, 4].forEach(x => {
+                                    c.beginPath(); c.moveTo(x, -1); c.lineTo(x + 2, -1); c.stroke();
+                                });
+                                c.beginPath(); c.moveTo(-5, 3); c.lineTo(5, 3); c.stroke();
+                            },
+                            mouse: (c) => {
+                                c.beginPath(); c.roundRect(-5.5, -10, 11, 20, 5.5); c.stroke();
+                                c.beginPath(); c.moveTo(0, -10); c.lineTo(0, -3); c.stroke();
+                            },
+                            impresora: (c) => {
+                                c.beginPath(); c.roundRect(-10, -3, 20, 9, 2); c.stroke();
+                                c.beginPath(); c.roundRect(-6, -10, 12, 7, 1); c.stroke();
+                                c.beginPath(); c.roundRect(-6, 6, 12, 5, 1); c.stroke();
+                                c.beginPath(); c.arc(6.5, 0.5, 1.2, 0, Math.PI * 2); c.fill();
+                            },
+                            ticketera: (c) => {
+                                c.beginPath(); c.roundRect(-8, -4, 16, 12, 2); c.stroke();
+                                c.beginPath(); c.roundRect(-5, -11, 10, 7, 1); c.stroke();
+                                c.beginPath(); c.moveTo(-4, 2); c.lineTo(4, 2); c.stroke();
+                            },
+                            escaner: (c) => {
+                                c.beginPath(); c.roundRect(-11, -6, 22, 12, 2); c.stroke();
+                                c.beginPath(); c.moveTo(-7, 0); c.lineTo(7, 0); c.stroke();
+                                c.beginPath(); c.roundRect(-4, -3.5, 8, 3, 1); c.fill();
+                            },
+                            ups: (c) => {
+                                c.beginPath(); c.roundRect(-9, -10, 18, 20, 2); c.stroke();
+                                c.beginPath();
+                                c.moveTo(2, -6); c.lineTo(-4, 1); c.lineTo(0, 1);
+                                c.lineTo(-2, 7); c.lineTo(4, 0); c.lineTo(0, 0);
+                                c.closePath(); c.fill();
+                            },
+                        };
+                        return G[sub] || ((c) => {
+                            c.beginPath(); c.roundRect(-9, -7, 18, 14, 2); c.stroke();
+                            c.beginPath(); c.moveTo(-4, 0); c.lineTo(4, 0); c.stroke();
+                        });
+                    },
+
+                    drawHardwareSymbol(el) {
+                        const st = this._style(el);
+                        const sub = (el.subtype || '').toLowerCase();
+                        const cant = parseInt(el.cantidad, 10) || 1;
+                        const estado = String(el.estado || '').toUpperCase();
+
+                        /* Composición de la celda: la cantidad al costado del icono y,
+                           debajo, el nombre del equipo. */
+                        const fs = Math.max(6.5, Math.min(el.h * 0.15, 9));
+                        const labelH = Math.min(el.h * 0.3, fs * 1.9);
+                        const verLabel = this._readable(fs) && el.w >= 34;
+                        const iconH = el.h - (verLabel ? labelH : 0);
+
+                        let iconSize = Math.min(el.w, iconH) * 0.62;
+                        let numW = 0, numFs = 0, hueco = 0;
+
+                        if (cant > 1) {
+                            numFs = Math.max(9, iconSize * 0.52);
+                            hueco = iconSize * 0.16;
                             ctx.save();
-                            /* Amber pill background */
-                            ctx.beginPath();
-                            ctx.arc(bx, by, BADGE, 0, Math.PI * 2);
-                            ctx.fillStyle = '#f59e0b';
-                            ctx.shadowBlur = 6;
-                            ctx.shadowColor = 'rgba(245,158,11,0.5)';
-                            ctx.fill();
-                            ctx.shadowBlur = 0;
-                            /* White border */
-                            ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
-                            /* Lightning bolt polygon */
-                            ctx.fillStyle = 'white';
-                            ctx.beginPath();
-                            ctx.moveTo(bx + 2, by - 7);   /* top-right tip */
-                            ctx.lineTo(bx - 3, by - 0.5); /* middle-left */
-                            ctx.lineTo(bx + 1, by - 0.5); /* middle-right (inner) */
-                            ctx.lineTo(bx - 2, by + 7);   /* bottom-left tip */
-                            ctx.lineTo(bx + 4, by + 0);   /* middle-right */
-                            ctx.lineTo(bx - 0.5, by + 0);   /* middle inner */
-                            ctx.closePath();
-                            ctx.fill();
+                            ctx.font = `800 ${numFs}px Inter, system-ui, Arial`;
+                            numW = ctx.measureText(String(cant)).width;
                             ctx.restore();
-                            bx -= BADGE * 2 + PAD;
+
+                            /* Si el conjunto no cabe a lo ancho, se achica el icono */
+                            const disponible = el.w - 8;
+                            const total = numW + hueco + iconSize;
+                            if (total > disponible) {
+                                const factor = disponible / total;
+                                iconSize *= factor;
+                                numFs *= factor;
+                                numW *= factor;
+                                hueco *= factor;
+                            }
                         }
 
-                        /* ── WiFi arcs ── */
-                        if (el.attrs?.wifi && this.layers.network) {
+                        const grupoW = numW + hueco + iconSize;
+                        const grupoX = el.x + el.w / 2 - grupoW / 2;
+                        const centroY = el.y + iconH / 2;
+
+                        /* Cantidad de unidades, a la izquierda del icono */
+                        if (cant > 1) {
                             ctx.save();
-                            /* Blue pill background */
-                            ctx.beginPath();
-                            ctx.arc(bx, by, BADGE, 0, Math.PI * 2);
-                            ctx.fillStyle = '#2563eb';
-                            ctx.shadowBlur = 6;
-                            ctx.shadowColor = 'rgba(37,99,235,0.5)';
-                            ctx.fill();
-                            ctx.shadowBlur = 0;
-                            /* White border */
-                            ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
-                            /* WiFi arcs (bottom-up: dot, small arc, medium arc) */
-                            ctx.strokeStyle = 'white';
-                            ctx.lineCap = 'round';
-                            /* Dot */
-                            ctx.beginPath();
-                            ctx.arc(bx, by + 5, 1.5, 0, Math.PI * 2);
-                            ctx.fillStyle = 'white'; ctx.fill();
-                            /* Small arc */
-                            ctx.lineWidth = 1.8;
-                            ctx.beginPath();
-                            ctx.arc(bx, by + 5, 4, Math.PI * 1.2, Math.PI * 1.8, false);
-                            ctx.stroke();
-                            /* Medium arc */
-                            ctx.beginPath();
-                            ctx.arc(bx, by + 5, 7.5, Math.PI * 1.2, Math.PI * 1.8, false);
-                            ctx.stroke();
-                            /* Large arc */
-                            ctx.beginPath();
-                            ctx.arc(bx, by + 5, 11, Math.PI * 1.2, Math.PI * 1.8, false);
-                            ctx.stroke();
+                            ctx.font = `800 ${numFs}px Inter, system-ui, Arial`;
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillStyle = st.ink;
+                            ctx.fillText(String(cant), grupoX, centroY);
                             ctx.restore();
-                            bx -= BADGE * 2 + PAD;
                         }
 
-                        /* ── Red Cableada (Toma RJ45) ── */
-                        if (el.attrs?.red > 0 && this.layers.network) {
+                        this._icon(
+                            grupoX + numW + hueco + iconSize / 2,
+                            centroY,
+                            iconSize,
+                            st.ink,
+                            1.9,
+                            this._hardwareGlyph(sub)
+                        );
+
+                        /* Nombre del equipo */
+                        if (verLabel) {
                             ctx.save();
-                            /* Emerald pill background */
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            const maxW = el.w - 5;
+                            let cuerpo = fs;
+                            const setFont = () => { ctx.font = `700 ${cuerpo}px Inter, system-ui, Arial`; };
+                            setFont();
+
+                            let txt = String(el.name || HW_LABEL[sub] || sub).toUpperCase();
+                            /* 1º el nombre corto del tipo, 2º achicar la letra, 3º recortar */
+                            if (ctx.measureText(txt).width > maxW && HW_LABEL[sub]) {
+                                txt = HW_LABEL[sub];
+                            }
+                            while (cuerpo > 6 && ctx.measureText(txt).width > maxW) {
+                                cuerpo -= 0.25;
+                                setFont();
+                            }
+                            txt = this._fitText(txt, maxW);
+                            if (txt) {
+                                ctx.fillStyle = st.ink;
+                                ctx.fillText(txt, el.x + el.w / 2, el.y + iconH + labelH / 2 - fs * 0.1);
+                            }
+                            ctx.restore();
+                        }
+
+                        /* Equipo que no está operativo: marca en la esquina */
+                        if (estado === 'REGULAR' || estado === 'INOPERATIVO') {
+                            const r = Math.max(2.5, Math.min(el.w, el.h) * 0.09);
+                            ctx.save();
+                            ctx.fillStyle = st.accent;
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = this._px(1.2);
                             ctx.beginPath();
-                            ctx.arc(bx, by, BADGE, 0, Math.PI * 2);
-                            ctx.fillStyle = '#10b981';
-                            ctx.shadowBlur = 6;
-                            ctx.shadowColor = 'rgba(16,185,129,0.5)';
+                            ctx.arc(el.x + el.w - r - 3, el.y + r + 3, r, 0, Math.PI * 2);
                             ctx.fill();
-                            ctx.shadowBlur = 0;
-                            /* White border */
-                            ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
-                            /* RJ45 square look */
-                            ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5;
-                            ctx.strokeRect(bx - 3.5, by - 3, 7, 6);
-                            ctx.beginPath();
-                            ctx.moveTo(bx - 4.5, by + 3); ctx.lineTo(bx + 4.5, by + 3);
-                            ctx.lineTo(bx + 4.5, by + 5); ctx.lineTo(bx - 4.5, by + 5);
-                            ctx.closePath();
-                            ctx.fillStyle = 'white'; ctx.fill();
-                            /* Number count */
-                            if (el.attrs.red > 1) {
-                                ctx.font = 'bold 8px Inter, Arial';
-                                ctx.fillStyle = 'white';
-                                ctx.textAlign = 'center';
-                                ctx.fillText(el.attrs.red, bx, by + 11.5);
+                            ctx.stroke();
+                            /* La aspa distingue el inoperativo del regular sin depender del color */
+                            if (estado === 'INOPERATIVO') {
+                                ctx.strokeStyle = '#ffffff';
+                                ctx.lineWidth = this._px(1.4);
+                                const cx = el.x + el.w - r - 3, cy = el.y + r + 3, d = r * 0.45;
+                                ctx.beginPath();
+                                ctx.moveTo(cx - d, cy - d); ctx.lineTo(cx + d, cy + d);
+                                ctx.moveTo(cx + d, cy - d); ctx.lineTo(cx - d, cy + d);
+                                ctx.stroke();
                             }
                             ctx.restore();
                         }
                     },
 
-                    drawHardwareSymbol(el) {
-                        ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.5;
-                        const cx = el.x + el.w / 2, cy = el.y + el.h / 2;
-                        switch ((el.subtype || '').toLowerCase()) {
-                            case 'router':
-                                ctx.strokeRect(cx - 15, cy - 8, 30, 16);
-                                ctx.beginPath(); ctx.moveTo(cx - 10, cy - 8); ctx.lineTo(cx - 12, cy - 18); ctx.stroke();
-                                ctx.beginPath(); ctx.moveTo(cx + 10, cy - 8); ctx.lineTo(cx + 12, cy - 18); ctx.stroke();
-                                break;
-                            case 'ap':
-                                ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.stroke();
-                                [12, 17, 22].forEach(r => {
-                                    ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 4, Math.PI / 4); ctx.stroke();
-                                });
-                                ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-                                ctx.fillStyle = '#2563eb'; ctx.fill();
-                                break;
-                            case 'switch':
-                                ctx.strokeRect(cx - 20, cy - 6, 40, 12);
-                                for (let i = 0; i < 4; i++) {
-                                    ctx.beginPath(); ctx.moveTo(cx - 14 + i * 10, cy - 6); ctx.lineTo(cx - 14 + i * 10, cy - 12); ctx.stroke();
-                                }
-                                break;
-                            case 'pozo':
-                                ctx.strokeStyle = '#059669'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-                                ctx.beginPath(); ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy - 2); ctx.stroke();
-                                [0, 5, 10].forEach((off, i) => {
-                                    const hw = 14 - i * 4;
-                                    ctx.lineWidth = 2.5 - i * 0.5;
-                                    ctx.beginPath();
-                                    ctx.moveTo(cx - hw, cy - 2 + off);
-                                    ctx.lineTo(cx + hw, cy - 2 + off);
-                                    ctx.stroke();
-                                });
-                                ctx.beginPath(); ctx.arc(cx, cy - 12, 3, 0, Math.PI * 2);
-                                ctx.fillStyle = '#059669'; ctx.fill();
-                                break;
-                            case 'punto_red':
-                                ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-                                ctx.strokeRect(cx - 10, cy - 8, 20, 16);
-                                ctx.strokeRect(cx - 3.5, cy - 1, 7, 5);
-                                ctx.beginPath();
-                                ctx.moveTo(cx - 4.5, cy + 4); ctx.lineTo(cx - 4.5, cy + 6.5);
-                                ctx.lineTo(cx + 4.5, cy + 6.5); ctx.lineTo(cx + 4.5, cy + 4);
-                                ctx.stroke();
-                                ctx.lineWidth = 1;
-                                [cx - 2, cx, cx + 2].forEach(px => {
-                                    ctx.beginPath(); ctx.moveTo(px, cy); ctx.lineTo(px, cy + 3); ctx.stroke();
-                                });
-                                break;
-
-                            /* ══ Equipos de consultorio (sincronización de módulos) ══ */
-                            case 'pc':
-                                /* Torre CPU */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 6, cy - 12, 12, 18); // cuerpo
-                                ctx.beginPath(); ctx.arc(cx, cy - 1, 2, 0, Math.PI * 2); ctx.stroke(); // botón
-                                ctx.beginPath(); ctx.moveTo(cx - 3, cy + 5); ctx.lineTo(cx + 3, cy + 5); ctx.stroke(); // ranura USB
-                                break;
-                            case 'laptop':
-                                /* Laptop: tapa + base */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 12, cy - 10, 24, 14); // pantalla
-                                ctx.beginPath(); ctx.moveTo(cx - 14, cy + 4); ctx.lineTo(cx + 14, cy + 4); ctx.lineTo(cx + 14, cy + 7); ctx.lineTo(cx - 14, cy + 7); ctx.closePath(); ctx.stroke(); // teclado base
-                                break;
-                            case 'tablet':
-                                /* Tablet: rect fino vertical */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 8, cy - 12, 16, 20);
-                                ctx.beginPath(); ctx.arc(cx, cy + 11, 2, 0, Math.PI * 2); ctx.stroke(); // botón home
-                                break;
-                            case 'monitor':
-                                /* Monitor: pantalla + soporte */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 13, cy - 11, 26, 16); // pantalla
-                                ctx.beginPath(); ctx.moveTo(cx, cy + 5); ctx.lineTo(cx, cy + 9); ctx.stroke(); // palo
-                                ctx.beginPath(); ctx.moveTo(cx - 5, cy + 9); ctx.lineTo(cx + 5, cy + 9); ctx.stroke(); // base
-                                break;
-                            case 'teclado':
-                                /* Teclado: rect plano con teclas */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.5;
-                                ctx.strokeRect(cx - 14, cy - 5, 28, 10);
-                                for (let ki = 0; ki < 5; ki++) {
-                                    ctx.strokeRect(cx - 11 + ki * 5.5, cy - 3, 4, 3);
-                                }
-                                break;
-                            case 'mouse':
-                                /* Mouse: cuerpo ovalado + botones */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.beginPath();
-                                ctx.ellipse(cx, cy, 6, 10, 0, 0, Math.PI * 2);
-                                ctx.stroke();
-                                ctx.beginPath(); ctx.moveTo(cx - 6, cy - 2); ctx.lineTo(cx + 6, cy - 2); ctx.stroke();
-                                ctx.beginPath(); ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy - 2); ctx.stroke();
-                                break;
-                            case 'impresora':
-                                /* Impresora: caja con ranura de papel */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 13, cy - 7, 26, 14);
-                                // ranura papel
-                                ctx.beginPath(); ctx.moveTo(cx - 8, cy - 7); ctx.lineTo(cx - 8, cy - 12); ctx.moveTo(cx + 8, cy - 7); ctx.lineTo(cx + 8, cy - 12);
-                                ctx.beginPath(); ctx.rect(cx - 8, cy - 12, 16, 2); ctx.fillStyle='#dbeafe'; ctx.fill(); ctx.stroke();
-                                // botón panel
-                                ctx.beginPath(); ctx.arc(cx + 9, cy + 1, 2, 0, Math.PI*2); ctx.fillStyle='#2563eb'; ctx.fill();
-                                break;
-                            case 'ticketera':
-                                /* Ticketera: caja pequeña cuadrada con papel saliendo */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 8, cy - 5, 16, 12);
-                                ctx.beginPath(); ctx.moveTo(cx - 4, cy - 5); ctx.lineTo(cx - 4, cy - 10); ctx.moveTo(cx + 4, cy - 5); ctx.lineTo(cx + 4, cy - 10); ctx.stroke();
-                                ctx.beginPath(); ctx.rect(cx - 4, cy - 11, 8, 2); ctx.fillStyle='#dbeafe'; ctx.fill(); ctx.stroke();
-                                break;
-                            case 'escaner':
-                                /* Escaner / Lectora DNIe: placa plana */
-                                ctx.strokeStyle = '#1e40af'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 13, cy - 4, 26, 8);
-                                // chip rectangle en centro
-                                ctx.fillStyle = '#dbeafe';
-                                ctx.fillRect(cx - 5, cy - 2, 10, 4);
-                                ctx.strokeRect(cx - 5, cy - 2, 10, 4);
-                                break;
-                            case 'ups':
-                                /* UPS / Estabilizador: caja con rayo */
-                                ctx.strokeStyle = '#059669'; ctx.lineWidth = 1.8;
-                                ctx.strokeRect(cx - 12, cy - 10, 24, 18);
-                                ctx.fillStyle = '#d1fae5';
-                                ctx.fillRect(cx - 10, cy - 8, 20, 14);
-                                ctx.strokeStyle = '#059669';
-                                ctx.beginPath();
-                                ctx.moveTo(cx + 2, cy - 7); ctx.lineTo(cx - 3, cy - 0.5); ctx.lineTo(cx + 1, cy - 0.5); ctx.lineTo(cx - 2, cy + 7);
-                                ctx.lineTo(cx + 4, cy + 0); ctx.lineTo(cx - 0.5, cy + 0); ctx.closePath();
-                                ctx.fillStyle = '#059669'; ctx.fill();
-                                break;
-                            default:
-                                /* generic box */
-                                ctx.strokeRect(cx - 12, cy - 8, 24, 16);
-                        }
-                    },
-
-                    /* ── Sistema de salud icon (monitor + abbreviation badge) ── */
+                    /* ── Sistema de salud: pantalla con las siglas ── */
                     drawSistemaSymbol(el) {
                         const sub = (el.subtype || 'tua').toLowerCase();
+                        const st = this._style(el);
                         const cx = el.x + el.w / 2;
-                        const cy = el.y + el.h / 2 - 4;
-                        const colors = {
-                            tua: { bg: '#7c3aed', text: '#ede9fe' },
-                            sihce: { bg: '#1d4ed8', text: '#dbeafe' },
-                            sismed: { bg: '#0d9488', text: '#ccfbf1' },
-                            hisminsa: { bg: '#c2410c', text: '#fed7aa' },
-                            sisgalenplus: { bg: '#2563eb', text: '#dbeafe' },
-                        };
-                        const c = colors[sub] || { bg: '#475569', text: '#f1f5f9' };
 
-                        /* Monitor screen */
-                        const mw = el.w - 18, mh = Math.round(el.h * 0.52);
-                        const mx = el.x + 9, my = el.y + 10;
+                        /* Pantalla proporcional al elemento */
+                        const mw = el.w * 0.76, mh = el.h * 0.5;
+                        const mx = cx - mw / 2, my = el.y + el.h * 0.16;
+
                         ctx.save();
-                        ctx.fillStyle = c.bg;
-                        ctx.globalAlpha = 0.15;
-                        ctx.beginPath();
-                        ctx.roundRect(mx, my, mw, mh, 4);
-                        ctx.fill();
-                        ctx.globalAlpha = 1;
-                        ctx.restore();
+                        ctx.strokeStyle = st.accent;
+                        ctx.lineWidth = this._px(1.5);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath(); ctx.roundRect(mx, my, mw, mh, Math.min(5, mh * 0.18));
+                        ctx.fill(); ctx.stroke();
 
-                        /* Monitor outline */
-                        ctx.save();
-                        ctx.strokeStyle = c.bg; ctx.lineWidth = 1.8;
-                        ctx.beginPath(); ctx.roundRect(mx, my, mw, mh, 4); ctx.stroke();
-
-                        /* Stand */
+                        /* Pie del monitor */
                         const standY = my + mh;
                         ctx.beginPath();
-                        ctx.moveTo(cx, standY);
-                        ctx.lineTo(cx, standY + 6);
-                        ctx.moveTo(cx - 8, standY + 6);
-                        ctx.lineTo(cx + 8, standY + 6);
+                        ctx.moveTo(cx, standY); ctx.lineTo(cx, standY + el.h * 0.09);
+                        ctx.moveTo(cx - mw * 0.2, standY + el.h * 0.09);
+                        ctx.lineTo(cx + mw * 0.2, standY + el.h * 0.09);
                         ctx.stroke();
-                        ctx.restore();
 
-                        /* System abbreviation pill at screen center */
-                        ctx.save();
-                        const label = sub.toUpperCase();
-                        ctx.font = 'bold 9px Inter, Arial';
-                        const tw = ctx.measureText(label).width;
-                        const ph = 13, pw = tw + 12;
-                        const pilX = cx - pw / 2, pilY = my + mh / 2 - ph / 2;
-                        ctx.fillStyle = c.bg;
-                        ctx.beginPath(); ctx.roundRect(pilX, pilY, pw, ph, 6); ctx.fill();
-                        ctx.fillStyle = c.text;
-                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillText(label, cx, my + mh / 2);
+                        /* Siglas dentro de la pantalla, ajustadas al ancho disponible */
+                        const label = (el.name || sub).toUpperCase();
+                        let fs = Math.min(mh * 0.46, 13);
+                        ctx.font = `800 ${fs}px Inter, system-ui, Arial`;
+                        while (fs > 6 && ctx.measureText(label).width > mw - 10) {
+                            fs -= 0.5;
+                            ctx.font = `800 ${fs}px Inter, system-ui, Arial`;
+                        }
+                        if (this._readable(fs)) {
+                            ctx.fillStyle = st.ink;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(this._fitText(label, mw - 8), cx, my + mh / 2);
+                        }
                         ctx.restore();
                     },
 
-                    /* ── Calle drawing (sidewalks + lane dashes) ── */
+                    /* ── Vía pública ──
+                       Aspecto de mapa real: la calzada es una banda continua con dos
+                       filos grises, sin marco ni esquinas redondeadas. La jerarquía se
+                       distingue por el ancho y el tono, como en los mapas de calles. */
                     drawCalleSymbol(el) {
                         const sub = (el.subtype || 'jiron').toLowerCase();
-                        const cy = el.y + el.h / 2;
+                        const VIA = {
+                            avenida: { asfalto: '#fdf3d2', filo: '#e8d9a8', eje: true },
+                            jiron: { asfalto: '#ffffff', filo: '#dadce0', eje: false },
+                            pasaje: { asfalto: '#fafafa', filo: '#e3e5e8', eje: false },
+                        };
+                        const v = VIA[sub] || VIA.jiron;
 
-                        /* Aceras (sidewalks) at top and bottom edges */
-                        const acera = sub === 'avenida' ? 8 : (sub === 'jiron' ? 6 : 4);
-                        ctx.fillStyle = sub === 'avenida' ? '#9ca3af' : '#d1d5db';
-                        ctx.fillRect(el.x, el.y, el.w, acera);
-                        ctx.fillRect(el.x, el.y + el.h - acera, el.w, acera);
+                        ctx.save();
 
-                        /* Center dashed line */
-                        ctx.strokeStyle = sub === 'pasaje' ? '#9ca3af' : '#fbbf24';
-                        ctx.lineWidth = sub === 'avenida' ? 2.5 : 1.5;
-                        ctx.setLineDash(sub === 'pasaje' ? [4, 4] : [12, 8]);
+                        /* Calzada */
+                        ctx.fillStyle = v.asfalto;
+                        ctx.fillRect(el.x, el.y, el.w, el.h);
+
+                        /* Filos superior e inferior: el borde de la vía, no un marco */
+                        ctx.strokeStyle = v.filo;
+                        ctx.lineWidth = this._px(sub === 'avenida' ? 1.6 : 1.2);
                         ctx.beginPath();
-                        ctx.moveTo(el.x + 10, cy);
-                        ctx.lineTo(el.x + el.w - 10, cy);
+                        ctx.moveTo(el.x, el.y + 0.5);
+                        ctx.lineTo(el.x + el.w, el.y + 0.5);
+                        ctx.moveTo(el.x, el.y + el.h - 0.5);
+                        ctx.lineTo(el.x + el.w, el.y + el.h - 0.5);
+                        ctx.stroke();
+
+                        /* Eje central discontinuo, solo en avenidas */
+                        if (v.eje && el.h > 26) {
+                            ctx.strokeStyle = 'rgba(232,217,168,0.95)';
+                            ctx.lineWidth = this._px(1.4);
+                            ctx.setLineDash([this._px(11), this._px(9)]);
+                            ctx.beginPath();
+                            ctx.moveTo(el.x + 4, el.y + el.h / 2);
+                            ctx.lineTo(el.x + el.w - 4, el.y + el.h / 2);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                        }
+
+                        ctx.restore();
+                    },
+
+                    /* Nombre de la vía sobre la calzada, como en los mapas: gris,
+                       sin recuadro y siguiendo la orientación de la calle. */
+                    _drawCalleLabel(el) {
+                        const nombre = String(el.name || '').trim();
+                        if (!nombre) return;
+
+                        /* En una vía vertical el nombre corre a lo largo de la calzada */
+                        const vertical = el.h > el.w * 1.4;
+                        const largo = vertical ? el.h : el.w;
+                        const ancho = vertical ? el.w : el.h;
+
+                        const size = Math.max(9, Math.min(ancho * 0.34, 13));
+                        if (!this._readable(size)) return;
+
+                        ctx.save();
+                        ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
+                        if (vertical) ctx.rotate(-Math.PI / 2);
+
+                        ctx.font = `600 ${size}px Inter, system-ui, Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        const txt = this._fitText(nombre, largo - 14);
+                        if (txt) {
+                            /* Halo claro para que se lea sobre cualquier fondo */
+                            ctx.lineWidth = this._px(3);
+                            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+                            ctx.lineJoin = 'round';
+                            ctx.strokeText(txt, 0, 0);
+                            ctx.fillStyle = '#5f6368';
+                            ctx.fillText(txt, 0, 0);
+                        }
+                        ctx.restore();
+                    },
+
+                    /* ─── Puertas ───
+                       Interior: símbolo de plano (jambas, hoja y arco de barrido).
+                       Principal: portón de rejas de dos hojas, el acceso desde la calle. */
+                    drawDoorSymbol(el) {
+                        const st = this._style(el);
+                        const isExt = (el.subtype || 'interna').toLowerCase() === 'externa';
+
+                        if (isExt) { this._drawPorton(el, st); return; }
+
+                        ctx.save();
+                        this.drawRoundedRect(el.x + 0.5, el.y + 0.5, el.w - 1, el.h - 1, 7);
+                        ctx.clip();
+
+                        const jamb = Math.max(2.5, Math.min(el.w * 0.07, 7));   // grosor de jamba
+                        const wallT = Math.max(2.5, Math.min(el.h * 0.16, 7));  // grosor del muro
+                        const topY = el.y + wallT / 2;                          // eje del muro
+                        const inner = el.h - wallT;                             // fondo disponible
+
+                        /* Jambas del vano */
+                        ctx.fillStyle = st.ink;
+                        ctx.fillRect(el.x, el.y, jamb, wallT * 1.6);
+                        ctx.fillRect(el.x + el.w - jamb, el.y, jamb, wallT * 1.6);
+
+                        /* Umbral */
+                        ctx.strokeStyle = st.stroke;
+                        ctx.lineWidth = this._px(1);
+                        ctx.setLineDash([this._px(3), this._px(3)]);
+                        ctx.beginPath();
+                        ctx.moveTo(el.x + jamb, topY);
+                        ctx.lineTo(el.x + el.w - jamb, topY);
                         ctx.stroke();
                         ctx.setLineDash([]);
 
-                        /* Avenida only: secondary lane dividers */
-                        if (sub === 'avenida') {
-                            const off = el.h * 0.22;
-                            [cy - off, cy + off].forEach(ly => {
-                                ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 1;
-                                ctx.setLineDash([6, 6]);
-                                ctx.beginPath();
-                                ctx.moveTo(el.x + 10, ly);
-                                ctx.lineTo(el.x + el.w - 10, ly);
-                                ctx.stroke();
-                                ctx.setLineDash([]);
-                            });
-                        }
+                        /* Hoja: pivote, tablero y arco de apertura */
+                        const L = Math.max(6, Math.min(el.w - jamb * 2, inner * 0.92));
+                        const pivotX = el.x + jamb;
+
+                        ctx.strokeStyle = st.accent;
+                        ctx.globalAlpha = 0.55;
+                        ctx.lineWidth = this._px(1);
+                        ctx.beginPath();
+                        ctx.arc(pivotX, topY, L, Math.PI / 2, 0, true);
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+
+                        ctx.strokeStyle = st.ink;
+                        ctx.lineWidth = this._px(2.6);
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(pivotX, topY);
+                        ctx.lineTo(pivotX, topY + L);
+                        ctx.stroke();
+
+                        ctx.fillStyle = st.ink;
+                        ctx.beginPath();
+                        ctx.arc(pivotX, topY, this._px(1.8), 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.restore();
                     },
 
-                    drawDoorSymbol(el) {
-                        const sub = (el.subtype || 'interna').toLowerCase();
-                        const isExt = sub === 'externa';
-                        const cx = el.x + el.w / 2;
-                        const cy = el.y + el.h / 2;
+                    /* ─── Portón de rejas (acceso principal) ───
+                       Dos hojas de barrotes verticales entre pilares, con travesaños
+                       arriba y abajo y el remate de puntas cuando el tamaño lo permite. */
+                    _drawPorton(el, st) {
+                        ctx.save();
+                        this.drawRoundedRect(el.x + 0.5, el.y + 0.5, el.w - 1, el.h - 1, 6);
+                        ctx.clip();
+
+                        const pilar = Math.max(4, Math.min(el.w * 0.06, 12));
+                        const margenY = Math.max(3, el.h * 0.1);
+                        const remate = el.h > 46 && el.w > 90;      // hay sitio para las puntas
+                        /* Si va a escribirse el rótulo, la reja le cede la franja inferior */
+                        const conRotulo = this._readable(8) && el.w > 60 && el.h > 40;
+                        const topY = el.y + margenY + (remate ? Math.min(9, el.h * 0.14) : 0);
+                        const botY = el.y + el.h - (conRotulo ? Math.max(margenY, 15) : margenY);
+                        const alto = botY - topY;
+                        if (alto < 8) { ctx.restore(); return; }
+
+                        const trav = Math.max(2.5, Math.min(alto * 0.14, 7));   // travesaños
+                        const x0 = el.x + pilar, x1 = el.x + el.w - pilar;
+                        const anchoHojas = x1 - x0;
+                        const centroX = el.x + el.w / 2;
+
+                        /* Pilares laterales */
+                        ctx.fillStyle = st.ink;
+                        ctx.fillRect(el.x, el.y + margenY * 0.4, pilar, el.h - margenY * 0.8);
+                        ctx.fillRect(el.x + el.w - pilar, el.y + margenY * 0.4, pilar, el.h - margenY * 0.8);
+
+                        /* Travesaños de las dos hojas */
+                        ctx.fillStyle = st.accent;
+                        ctx.fillRect(x0, topY, anchoHojas, trav);
+                        ctx.fillRect(x0, botY - trav, anchoHojas, trav);
+
+                        /* Barrotes: separación regular, con un mínimo y un máximo por hoja */
+                        const hojaW = anchoHojas / 2 - this._px(1);
+                        const porHoja = Math.max(3, Math.min(9, Math.round(hojaW / 11)));
+                        const paso = hojaW / porHoja;
+
+                        ctx.strokeStyle = st.accent;
+                        ctx.lineWidth = Math.max(this._px(1.4), Math.min(2.4, paso * 0.22));
+                        ctx.lineCap = 'butt';
+                        ctx.beginPath();
+                        [x0, centroX + this._px(1)].forEach(inicio => {
+                            for (let i = 1; i <= porHoja; i++) {
+                                const bx = inicio + i * paso - paso / 2;
+                                ctx.moveTo(bx, topY + trav);
+                                ctx.lineTo(bx, botY - trav);
+                            }
+                        });
+                        ctx.stroke();
+
+                        /* Encuentro de las dos hojas */
+                        ctx.fillStyle = st.ink;
+                        const cierre = Math.max(2, this._px(2.4));
+                        ctx.fillRect(centroX - cierre, topY - trav * 0.3, cierre * 2, alto + trav * 0.6);
+
+                        /* Remate de puntas sobre el travesaño superior */
+                        if (remate) {
+                            const puntas = Math.max(4, Math.min(16, Math.round(anchoHojas / 16)));
+                            const pw = anchoHojas / puntas;
+                            const ph = Math.min(9, el.h * 0.14);
+                            ctx.fillStyle = st.accent;
+                            ctx.beginPath();
+                            for (let i = 0; i < puntas; i++) {
+                                const px = x0 + i * pw + pw / 2;
+                                ctx.moveTo(px - pw * 0.3, topY);
+                                ctx.lineTo(px, topY - ph);
+                                ctx.lineTo(px + pw * 0.3, topY);
+                            }
+                            ctx.fill();
+                        }
+
+                        ctx.restore();
+
+                        /* Marca de acceso desde la calle, bajo la reja */
+                        if (conRotulo) {
+                            ctx.save();
+                            ctx.font = '800 8px Inter, system-ui, Arial';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            const txt = this._fitText('ACCESO PRINCIPAL', el.w - 10);
+                            if (txt) {
+                                ctx.fillStyle = st.ink;
+                                ctx.fillText(txt, el.x + el.w / 2, botY + (el.y + el.h - botY) / 2);
+                            }
+                            ctx.restore();
+                        }
+
+                        /* Letrero del establecimiento sobre el portón */
+                        this._drawLetreroEstablecimiento(el, st);
+                    },
+
+                    /* Cartel con el nombre del establecimiento del acta, encima del portón */
+                    _drawLetreroEstablecimiento(el, st) {
+                        const nombre = String(this.estabNombre || '').trim().toUpperCase();
+                        if (!nombre) return;
+
+                        const fs = Math.max(9, Math.min(el.w * 0.062, 13));
+                        /* El cartel identifica el establecimiento: se tolera algo más
+                           pequeño que el resto de textos antes de ocultarlo */
+                        if (fs * (this.canvasZoom || 1) < 5) return;
 
                         ctx.save();
-                        if (el.rot) {
-                            ctx.translate(cx, cy);
-                            ctx.rotate(el.rot * Math.PI / 180);
-                            ctx.translate(-cx, -cy);
-                        }
+                        ctx.font = `800 ${fs}px Inter, system-ui, Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
 
-                        /* ── Función auxiliar: dibuja una puerta ──
-                           px,py = esquina superior-izq  pw,ph = tamaño
-                           panelColor = color del panel de la hoja */
-                        const _drawOneDoor = (px, py, pw, ph, panelColor, frameColor, knobSide) => {
-                            const fi = Math.max(2.5, Math.min(pw, ph) * 0.07); // grosor del marco
+                        const maxW = Math.max(el.w * 1.25, 120);
+                        const txt = this._fitText(nombre, maxW - 16);
+                        if (!txt) { ctx.restore(); return; }
 
-                            /* 1. Marco exterior (negro/oscuro) */
-                            ctx.fillStyle = frameColor;
-                            ctx.beginPath();
-                            ctx.roundRect(px, py, pw, ph, 2);
-                            ctx.fill();
+                        const tw = ctx.measureText(txt).width;
+                        const pw = tw + 18, ph = fs * 2;
+                        const px = el.x + el.w / 2 - pw / 2;
+                        const py = el.y - ph - Math.max(6, el.h * 0.1);
 
-                            /* 2. Panel de la hoja */
-                            ctx.fillStyle = panelColor;
-                            ctx.beginPath();
-                            ctx.roundRect(px + fi, py + fi, pw - fi * 2, ph - fi, 1.5);
-                            ctx.fill();
+                        /* Placa oscura, como el cartel de la entrada */
+                        ctx.fillStyle = st.ink;
+                        ctx.beginPath();
+                        ctx.roundRect(px, py, pw, ph, Math.min(5, ph * 0.28));
+                        ctx.fill();
 
-                            /* 3. Ventana con arco
-                               Centrada horizontalmente, ~40% ancho panel, empieza al 10% vert */
-                            const wi = pw - fi * 2;
-                            const hi = ph - fi;
-                            const ww = wi * 0.42;           // ancho ventana
-                            const wh = hi * 0.58;           // alto ventana
-                            const wox = px + fi + wi * 0.29; // desplazamiento horizontal (ligeramente a la izq del centro)
-                            const woy = py + fi + hi * 0.10; // posición vertical
-                            const archR = ww / 2;           // radio del arco superior
-                            const divY = woy + wh * 0.46;   // línea divisoria ventana
+                        /* Postes que la sujetan sobre el portón */
+                        ctx.strokeStyle = st.ink;
+                        ctx.lineWidth = this._px(2);
+                        ctx.beginPath();
+                        ctx.moveTo(px + pw * 0.2, py + ph);
+                        ctx.lineTo(px + pw * 0.2, el.y);
+                        ctx.moveTo(px + pw * 0.8, py + ph);
+                        ctx.lineTo(px + pw * 0.8, el.y);
+                        ctx.stroke();
 
-                            /* Clip al interior del panel para que la ventana no salga */
-                            ctx.save();
-                            ctx.beginPath();
-                            ctx.rect(px + fi, py + fi, wi, hi);
-                            ctx.clip();
-
-                            /* Contorno negro ventana */
-                            ctx.strokeStyle = frameColor;
-                            ctx.lineWidth = Math.max(1, fi * 0.55);
-                            ctx.fillStyle = 'rgba(235, 235, 235, 0.92)'; // gris muy claro
-
-                            ctx.beginPath();
-                            ctx.moveTo(wox, woy + archR);
-                            ctx.arc(wox + archR, woy + archR, archR, Math.PI, 0);
-                            ctx.lineTo(wox + ww, woy + wh);
-                            ctx.lineTo(wox, woy + wh);
-                            ctx.closePath();
-                            ctx.fill();
-                            ctx.stroke();
-
-                            /* Línea divisoria de la ventana */
-                            ctx.beginPath();
-                            ctx.moveTo(wox + ctx.lineWidth / 2, divY);
-                            ctx.lineTo(wox + ww - ctx.lineWidth / 2, divY);
-                            ctx.stroke();
-
-                            ctx.restore(); /* fin clip */
-
-                            /* 4. Pomo */
-                            const knobX = knobSide === 'right'
-                                ? px + pw - fi * 2.4
-                                : px + fi * 2.4;
-                            const knobY = py + ph * 0.56;
-                            const knobR = Math.max(2, fi * 0.9);
-
-                            /* Aro oscuro */
-                            ctx.fillStyle = frameColor;
-                            ctx.beginPath();
-                            ctx.arc(knobX, knobY, knobR * 1.45, 0, Math.PI * 2);
-                            ctx.fill();
-                            /* Pomo negro */
-                            ctx.fillStyle = '#222';
-                            ctx.beginPath();
-                            ctx.arc(knobX, knobY, knobR, 0, Math.PI * 2);
-                            ctx.fill();
-                            /* Reflejo blanco */
-                            ctx.fillStyle = 'rgba(255,255,255,0.70)';
-                            ctx.beginPath();
-                            ctx.arc(knobX - knobR * 0.28, knobY - knobR * 0.28, knobR * 0.38, 0, Math.PI * 2);
-                            ctx.fill();
-                        };
-
-                        if (isExt) {
-                            /* ══ PUERTA PRINCIPAL: DOBLE HOJA ══ */
-                            const frameColor = '#111111';
-                            const outerFi = Math.max(3, Math.min(el.w, el.h) * 0.065);
-
-                            /* Marco exterior general */
-                            ctx.fillStyle = frameColor;
-                            ctx.beginPath();
-                            ctx.roundRect(el.x, el.y, el.w, el.h, 3);
-                            ctx.fill();
-
-                            /* Divisor central */
-                            const halfW = (el.w - outerFi * 3) / 2;
-                            /* Hoja izquierda */
-                            _drawOneDoor(
-                                el.x + outerFi, el.y + outerFi,
-                                halfW, el.h - outerFi,
-                                '#e0e0e0', frameColor, 'right'
-                            );
-                            /* Hoja derecha */
-                            _drawOneDoor(
-                                el.x + outerFi * 2 + halfW, el.y + outerFi,
-                                halfW, el.h - outerFi,
-                                '#e0e0e0', frameColor, 'left'
-                            );
-                        } else {
-                            /* ══ PUERTA INTERNA: HOJA SIMPLE ══ */
-                            _drawOneDoor(
-                                el.x, el.y, el.w, el.h,
-                                '#ffffff', '#111111', 'right'
-                            );
-                        }
-
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillText(txt, el.x + el.w / 2, py + ph / 2 + 0.5);
                         ctx.restore();
                     },
 
@@ -1576,18 +2463,64 @@
                     _lastMouseClientY: 0,
 
                     handleMouseDown(e) {
-                        if (e.button === 2 || e.button === 1) { // Right or Middle click
-                            this.isPanning = true;
-                            canvas.style.cursor = 'grabbing';
-                            this._lastMouseClientX = e.clientX;
-                            this._lastMouseClientY = e.clientY;
+                        if (e.button === 2 || e.button === 1 || this.panMode) { // Clic derecho / central / modo mano
+                            this._beginPan(e.clientX, e.clientY);
                             return;
                         }
                         this._startInteraction(this._getEventCoords(e));
                     },
-                    handleTouchStart(e) { e.preventDefault(); this._startInteraction(this._getEventCoords(e)); },
 
-                    _startInteraction({ x, y }) {
+                    /* ─── Gestos táctiles ─── */
+                    _beginPan(clientX, clientY) {
+                        this.isPanning = true;
+                        this._lastMouseClientX = clientX;
+                        this._lastMouseClientY = clientY;
+                        if (canvas) canvas.style.cursor = 'grabbing';
+                    },
+
+                    /* Distancia y centro entre dos dedos, en coordenadas del lienzo */
+                    _pinchInfo(e) {
+                        const rect = canvas.getBoundingClientRect();
+                        const [t1, t2] = [e.touches[0], e.touches[1]];
+                        const dx = t2.clientX - t1.clientX;
+                        const dy = t2.clientY - t1.clientY;
+                        return {
+                            dist: Math.hypot(dx, dy),
+                            cx: (t1.clientX + t2.clientX) / 2 - rect.left,
+                            cy: (t1.clientY + t2.clientY) / 2 - rect.top,
+                        };
+                    },
+
+                    /* Cancela cualquier arrastre activo (al pasar a dos dedos) */
+                    _cancelActiveGestures() {
+                        isDragging = false; dragTarget = null;
+                        isResizing = false; resizeTarget = null; resizeHandle = null;
+                        isRotating = false; rotateTarget = null;
+                        this.isDraggingMap = false;
+                        this.isConnecting = false; this.connectionStart = null;
+                        this.isPanning = false;
+                    },
+
+                    handleTouchStart(e) {
+                        e.preventDefault();
+                        if (e.touches.length >= 2) {
+                            /* Dos dedos → zoom + desplazamiento del lienzo */
+                            this._cancelActiveGestures();
+                            this._isPinching = true;
+                            const p = this._pinchInfo(e);
+                            this._pinchDist = p.dist;
+                            this._pinchCX = p.cx;
+                            this._pinchCY = p.cy;
+                            return;
+                        }
+                        if (this.panMode) {
+                            this._beginPan(e.touches[0].clientX, e.touches[0].clientY);
+                            return;
+                        }
+                        this._startInteraction(this._getEventCoords(e));
+                    },
+
+                    _startInteraction({ x, y, clientX, clientY }) {
                         if (this.selectedId) {
                             const sel = this.elements.find(e => e.id === this.selectedId);
                             if (sel) {
@@ -1609,7 +2542,8 @@
                                 /* 2. Check rotation handle */
                                 if (sel._hx !== undefined) {
                                     const dx = x - sel._hx, dy = y - sel._hy;
-                                    if (Math.sqrt(dx * dx + dy * dy) <= 14) {
+                                    const rotHit = (this.isTouch ? 22 : 14) / (this.canvasZoom || 1);
+                                    if (Math.sqrt(dx * dx + dy * dy) <= rotHit) {
                                         isRotating = true;
                                         rotateTarget = sel;
                                         rotateCenterX = sel.x + sel.w / 2;
@@ -1624,11 +2558,14 @@
                         }
 
                         if (this.tool === 'red') {
-                            const clicked = this.elements.find(el => this._isPointInElement(el, x, y));
+                            const clicked = this.elements.find(el => !this._isChild(el) && this._isPointInElement(el, x, y));
                             if (clicked) { this.isConnecting = true; this.connectionStart = clicked.id; return; }
                         }
                         for (let i = this.elements.length - 1; i >= 0; i--) {
                             const el = this.elements[i];
+                            /* Los equipos de un ambiente no se seleccionan sueltos: se
+                               mueven y giran junto con el ambiente que los contiene */
+                            if (this._isChild(el)) continue;
                             if (this._isPointInElement(el, x, y)) {
                                 this.selectedId = el.id;
                                 isDragging = true; dragTarget = el;
@@ -1643,24 +2580,60 @@
                             resizeStartX = x; // use these as temporary initial coords
                             resizeStartY = y;
                             canvas.style.cursor = 'grabbing';
+                        } else if (clientX !== undefined) {
+                            /* Zona vacía → se arrastra el lienzo (gesto natural en táctil y con mouse) */
+                            this._beginPan(clientX, clientY);
                         }
 
                         this.selectedId = null; this.draw();
                     },
 
                     handleMouseMove(e) { this._moveInteraction(this._getEventCoords(e)); },
-                    handleTouchMove(e) { e.preventDefault(); this._moveInteraction(this._getEventCoords(e)); },
+                    handleTouchMove(e) {
+                        e.preventDefault();
+                        if (this._isPinching && e.touches.length >= 2) {
+                            const p = this._pinchInfo(e);
+                            if (this._pinchDist > 0) {
+                                /* Punto del croquis bajo el centro del gesto antes de escalar */
+                                const before = this._screenToCanvas(this._pinchCX, this._pinchCY);
+                                const factor = p.dist / this._pinchDist;
+                                this.canvasZoom = Math.max(0.05, Math.min(5.0, this.canvasZoom * factor));
+                                /* Ese mismo punto queda bajo el nuevo centro → zoom y paneo a la vez */
+                                this.panX = p.cx - before.x * this.canvasZoom;
+                                this.panY = p.cy - before.y * this.canvasZoom;
+                            }
+                            this._pinchDist = p.dist;
+                            this._pinchCX = p.cx;
+                            this._pinchCY = p.cy;
+                            this.draw();
+                            return;
+                        }
+                        if (this._isPinching) return; /* aún queda un dedo del gesto anterior */
+                        this._moveInteraction(this._getEventCoords(e));
+                    },
 
                     _moveInteraction({ x, y, clientX, clientY }) {
                         const containerRect = document.getElementById('canvas-container').getBoundingClientRect();
                         this.mouseX = clientX - containerRect.left;
                         this.mouseY = clientY - containerRect.top;
+                        /* Delta del paneo: se calcula ANTES de refrescar la última posición */
+                        const panDX = clientX - this._lastMouseClientX;
+                        const panDY = clientY - this._lastMouseClientY;
                         this._lastMouseClientX = clientX;
                         this._lastMouseClientY = clientY;
 
                         /* ── Capturar posición para colaboración (en logical canvas coords) ── */
                         this._pendingCursorX = x;
                         this._pendingCursorY = y;
+
+                        /* Paneo del lienzo (modo mano, clic derecho/central o arrastre en zona vacía) */
+                        if (this.isPanning) {
+                            this.panX += panDX;
+                            this.panY += panDY;
+                            this.hoveredEl = null;
+                            this.draw();
+                            return;
+                        }
 
                         this.checkHover(x, y);
 
@@ -1721,12 +2694,12 @@
                             return;
                         }
 
-                        /* Rotation drag */
+                        /* Rotation drag — el ambiente gira con todo su contenido */
                         if (isRotating && rotateTarget) {
                             const angle = Math.atan2(y - rotateCenterY, x - rotateCenterX) * 180 / Math.PI;
                             let delta = angle - rotateStartAngle;
                             let newRot = ((rotateStartRot + delta) % 360 + 360) % 360;
-                            rotateTarget.rot = Math.round(newRot);
+                            this._applyRotation(rotateTarget, Math.round(newRot));
                             this.draw();
                             return;
                         }
@@ -1774,25 +2747,26 @@
                             this.draw();
                             return;
                         }
-
-                        if (this.isPanning) {
-                            const dx = clientX - this._lastMouseClientX;
-                            const dy = clientY - this._lastMouseClientY;
-                            this.panX += dx;
-                            this.panY += dy;
-                            this._lastMouseClientX = clientX;
-                            this._lastMouseClientY = clientY;
-                            this.draw();
-                        }
                     },
 
                     handleMouseUp(e) { this._endInteraction(this._getEventCoords(e)); },
                     handleTouchEnd(e) {
                         e.preventDefault();
-                        const coords = e.changedTouches
+                        /* Fin del gesto de dos dedos: se ignora hasta soltar todos */
+                        if (this._isPinching) {
+                            if (e.touches.length === 0) {
+                                this._isPinching = false;
+                                this._pinchDist = 0;
+                            }
+                            return;
+                        }
+                        const coords = e.changedTouches && e.changedTouches.length
                             ? (() => {
                                 const rect = canvas.getBoundingClientRect();
-                                return { x: e.changedTouches[0].clientX - rect.left, y: e.changedTouches[0].clientY - rect.top };
+                                return this._screenToCanvas(
+                                    e.changedTouches[0].clientX - rect.left,
+                                    e.changedTouches[0].clientY - rect.top
+                                );
                             })()
                             : { x: 0, y: 0 };
                         this._endInteraction(coords);
@@ -1817,7 +2791,7 @@
                             return;
                         }
                         if (this.isConnecting && this.connectionStart) {
-                            const endEl = this.elements.find(el => this._isPointInElement(el, x, y));
+                            const endEl = this.elements.find(el => !this._isChild(el) && this._isPointInElement(el, x, y));
                             if (endEl && endEl.id !== this.connectionStart) {
                                 /* No duplicate connections */
                                 const already = this.connections.some(c =>
@@ -1860,7 +2834,7 @@
                         const el = this.elements.find(e => e.id === this.selectedId);
                         if (el) {
                             this._snapshot();
-                            el.rot = ((el.rot || 0) + deg + 360) % 360;
+                            this._applyRotation(el, (el.rot || 0) + deg);
                             el._ts = Date.now();
                             this.draw();
                         }
@@ -1870,7 +2844,7 @@
                         const el = this.elements.find(e => e.id === this.selectedId);
                         if (el) {
                             this._snapshot();
-                            el.rot = ((+deg) % 360 + 360) % 360;
+                            this._applyRotation(el, +deg);
                             el._ts = Date.now();
                             this.draw();
                         }
@@ -1909,10 +2883,19 @@
                     },
 
                     deleteSelected() {
+                        if (!this.selectedId) return;
                         this._snapshot();
-                        if (this.selectedId) this.deletedIds.push(this.selectedId); /* registrar para sync */
-                        this.elements = this.elements.filter(e => e.id !== this.selectedId);
-                        this.connections = this.connections.filter(c => c.from !== this.selectedId && c.to !== this.selectedId);
+
+                        /* Al eliminar un ambiente se van con él los equipos que contiene:
+                           sueltos quedarían inaccesibles, porque no se seleccionan solos */
+                        const aBorrar = new Set([this.selectedId]);
+                        this._childrenOf(this.selectedId).forEach(ch => aBorrar.add(ch.id));
+
+                        aBorrar.forEach(id => {
+                            if (!this.deletedIds.includes(id)) this.deletedIds.push(id); /* registrar para sync */
+                        });
+                        this.elements = this.elements.filter(e => !aBorrar.has(e.id));
+                        this.connections = this.connections.filter(c => !aBorrar.has(c.from) && !aBorrar.has(c.to));
                         this.selectedId = null; this.draw();
                     },
 
@@ -1934,6 +2917,7 @@
 
                     exportImage() {
                         if (!canvas) return;
+                        this._flushDraw();   /* asegura que el PNG refleje el estado actual */
                         const link = document.createElement('a');
                         link.download = 'croquis-infraestructura.png';
                         link.href = canvas.toDataURL('image/png');
@@ -1942,10 +2926,29 @@
                     },
 
                     async exportPdf() {
-                        /* Guardar primero (para persistir la imagen del canvas) */
-                        await this.saveData();
-                        /* Abrir el PDF en una nueva pestaña */
-                        window.open('{{ route('usuario.monitoreo.infraestructura-2d.pdf', $acta->id) }}', '_blank');
+                        /* El reporte se arma en el servidor con lo que hay guardado: sin
+                           guardar antes, el PDF no existiría (404) o saldría desfasado */
+                        if (this.isSaving) return;
+                        const guardado = await this.saveData();
+                        if (!guardado) return;
+
+                        const ventana = window.open('{{ route('usuario.monitoreo.infraestructura-2d.pdf', $acta->id) }}', '_blank');
+
+                        if (!ventana) {
+                            Swal.fire({
+                                title: 'Permite las ventanas emergentes',
+                                text: 'El navegador bloqueó la pestaña del PDF. Habilita las ventanas emergentes para este sitio y vuelve a intentarlo.',
+                                icon: 'warning', confirmButtonColor: '#4f46e5'
+                            });
+                        } else if (document.fullscreenElement) {
+                            /* En pantalla completa la pestaña nueva queda detrás: conviene avisar */
+                            Swal.fire({
+                                toast: true, position: 'top-end', icon: 'info',
+                                title: 'El PDF se abrió en otra pestaña',
+                                text: 'Sal de pantalla completa para verlo.',
+                                timer: 4000, showConfirmButton: false
+                            });
+                        }
                     },
 
                     /* ─────────────────────────────────────────────────────────────────
@@ -2447,9 +3450,22 @@
                                 return;
                             }
 
+                            const activos = this.modulosData.filter(m => m.activo);
+                            if (!activos.length) {
+                                Swal.fire({
+                                    title: 'Sin servicios activos',
+                                    text: 'Este establecimiento no tiene módulos activos, así que no hay servicios que dibujar en el croquis.',
+                                    icon: 'info', confirmButtonColor: '#4f46e5'
+                                });
+                                return;
+                            }
+                            const totalEq = activos.reduce((s, m) => s + (m.total_equipos || 0), 0);
+                            const sinEq = activos.filter(m => (m.equipos || []).length === 0).length;
+
                             const result = await Swal.fire({
                                 title: '⚡ Sincronizar desde Módulos',
-                                html: `<p class='text-sm text-slate-600 mb-4'>Se obtuvieron <strong>${this.modulosData.length}</strong> consultorios desde el servidor.</p>
+                                html: `<p class='text-sm text-slate-600 mb-1'><strong>${activos.length}</strong> servicio(s) activo(s) con <strong>${totalEq}</strong> equipo(s) registrado(s).</p>
+                                    ${sinEq ? `<p class='text-[11px] text-slate-400 mb-3'>${sinEq} sin equipos: se dibujará la sala vacía.</p>` : `<div class='mb-3'></div>`}
                                     <div class='flex flex-col gap-3'>
                                         <label class='flex items-start gap-3 cursor-pointer p-3 border-2 border-indigo-200 rounded-xl hover:bg-indigo-50 transition-all'>
                                         <input type='radio' name='sync_mode' value='agregar' checked class='mt-0.5 accent-indigo-600'>
@@ -2479,140 +3495,169 @@
                         }
                     },
 
-                    /* ─── Pre-cargar desde módulos ─── */
+                    /* ─── Volcar los módulos del acta al croquis ───
+                       Cada servicio con equipos registrados se dibuja como un ambiente
+                       con sus equipos dentro. Los servicios sin equipos no se dibujan. */
+
+                    /* Tipo de ambiente según el servicio, para que el plano se lea por color */
+                    _ambienteDeServicio(slug) {
+                        const s = (slug || '').toLowerCase();
+                        if (s.includes('urgencia') || s.includes('emergencia')) return 'emergencias';
+                        if (s.includes('parto') || s.includes('quirofano') || s.includes('quirófano')) return 'quirofano';
+                        if (s.includes('cita') || s.includes('admin') || s.includes('fua') ||
+                            s.includes('referencia') || s.includes('farmacia')) return 'administracion';
+                        return 'consultorio_fisico';
+                    },
+
                     prepopularModulos(modoLimpiar = false) {
-                        if (!this.modulosData || this.modulosData.length === 0) {
-                            Swal.fire({ title: 'Sin datos de módulos', text: 'No hay módulos registrados con equipos para sincronizar.', icon: 'info', confirmButtonColor: '#4f46e5' });
+                        /* Se dibuja todo servicio activo del establecimiento; los equipos
+                           solo se añaden a los que tengan alguno registrado. */
+                        const servicios = (this.modulosData || []).filter(m => m.activo);
+
+                        if (!servicios.length) {
+                            Swal.fire({
+                                title: 'Sin servicios activos',
+                                text: 'Este establecimiento no tiene módulos activos, así que no hay servicios que dibujar en el croquis.',
+                                icon: 'info', confirmButtonColor: '#4f46e5'
+                            });
                             return;
                         }
 
-                        /* Mapa: descripción del equipo → subtype del canvas */
-                        const EQUIPO_MAP = {
-                            'ALL IN ONE': 'pc', 'CPU': 'pc', 'LAPTOP': 'laptop', 'TABLET': 'tablet',
-                            'IMPRESORA': 'impresora', 'TICKETERA': 'ticketera',
-                            'LECTORA DE DNIE': 'escaner', 'SCANNER': 'escaner', 'ESCANER': 'escaner',
-                            'ESTABILIZADOR': 'ups', 'STABILIZADOR': 'ups', 'UPS': 'ups',
-                        };
+                        /* ── Medidas: el ambiente se dimensiona según cuántos equipos entran.
+                              Cada celda de equipo lleva su icono y, debajo, su nombre. ── */
+                        const HWW = 68, HWH = 66, HWGAP = 8, PADX = 16;
+                        const HEAD = 42;   // franja del rótulo
+                        const FOOT = 34;   // franja de los indicadores wifi/luz/red
+                        const COLS_MAX = 4;
 
-                        // IDs de ambientes que ya existen (por label/slug) para no duplicar
-                        const existingLabels = new Set(
-                            this.elements.filter(e => e.type === 'ambiente').map(e => (e.name || '').toUpperCase())
-                        );
+                        const layouts = servicios.map(m => {
+                            const n = (m.equipos || []).length;
+                            const cols = Math.min(COLS_MAX, Math.max(2, n));
+                            return { m, cols, rows: Math.ceil(n / cols) };
+                        });
+
+                        /* Todas las salas comparten tamaño: el plano queda alineado */
+                        const maxCols = Math.max(...layouts.map(l => l.cols));
+                        const maxRows = Math.max(...layouts.map(l => l.rows));
+                        const RW = Math.max(240, PADX * 2 + maxCols * HWW + (maxCols - 1) * HWGAP);
+                        const RH = Math.max(190, HEAD + maxRows * HWH + (maxRows - 1) * HWGAP + FOOT);
+                        const GAP = 34;
+                        const STARTX = 60, STARTY = 60;
+                        const COLS_SALA = Math.max(1, Math.min(4, Math.ceil(Math.sqrt(layouts.length))));
 
                         this._snapshot();
                         if (modoLimpiar) {
+                            /* Los elementos borrados se notifican a los demás editores */
+                            this.elements.forEach(e => {
+                                if (!this.deletedIds.includes(e.id)) this.deletedIds.push(e.id);
+                            });
                             this.elements = [];
                             this.connections = [];
+                            this.selectedId = null;
                         }
 
-                        /* Layout automático: 3 columnas, filas dinámicas */
-                        const COL = 3;
-                        const RW  = 240, RH = 200;   // tamaño del ambiente
-                        const GAP = 30;               // espacio entre ambientes
-                        const STARTX = 60, STARTY = 60;
-
+                        const rid = () => Math.random().toString(36).slice(2, 7);
+                        const now = () => Date.now();
+                        let salasNuevas = 0, equiposNuevos = 0, salasActualizadas = 0;
                         let idx = 0;
-                        this.modulosData.forEach(modulo => {
-                            const cantidadStr = modulo.cantidad || 1;
-                            const cantidad = parseInt(cantidadStr, 10);
-                            
-                            for (let i = 0; i < cantidad; i++) {
-                                const labelStr = modulo.label + (cantidad > 1 ? ` ${i + 1}` : '');
-                                const labelUp = labelStr.toUpperCase();
-                                let isNew = false;
-                                let ambId, rx, ry;
 
-                                if (!modoLimpiar && existingLabels.has(labelUp)) {
-                                    const existRoom = this.elements.find(e => e.type === 'ambiente' && (e.name || '').toUpperCase() === labelUp);
-                                    if (!existRoom) continue; // Fallback
-                                    ambId = existRoom.id;
-                                    rx = existRoom.x;
-                                    ry = existRoom.y;
-                                } else {
-                                    isNew = true;
-                                    const col = idx % COL;
-                                    const row = Math.floor(idx / COL);
-                                    rx  = STARTX + col * (RW + GAP);
-                                    ry  = STARTY + row * (RH + GAP);
-                                    ambId = 'mod_' + modulo.slug + '_' + i + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+                        layouts.forEach(({ m, cols }) => {
+                            const label = m.label;
+                            const labelUp = label.toUpperCase();
 
-                                    /* ── 1. Crear ambiente (consultorio) ── */
-                                    const hasWifi = modulo.tipo_conectividad === 'WIFI';
-                                    this.elements.push({
-                                        id: ambId,
-                                        type: 'ambiente',
-                                        subtype: 'consultorio_fisico',
-                                        x: rx, y: ry, w: RW, h: RH,
-                                        name: labelStr,
-                                        rotation: 0,
-                                        attrs: { wifi: hasWifi, light: true, red: modulo.tipo_conectividad === 'CABLEADO' ? 1 : 0 },
-                                        piso: this.currentPiso,
-                                        _ts: Date.now(),
-                                        _synced: true,
-                                    });
-                                    idx++;
-                                }
+                            /* ¿La sala ya está en el croquis? */
+                            let sala = modoLimpiar ? null : this.elements.find(
+                                e => e.type === 'ambiente' && (e.name || '').toUpperCase() === labelUp
+                            );
 
-                                /* ── 2. Agregar hardware dentro del consultorio ── */
-                                let hwCol = 0, hwRow = 0;
-                                const HW = 36, HWGAP = 6;
-                                const HW_STARTX = rx + 12, HW_STARTY = ry + 36;
-                                const HW_COLS = 4;
-
-                                const addHw = (subtype, label) => {
-                                    if (!modoLimpiar && this.elements.some(e => e.parentId === ambId && e.type === 'hardware' && e.subtype === subtype)) {
-                                        return; // Ya existe este equipo dentro del cuarto
-                                    }
-                                    const hx = HW_STARTX + hwCol * (HW + HWGAP);
-                                    const hy = HW_STARTY + hwRow * (HW + HWGAP);
-                                    this.elements.push({
-                                        id: 'hw_' + ambId + '_' + subtype + '_' + Math.random().toString(36).slice(2,5),
-                                        type: 'hardware', subtype,
-                                        parentId: ambId,
-                                        x: hx, y: hy, w: HW, h: HW,
-                                        name: label,
-                                        rotation: 0,
-                                        piso: this.currentPiso,
-                                        _ts: Date.now(),
-                                        _synced: true,
-                                    });
-                                    hwCol++;
-                                    if (hwCol >= HW_COLS) { hwCol = 0; hwRow++; }
-                                    
-                                    if (!isNew && !modoLimpiar) idx++; // Incrementar op para notificar
+                            if (!sala) {
+                                const col = idx % COLS_SALA;
+                                const row = Math.floor(idx / COLS_SALA);
+                                sala = {
+                                    id: 'mod_' + m.slug + '_' + now() + '_' + rid(),
+                                    type: 'ambiente',
+                                    subtype: this._ambienteDeServicio(m.slug),
+                                    x: STARTX + col * (RW + GAP),
+                                    y: STARTY + row * (RH + GAP),
+                                    w: RW, h: RH,
+                                    name: label,
+                                    rot: 0,
+                                    attrs: {
+                                        wifi: m.tipo_conectividad === 'WIFI',
+                                        light: true,
+                                        red: m.tipo_conectividad === 'CABLEADO' ? 1 : 0,
+                                    },
+                                    piso: this.currentPiso,
+                                    _ts: now(),
+                                    _synced: true,
+                                    _slug: m.slug,
                                 };
+                                this.elements.push(sala);
+                                salasNuevas++;
+                            } else {
+                                salasActualizadas++;
+                                /* La sala existente debe poder acoger la rejilla de equipos */
+                                if (sala.w < RW) sala.w = RW;
+                                if (sala.h < RH) sala.h = RH;
+                            }
+                            idx++;
 
-                                /* Iterar equipos y mapear a subtypes */
-                                const added = new Set();
-                                modulo.equipos.forEach(eq => {
-                                    const key = Object.keys(EQUIPO_MAP).find(k => eq.includes(k));
-                                    if (key) {
-                                        const sub = EQUIPO_MAP[key];
-                                        const dedupeKey = ['pc','laptop','tablet','monitor'].includes(sub) ? sub + '_' + added.size : sub;
-                                        if (!added.has(dedupeKey)) {
-                                            added.add(dedupeKey);
-                                            addHw(sub, eq);
-                                        }
-                                    }
+                            /* ── Equipos del servicio, en rejilla bajo el rótulo.
+                                  Un servicio activo sin equipos se queda como sala vacía. ── */
+                            const gridW = cols * HWW + (cols - 1) * HWGAP;
+                            const originX = sala.x + (sala.w - gridW) / 2;
+                            const originY = sala.y + HEAD;
+
+                            (m.equipos || []).forEach((eq, i) => {
+                                const c = i % cols;
+                                const r = Math.floor(i / cols);
+
+                                /* En modo agregar no se duplica un equipo ya representado */
+                                const yaEsta = !modoLimpiar && this.elements.some(e =>
+                                    e.type === 'hardware' &&
+                                    e.parentId === sala.id &&
+                                    e.subtype === eq.tipo &&
+                                    String(e.estado || '') === String(eq.estado || '')
+                                );
+                                if (yaEsta) return;
+
+                                this.elements.push({
+                                    id: 'hw_' + m.slug + '_' + eq.tipo + '_' + rid(),
+                                    type: 'hardware',
+                                    subtype: eq.tipo,
+                                    parentId: sala.id,
+                                    x: originX + c * (HWW + HWGAP),
+                                    y: originY + r * (HWH + HWGAP),
+                                    w: HWW, h: HWH,
+                                    name: eq.descripcion || eq.tipo.toUpperCase(),
+                                    rot: 0,
+                                    estado: eq.estado,
+                                    cantidad: eq.cantidad,
+                                    piso: this.currentPiso,
+                                    _ts: now(),
+                                    _synced: true,
                                 });
+                                equiposNuevos++;
+                            });
 
-                                /* ── 4. Ícono SIHCE si lo usa ── */
-                                if (modulo.utiliza_sihce === 'SI') {
-                                    this.sistemaType = 'sihce';
-                                    if (modoLimpiar || !this.elements.some(e => e.parentId === ambId && e.subtype === 'sihce')) {
-                                        this.elements.push({
-                                            id: 'sis_' + ambId + '_sihce_' + i + '_' + Math.random().toString(36).slice(2,5),
-                                            type: 'sistema', subtype: 'sihce',
-                                            parentId: ambId,
-                                            x: rx + RW - 44, y: ry + 12, w: 36, h: 36,
-                                            name: 'SIHCE',
-                                            rotation: 0,
-                                            piso: this.currentPiso,
-                                            _ts: Date.now(),
-                                            _synced: true,
-                                        });
-                                        if (!isNew && !modoLimpiar) idx++;
-                                    }
+                            /* ── Sistema SIHCE, si el módulo declara que lo usa ── */
+                            if (m.utiliza_sihce === 'SI') {
+                                const tieneSihce = this.elements.some(
+                                    e => e.parentId === sala.id && e.type === 'sistema' && e.subtype === 'sihce'
+                                );
+                                if (!tieneSihce) {
+                                    this.elements.push({
+                                        id: 'sis_' + m.slug + '_sihce_' + rid(),
+                                        type: 'sistema', subtype: 'sihce',
+                                        parentId: sala.id,
+                                        x: sala.x + 10, y: sala.y + sala.h - 30,
+                                        w: 66, h: 24,
+                                        name: 'SIHCE',
+                                        rot: 0,
+                                        piso: this.currentPiso,
+                                        _ts: now(),
+                                        _synced: true,
+                                    });
                                 }
                             }
                         });
@@ -2620,15 +3665,30 @@
                         this.draw();
                         this._refreshIcons();
 
-                        if (idx === 0 && !modoLimpiar) {
-                            Swal.fire({ title: 'Ya sincronizado', text: 'Todos los módulos con datos ya están representados en el croquis.', icon: 'info', confirmButtonColor: '#4f46e5' });
-                        } else {
+                        const sinEquipos = servicios.filter(m => (m.equipos || []).length === 0).length;
+                        const inactivos = (this.modulosData || []).filter(m => !m.activo).length;
+
+                        if (!salasNuevas && !equiposNuevos) {
                             Swal.fire({
-                                title: '¡Sincronizado!',
-                                html: `<p>${idx} consultorio(s) pre-cargado(s) desde los módulos de monitoreo.</p><p class="text-xs text-slate-400 mt-2">Puedes moverlos y editarlos libremente. Recuerda guardar el croquis.</p>`,
-                                icon: 'success', showConfirmButton: true, confirmButtonColor: '#4f46e5', confirmButtonText: 'Perfecto'
+                                title: 'Todo al día',
+                                text: 'Los servicios activos y sus equipos ya están representados en el croquis.',
+                                icon: 'info', confirmButtonColor: '#4f46e5'
                             });
+                            return;
                         }
+
+                        const totalEquipos = servicios.reduce((s, m) => s + (m.total_equipos || 0), 0);
+                        Swal.fire({
+                            title: '¡Croquis actualizado!',
+                            html: `<div class="text-left text-sm text-slate-600 space-y-1">
+                                     <p><strong>${servicios.length}</strong> servicio(s) activo(s) · <strong>${totalEquipos}</strong> equipo(s) en total.</p>
+                                     <p>${salasNuevas} sala(s) nueva(s)${salasActualizadas ? ` · ${salasActualizadas} ya existente(s)` : ''} · ${equiposNuevos} equipo(s) colocado(s).</p>
+                                     ${sinEquipos ? `<p class="text-xs text-slate-400">${sinEquipos} servicio(s) sin equipos registrados: se dibujó la sala vacía.</p>` : ''}
+                                     ${inactivos ? `<p class="text-xs text-slate-400">${inactivos} módulo(s) inactivo(s): no se dibujaron.</p>` : ''}
+                                     <p class="text-xs text-slate-400 pt-1">Puedes mover y editar todo. Recuerda guardar el croquis.</p>
+                                   </div>`,
+                            icon: 'success', confirmButtonColor: '#4f46e5', confirmButtonText: 'Perfecto'
+                        });
                     },
 
                     /* ─── Save ─── */
@@ -2637,6 +3697,7 @@
                         this.isSaving = true;
 
                         try {
+                            this._flushDraw();   /* la miniatura guardada debe estar al día */
                             const dataUrl = canvas.toDataURL('image/png');
                             const payload = {
                                 contenido: {
@@ -2644,7 +3705,9 @@
                                     conexiones: this.connections,
                                     totalPisos: this.totalPisos,
                                     mapOffsetX: this.mapOffsetX,
-                                    mapOffsetY: this.mapOffsetY
+                                    mapOffsetY: this.mapOffsetY,
+                                    mapAnchorX: this.mapAnchorX,
+                                    mapAnchorY: this.mapAnchorY
                                 },
                                 croquis_image: dataUrl,
                                 _token: '{{ csrf_token() }}'
@@ -2668,6 +3731,7 @@
                                     showConfirmButton: false,
                                     timer: 2000
                                 });
+                                return true;
                             } else {
                                 throw new Error('Failed to save');
                             }
@@ -2679,6 +3743,7 @@
                                 text: 'No se pudo guardar la información.',
                                 icon: 'error'
                             });
+                            return false;
                         } finally {
                             this.isSaving = false;
                         }
@@ -2690,6 +3755,9 @@
 
                     /** Iniciar el ciclo de sincronización */
                     _startColabSync() {
+                        /* Sin _syncUrl no hay a quién consultar: se queda en modo un solo usuario. */
+                        if (!this._syncUrl) return;
+
                         if (this._syncInterval) clearInterval(this._syncInterval);
                         /* Primera sincronización inmediata */
                         this._syncState();
@@ -2807,6 +3875,8 @@
                     /** Notificar al servidor que el usuario se va */
                     _leaveColab() {
                         if (this._syncInterval) clearInterval(this._syncInterval);
+                        /* Sin _leaveUrl, sendBeacon dispararía un POST contra la propia página. */
+                        if (!this._leaveUrl) return;
                         /* sendBeacon garantiza que el request sale aunque la página se esté cerrando.
                            Usa FormData para incluir el CSRF token (sendBeacon no admite headers custom). */
                         const fd = new FormData();
@@ -2921,60 +3991,61 @@
             x-transition:enter-start="-translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0 opacity-100"
             x-transition:leave-end="-translate-y-full opacity-0"
-            class="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-4 shadow-sm z-30">
+            class="relative bg-white border-b border-slate-200 px-2 sm:px-4 py-2 sm:py-3 flex flex-col lg:flex-row lg:flex-wrap lg:items-center lg:justify-between gap-2 lg:gap-4 shadow-sm z-50 flex-shrink-0">
 
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
-                    <button @click="sidebarOpen = !sidebarOpen"
-                        class="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-600 transition-colors">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button @click="toggleSidebar()" title="Mostrar/ocultar herramientas"
+                        class="w-9 h-9 sm:w-8 sm:h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-600 transition-colors">
                         <i :data-lucide="sidebarOpen ? 'panel-left-close' : 'panel-left-open'" class="w-4 h-4"></i>
                     </button>
-                    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-lg items-center justify-center text-white hidden sm:flex">
                         <i data-lucide="layout" class="w-5 h-5"></i>
                     </div>
-                    <h1 class="text-sm font-black text-slate-800 uppercase tracking-tighter">Gestor de <span
-                            class="text-indigo-600">Infraestructura</span></h1>
+                    <h1 class="text-sm font-black text-slate-800 uppercase tracking-tighter hidden xl:block">Gestor de
+                        <span class="text-indigo-600">Infraestructura</span>
+                    </h1>
                 </div>
 
-                <div class="h-6 w-px bg-slate-200"></div>
+                <div class="h-6 w-px bg-slate-200 hidden xl:block flex-shrink-0"></div>
 
-                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                <div class="tool-strip no-scrollbar items-center gap-1 bg-slate-100 p-1 rounded-xl min-w-0 flex-1 lg:flex-none">
                     <button @click="tool = 'ambiente'"
                         :class="tool === 'ambiente' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2">
-                        <i data-lucide="square" class="w-4 h-4"></i> Ambiente
+                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="square" class="w-4 h-4"></i> <span class="hidden sm:inline">Ambiente</span>
                     </button>
                     <button @click="tool = 'hardware'"
                         :class="tool === 'hardware' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2">
-                        <i data-lucide="cpu" class="w-4 h-4"></i> Equipamiento TI
+                        class="px-2.5 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="cpu" class="w-4 h-4"></i> <span class="hidden sm:inline">Equipamiento TI</span>
                     </button>
                     <button @click="tool = 'puerta'"
                         :class="tool === 'puerta' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2">
-                        <i data-lucide="door-open" class="w-4 h-4"></i> Puerta
+                        class="px-2.5 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="door-open" class="w-4 h-4"></i> <span class="hidden sm:inline">Puerta</span>
                     </button>
                     <button @click="tool = 'red'"
                         :class="tool === 'red' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2">
-                        <i data-lucide="share-2" class="w-4 h-4"></i> Cableado
+                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="share-2" class="w-4 h-4"></i> <span class="hidden sm:inline">Cableado</span>
                     </button>
                     <button @click="tool = 'calle'"
                         :class="tool === 'calle' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'"
-                        class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2">
-                        <i data-lucide="map" class="w-4 h-4"></i> Calle
+                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="map" class="w-4 h-4"></i> <span class="hidden sm:inline">Calle</span>
                     </button>
                     <button @click="tool = 'sistema'"
                         :class="tool === 'sistema' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-500'"
-                        class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2">
-                        <i data-lucide="monitor" class="w-4 h-4"></i> Sistemas
+                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="monitor" class="w-4 h-4"></i> <span class="hidden sm:inline">Sistemas</span>
                     </button>
                 </div>
             </div>
 
-            <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2 sm:gap-3 xl:gap-6 flex-wrap">
                 <!-- ── Badge Piso Actual ── -->
-                <div class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-xl">
+                <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-xl">
                     <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                         stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -3032,7 +4103,7 @@
                 </div>
 
                 <!-- ── Sin colaboradores (solo yo) ── -->
-                <div x-show="colaboradores.length === 0"
+                <div x-show="colaboradores.length === 0 && !isMobile"
                     class="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-xl opacity-60"
                     title="Solo tú en este croquis">
                     <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -3059,7 +4130,17 @@
 
 
                 <!-- Capas Toggle -->
-                <div class="flex items-center gap-4 px-4 py-2 bg-slate-50 rounded-xl border border-slate-200">
+                <div id="topbar-filters-wrap" class="relative flex-shrink-0" @click.outside="showFilters = false">
+                    <!-- Disparador (solo tablet/móvil) -->
+                    <button x-show="isMobile" @click="showFilters = !showFilters; showActions = false"
+                        :class="showFilters ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'"
+                        class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+                        title="Filtros de vista">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                    </button>
+
+                    <div id="topbar-filters-menu" x-show="!isMobile || showFilters"
+                        class="flex items-center gap-4 px-4 py-2 bg-slate-50 rounded-xl border border-slate-200">
                     <span class="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1"><i data-lucide="layers" class="w-3 h-3"></i> Filtros de Vista:</span>
                     <label class="flex items-center gap-2 cursor-pointer group">
                         <input type="checkbox" x-model="layers.furniture" @change="draw()" class="rounded text-indigo-600">
@@ -3135,51 +4216,71 @@
                             </div>
                         </div>
                     @endif
+                    </div><!-- /topbar-filters-menu -->
                 </div>
 
-                <div class="flex items-center gap-3">
+                <div id="topbar-actions-wrap" class="flex items-center gap-2 sm:gap-3 relative"
+                    @click.outside="showActions = false">
+                    <!-- Disparador del menú de acciones (solo tablet/móvil) -->
+                    <button x-show="isMobile" @click="showActions = !showActions; showFilters = false"
+                        :class="showActions ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'"
+                        class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+                        title="Más acciones">
+                        <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+                    </button>
+
+                    <div id="topbar-actions-menu" x-show="!isMobile || showActions"
+                        class="flex items-center gap-2 sm:gap-3">
                     <button @click="toggleFullscreen()"
                         :class="isFullscreen ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'"
                         class="px-4 py-2 hover:bg-indigo-200 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2"
                         title="Pantalla Completa">
                         <i :data-lucide="isFullscreen ? 'minimize' : 'maximize'" class="w-4 h-4"></i>
-                        <span x-text="isFullscreen ? 'Salir' : 'Pantalla Completa'"></span>
+                        <span :class="isMobile ? '' : 'hidden xl:inline'"
+                            x-text="isFullscreen ? 'Salir' : 'Pantalla Completa'"></span>
                     </button>
                     {{-- ⚡ Botón Sincronizar desde Módulos --}}
                     <button id="btn-sync" @click="fetchAndSyncModulos()"
                         class="relative px-4 py-2 bg-violet-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-violet-700 transition-all flex items-center gap-2 shadow-lg shadow-violet-200">
-                        <span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full text-[8px] flex items-center justify-center font-black text-slate-900 shadow" x-text="modulosData ? modulosData.length : 0"></span>
+                        {{-- El contador refleja los servicios activos del establecimiento --}}
+                        <span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full text-[8px] flex items-center justify-center font-black text-slate-900 shadow"
+                            x-text="(modulosData || []).filter(m => m.activo).length"></span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        Sync Módulos
+                        <span :class="isMobile ? '' : 'hidden xl:inline'">Sync Módulos</span>
                     </button>
                     {{-- Botón Exportar Imagen --}}
                     <button @click="exportImage()" title="Exportar croquis como imagen PNG"
-                        class="px-5 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100">
+                        class="px-3 xl:px-5 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100">
                         <i data-lucide="image" class="w-4 h-4"></i>
-                        Exportar PNG
+                        <span :class="isMobile ? '' : 'hidden xl:inline'">Exportar PNG</span>
                     </button>
-                    {{-- Botón Exportar PDF --}}
-                    <a href="{{ route('usuario.monitoreo.infraestructura-2d.pdf', $acta->id) }}" target="_blank"
-                        title="Exportar reporte a PDF"
-                        class="px-5 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-rose-700 transition-all flex items-center gap-2 shadow-lg shadow-rose-100">
+                    {{-- Botón Exportar PDF: guarda el croquis y luego abre el reporte --}}
+                    <button @click="exportPdf()" :class="isSaving ? 'btn-saving' : ''"
+                        title="Guardar y exportar el reporte a PDF"
+                        class="px-3 xl:px-5 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-rose-700 transition-all flex items-center gap-2 shadow-lg shadow-rose-100">
                         <i data-lucide="file-text" class="w-4 h-4"></i>
-                        Exportar PDF
+                        <span :class="isMobile ? '' : 'hidden xl:inline'">Exportar PDF</span>
+                    </button>
+                    <a href="{{ route('usuario.monitoreo.modulos', $acta->id) }}"
+                        class="h-10 px-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase"
+                        title="Volver al Panel de Módulos">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                        <span :class="isMobile ? '' : 'hidden'">Volver a módulos</span>
                     </a>
+                    <button @click="panelVisible = false; showActions = false"
+                        class="px-3 h-10 bg-rose-50 hover:bg-rose-100 text-rose-500 text-[10px] uppercase font-black tracking-wide rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
+                        title="Ocultar Panel Superior">
+                        <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                        <span :class="isMobile ? '' : 'hidden xl:inline'">Ocultar</span>
+                    </button>
+                    </div><!-- /topbar-actions-menu -->
+
+                    {{-- Guardar: siempre accesible, en cualquier tamaño de pantalla --}}
                     <button @click="saveData()" :class="isSaving ? 'btn-saving' : ''"
-                        class="px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase hover:bg-indigo-600 transition-all flex items-center gap-2 shadow-lg shadow-slate-200">
+                        class="px-4 sm:px-6 h-10 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase hover:bg-indigo-600 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 flex-shrink-0">
                         <i :data-lucide="isSaving ? 'loader' : 'save'" :class="isSaving ? 'animate-spin' : ''"
                             class="w-4 h-4"></i>
                         <span x-text="isSaving ? 'Guardando…' : 'Guardar'"></span>
-                    </button>
-                    <a href="{{ route('usuario.monitoreo.modulos', $acta->id) }}"
-                        class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center transition-all"
-                        title="Volver al Panel de Módulos">
-                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                    </a>
-                    <button @click="panelVisible = false"
-                        class="px-3 h-10 bg-rose-50 hover:bg-rose-100 text-rose-500 text-[10px] uppercase font-black tracking-wide rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
-                        title="Ocultar Panel Superior">
-                        <i data-lucide="chevron-up" class="w-4 h-4"></i> Ocultar
                     </button>
                 </div>
             </div>
@@ -3201,14 +4302,27 @@
                     </div>
                 </button>
 
-                <!-- Panel Lateral Flotante -->
-                <div x-show="sidebarOpen && panelVisible" x-transition:enter="transition ease-out duration-300"
-                    x-transition:enter-start="-translate-x-full opacity-0"
-                    x-transition:enter-end="translate-x-0 opacity-100" x-transition:leave="transition ease-in duration-200"
-                    x-transition:leave-start="translate-x-0 opacity-100"
-                    x-transition:leave-end="-translate-x-full opacity-0"
-                    class="absolute top-4 left-4 w-72 bg-white/90 backdrop-blur-xl border border-white/20 flex flex-col p-5 shadow-2xl z-40 rounded-3xl overflow-y-auto"
-                    :style="panelVisible ? 'max-height: calc(100vh - 120px)' : 'max-height: calc(100vh - 40px)'">
+                <!-- Fondo atenuado tras la hoja de herramientas (tablet/móvil) -->
+                <div x-show="sidebarOpen && panelVisible && isMobile" x-transition.opacity
+                    @click="sidebarOpen = false" class="absolute inset-0 bg-slate-900/30 z-30"></div>
+
+                <!-- Panel de Herramientas · lateral en PC · hoja inferior en tablet y móvil -->
+                <div id="tools-sidebar" x-show="sidebarOpen && panelVisible"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                    class="absolute top-4 left-4 w-72 bg-white/95 backdrop-blur-xl border border-white/20 flex flex-col p-5 shadow-2xl z-40 rounded-3xl overflow-y-auto overscroll-contain"
+                    :style="panelVisible ? 'max-height: calc(100dvh - 130px)' : 'max-height: calc(100dvh - 40px)'">
+
+                    <!-- Asa y cierre (solo tablet/móvil) -->
+                    <div x-show="isMobile" class="relative flex items-center justify-center mb-3 flex-shrink-0">
+                        <div class="h-1.5 w-12 bg-slate-200 rounded-full"></div>
+                        <button @click="sidebarOpen = false" title="Cerrar herramientas"
+                            class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
 
                     <div class="flex flex-col gap-6" id="tools-content">
 
@@ -3276,7 +4390,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <button @click="addElement('ambiente')"
+                                    <button @click="addElement('ambiente'); _autoCloseSheet()"
                                         @pointerdown="startSidebarDrag('ambiente', roomSubtype, $event)"
                                         class="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-100 cursor-grab active:cursor-grabbing">
                                         Añadir al Plano
@@ -3290,45 +4404,42 @@
                         <template x-if="tool === 'hardware'">
                             <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
                                 <h2
-                                    class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                     <i data-lucide="cpu" class="w-3 h-3"></i> Equipamiento TI
                                 </h2>
-                                <div class="grid grid-cols-2 gap-2 mb-4">
-                                    <button @click="hwType = 'router'"
-                                        :class="hwType === 'router' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-2 transition-all shadow-sm">
-                                        <i data-lucide="router" class="w-5 h-5"></i>
-                                        <span class="text-[8px] font-black uppercase">Router</span>
-                                    </button>
-                                    <button @click="hwType = 'ap'"
-                                        :class="hwType === 'ap' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-2 transition-all shadow-sm">
-                                        <i data-lucide="rss" class="w-5 h-5"></i>
-                                        <span class="text-[8px] font-black uppercase">AP</span>
-                                    </button>
-                                    <button @click="hwType = 'switch'"
-                                        :class="hwType === 'switch' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-2 transition-all shadow-sm">
-                                        <i data-lucide="layers" class="w-5 h-5"></i>
-                                        <span class="text-[8px] font-black uppercase">Switch</span>
-                                    </button>
-                                    <button @click="hwType = 'pozo'"
-                                        :class="hwType === 'pozo' ? 'bg-emerald-600 text-white shadow-emerald-200 shadow-md' : 'bg-white text-slate-400'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-2 transition-all shadow-sm border border-emerald-100">
-                                        <i data-lucide="anchor" class="w-5 h-5"></i>
-                                        <span class="text-[8px] font-black uppercase">Pozo tierra</span>
-                                    </button>
-                                    <button @click="hwType = 'punto_red'"
-                                        :class="hwType === 'punto_red' ? 'bg-emerald-600 text-white shadow-emerald-200 shadow-md' : 'bg-white text-slate-400'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-2 transition-all shadow-sm border border-emerald-100">
-                                        <i data-lucide="share-2" class="w-5 h-5"></i>
-                                        <span class="text-[8px] font-black uppercase">Punto Red</span>
-                                    </button>
+
+                                {{-- Equipos de cómputo del consultorio --}}
+                                <p class="text-[7px] font-black uppercase text-slate-400 mb-1.5">Cómputo</p>
+                                <div class="grid grid-cols-3 gap-1.5 mb-3">
+                                    <template x-for="eq in equiposComputo" :key="eq.tipo">
+                                        <button @click="hwType = eq.tipo"
+                                            :class="hwType === eq.tipo ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-400 hover:text-indigo-500'"
+                                            class="p-2 rounded-xl flex flex-col items-center gap-1 transition-all shadow-sm border border-indigo-50">
+                                            <i :data-lucide="eq.icon" class="w-4 h-4"></i>
+                                            <span class="text-[7px] font-black uppercase leading-tight text-center"
+                                                x-text="eq.label"></span>
+                                        </button>
+                                    </template>
                                 </div>
-                                <button @click="addElement('hardware')"
+
+                                {{-- Red y energía --}}
+                                <p class="text-[7px] font-black uppercase text-slate-400 mb-1.5">Red y energía</p>
+                                <div class="grid grid-cols-3 gap-1.5 mb-4">
+                                    <template x-for="eq in equiposRed" :key="eq.tipo">
+                                        <button @click="hwType = eq.tipo"
+                                            :class="hwType === eq.tipo ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200' : 'bg-white text-slate-400 hover:text-emerald-600'"
+                                            class="p-2 rounded-xl flex flex-col items-center gap-1 transition-all shadow-sm border border-emerald-50">
+                                            <i :data-lucide="eq.icon" class="w-4 h-4"></i>
+                                            <span class="text-[7px] font-black uppercase leading-tight text-center"
+                                                x-text="eq.label"></span>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <button @click="addElement('hardware'); _autoCloseSheet()"
                                     @pointerdown="startSidebarDrag('hardware', hwType, $event)"
                                     class="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-100 cursor-grab active:cursor-grabbing">
-                                    Colocar Equipo
+                                    Colocar <span x-text="hwLabelActual"></span>
                                 </button>
                                 <p class="text-[7px] text-center text-indigo-300 mt-1">↗ o arrástralo directo al plano</p>
                             </div>
@@ -3380,39 +4491,32 @@
                                     <button @click="doorSubtype = 'externa'"
                                         :class="doorSubtype === 'externa' ? 'bg-slate-800 text-white shadow-slate-300 shadow-md' : 'bg-white text-slate-500'"
                                         class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all border border-slate-200">
-                                        <!-- Puerta principal: doble hoja gris + ventanas + pomos negros -->
-                                        <svg width="28" height="26" viewBox="0 0 28 26" fill="none"
+                                        <!-- Portón de rejas: pilares, barrotes y remate de puntas -->
+                                        <svg width="32" height="26" viewBox="0 0 32 26" fill="none"
                                             xmlns="http://www.w3.org/2000/svg">
-                                            <!-- Marco exterior negro -->
-                                            <rect x="0.5" y="0.5" width="27" height="25" rx="1.5" fill="#111" />
-                                            <!-- Divisor central -->
-                                            <rect x="13" y="2" width="1.5" height="23" fill="#111" />
-                                            <!-- Hoja izquierda gris -->
-                                            <rect x="2" y="2" width="11" height="23" rx="0.8" fill="#dddddd" />
-                                            <!-- Hoja derecha gris -->
-                                            <rect x="14.5" y="2" width="11" height="23" rx="0.8" fill="#dddddd" />
-                                            <!-- Ventana izquierda: arco -->
-                                            <rect x="4.5" y="9" width="6" height="9" rx="0" fill="rgba(220,220,220,0.95)"
-                                                stroke="#111" stroke-width="0.7" />
-                                            <path d="M4.5 12 A3 3 0 0 1 10.5 12" fill="rgba(200,200,200,0.95)" />
-                                            <path d="M4.5 9 A3 3 0 0 1 10.5 9" stroke="#111" stroke-width="0.7"
-                                                fill="none" />
-                                            <line x1="5" y1="14" x2="10" y2="14" stroke="#111" stroke-width="0.7" />
-                                            <!-- Ventana derecha: arco -->
-                                            <rect x="17" y="9" width="6" height="9" rx="0" fill="rgba(220,220,220,0.95)"
-                                                stroke="#111" stroke-width="0.7" />
-                                            <path d="M17 12 A3 3 0 0 1 23 12" fill="rgba(200,200,200,0.95)" />
-                                            <path d="M17 9 A3 3 0 0 1 23 9" stroke="#111" stroke-width="0.7" fill="none" />
-                                            <line x1="17.5" y1="14" x2="22.5" y2="14" stroke="#111" stroke-width="0.7" />
-                                            <!-- Pomo izquierdo -->
-                                            <circle cx="11.5" cy="15" r="1.6" fill="#111" />
-                                            <circle cx="11.5" cy="15" r="0.8" fill="#555" />
-                                            <!-- Pomo derecho -->
-                                            <circle cx="16" cy="15" r="1.6" fill="#111" />
-                                            <circle cx="16" cy="15" r="0.8" fill="#555" />
+                                            <!-- Pilares laterales -->
+                                            <rect x="0" y="3" width="3" height="22" rx="0.6" fill="currentColor" />
+                                            <rect x="29" y="3" width="3" height="22" rx="0.6" fill="currentColor" />
+                                            <!-- Travesaños de las hojas -->
+                                            <rect x="3" y="7" width="26" height="2" fill="currentColor" />
+                                            <rect x="3" y="21" width="26" height="2" fill="currentColor" />
+                                            <!-- Barrotes -->
+                                            <g stroke="currentColor" stroke-width="1.3">
+                                                <line x1="6" y1="9" x2="6" y2="21" />
+                                                <line x1="9.5" y1="9" x2="9.5" y2="21" />
+                                                <line x1="13" y1="9" x2="13" y2="21" />
+                                                <line x1="19" y1="9" x2="19" y2="21" />
+                                                <line x1="22.5" y1="9" x2="22.5" y2="21" />
+                                                <line x1="26" y1="9" x2="26" y2="21" />
+                                            </g>
+                                            <!-- Encuentro de las dos hojas -->
+                                            <rect x="15.2" y="6" width="1.6" height="18" fill="currentColor" />
+                                            <!-- Remate de puntas -->
+                                            <path d="M4 7 L5.5 3.5 L7 7 Z M8.5 7 L10 3.5 L11.5 7 Z M13 7 L14.5 3.5 L16 7 Z M17.5 7 L19 3.5 L20.5 7 Z M22 7 L23.5 3.5 L25 7 Z M26 7 L27.5 3.5 L29 7 Z"
+                                                fill="currentColor" />
                                         </svg>
-                                        <span class="text-[8px] font-black uppercase">Principal</span>
-                                        <span class="text-[7px] text-center leading-tight opacity-70">2 hojas · acceso
+                                        <span class="text-[8px] font-black uppercase">Portón</span>
+                                        <span class="text-[7px] text-center leading-tight opacity-70">rejas · acceso
                                             calle</span>
                                     </button>
                                 </div>
@@ -3422,11 +4526,11 @@
                                     :class="doorSubtype === 'externa' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-amber-50 text-amber-700 border border-amber-100'">
                                     <span x-show="doorSubtype === 'interna'">🚪 Puerta simple de una hoja. Para pasillos,
                                         consultorios y ambientes interiores.</span>
-                                    <span x-show="doorSubtype === 'externa'">🔒 Puerta principal de doble hoja. Acceso desde
-                                        la calle, con indicador de seguridad.</span>
+                                    <span x-show="doorSubtype === 'externa'">🚧 Portón de rejas de dos hojas. Acceso
+                                        principal del establecimiento desde la calle.</span>
                                 </div>
 
-                                <button @click="addElement('puerta')"
+                                <button @click="addElement('puerta'); _autoCloseSheet()"
                                     @pointerdown="startSidebarDrag('puerta', doorSubtype, $event)"
                                     :class="doorSubtype === 'externa' ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-900 hover:bg-slate-800'"
                                     class="w-full py-4 text-white rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg cursor-grab active:cursor-grabbing active:scale-95">
@@ -3513,7 +4617,7 @@
                                         peatonal o vehicular restringida.</span>
                                 </div>
 
-                                <button @click="addElement('calle')"
+                                <button @click="addElement('calle'); _autoCloseSheet()"
                                     @pointerdown="startSidebarDrag('calle', calleSubtype, $event)"
                                     @mouseenter="$el.style.backgroundColor='#065f46'"
                                     @mouseleave="$el.style.backgroundColor='#047857'"
@@ -3597,7 +4701,7 @@
                                         integral de gestión hospitalaria.</span>
                                 </div>
 
-                                <button @click="addElement('sistema')"
+                                <button @click="addElement('sistema'); _autoCloseSheet()"
                                     @pointerdown="startSidebarDrag('sistema', sistemaType, $event)"
                                     :style="'background:' + (sistemaType === 'tua' ? '#6d28d9' : sistemaType === 'sihce' ? '#1d4ed8' : sistemaType === 'sismed' ? '#0f766e' : sistemaType === 'hisminsa' ? '#c2410c' : '#1d4ed8')"
                                     class="w-full py-4 text-white rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg cursor-grab active:cursor-grabbing active:scale-95">
@@ -3767,7 +4871,8 @@
                     </div><!-- /tools-content -->
                 </div><!-- /sidebar -->
 
-                <canvas id="blueprint-canvas" @mousedown="handleMouseDown" @mousemove="handleMouseMove"
+                <canvas id="blueprint-canvas" :style="panMode ? 'cursor:grab' : ''" @mousedown="handleMouseDown"
+                    @mousemove="handleMouseMove"
                     @mouseup="handleMouseUp" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
                     @touchend="handleTouchEnd" @contextmenu.prevent="confirmDelete($event)" @dragover.prevent
                     @drop="handleDrop($event)">
@@ -3776,18 +4881,19 @@
                 <!-- ══════════════════════════════════════════════════════ -->
                 <!-- Panel Flotante de Pisos (derecha del canvas)          -->
                 <!-- ══════════════════════════════════════════════════════ -->
-                <div class="absolute top-4 right-4 z-40 flex flex-col items-center gap-0 select-none"
+                <div class="absolute top-2 right-2 sm:top-4 sm:right-4 z-40 flex flex-col items-center gap-0 select-none"
                     style="filter: drop-shadow(0 8px 24px rgba(79,70,229,0.18));">
 
                     <!-- Botón Añadir Piso -->
                     <button @click="addPiso()" title="Añadir piso"
-                        class="w-12 h-10 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-t-2xl flex items-center justify-center transition-all shadow-lg shadow-indigo-200 border-b border-indigo-500">
+                        class="w-10 sm:w-12 h-9 sm:h-10 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-t-2xl flex items-center justify-center transition-all shadow-lg shadow-indigo-200 border-b border-indigo-500">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                             <path d="M12 5v14M5 12h14" />
                         </svg>
                     </button>
 
                     <!-- Lista de pisos (mayor arriba, 1 abajo — como un edificio) -->
+                    <div class="flex flex-col items-center max-h-[38dvh] overflow-y-auto no-scrollbar overscroll-contain">
                     <template x-for="piso in pisoRange().slice().reverse()" :key="piso">
                         <div class="relative group">
                             <!-- Etiqueta ACTUAL -->
@@ -3799,7 +4905,7 @@
                                 :class="piso === currentPiso
                                                                                                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-300 scale-105 z-10'
                                                                                                         : 'bg-white/95 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'"
-                                class="w-12 flex flex-col items-center justify-center py-2 transition-all duration-150 border-b border-slate-100 relative">
+                                class="w-10 sm:w-12 flex flex-col items-center justify-center py-2 transition-all duration-150 border-b border-slate-100 relative">
                                 <!-- Icono edificio mini -->
                                 <svg :class="piso === currentPiso ? 'text-indigo-200' : 'text-slate-300'"
                                     class="w-3 h-3 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -3825,10 +4931,11 @@
                             </div>
                         </div>
                     </template>
+                    </div><!-- /lista de pisos -->
 
                     <!-- Botón Quitar Piso -->
                     <button @click="removePiso()" :disabled="totalPisos <= 1" title="Eliminar piso actual"
-                        class="w-12 h-10 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-400 hover:text-rose-600 rounded-b-2xl flex items-center justify-center transition-all border-t border-rose-100 disabled:opacity-30 disabled:cursor-not-allowed">
+                        class="w-10 sm:w-12 h-9 sm:h-10 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-400 hover:text-rose-600 rounded-b-2xl flex items-center justify-center transition-all border-t border-rose-100 disabled:opacity-30 disabled:cursor-not-allowed">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                             <path d="M5 12h14" />
                         </svg>
@@ -3838,7 +4945,7 @@
                     <button @click="showGhostFloor = !showGhostFloor; draw()" x-show="totalPisos > 1"
                         :title="showGhostFloor ? 'Ocultar silueta del piso adyacente' : 'Mostrar silueta del piso adyacente'"
                         :class="showGhostFloor ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white/80 text-slate-400 border-slate-200'"
-                        class="mt-2 w-12 h-10 border rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all hover:scale-105 active:scale-95 shadow-sm">
+                        class="mt-2 w-10 sm:w-12 h-9 sm:h-10 border rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all hover:scale-105 active:scale-95 shadow-sm">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -3850,40 +4957,77 @@
                 <!-- / Panel de Pisos -->
 
                 <!-- ══ Panel Zoom + Opacidad del Croquis ══ -->
-                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3
-                                                                                             bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl px-4 py-2.5"
+                <div x-show="!(isMobile && sidebarOpen && panelVisible)"
+                    class="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-3
+                           max-w-[calc(100vw-1rem)] bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl px-2.5 sm:px-4 py-2 sm:py-2.5"
                     style="pointer-events:auto;">
 
+                    <!-- Modo mano: arrastrar el croquis con un dedo o con el ratón -->
+                    <button @click="panMode = !panMode"
+                        :class="panMode ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-600'"
+                        :title="panMode ? 'Modo mover activo · toca para volver a seleccionar' : 'Modo mover: arrastra el croquis'"
+                        class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 flex-shrink-0">
+                        <i data-lucide="hand" class="w-4 h-4"></i>
+                    </button>
+
+                    <!-- Separador -->
+                    <div class="w-px h-5 bg-slate-200 flex-shrink-0"></div>
+
                     <!-- Zoom -->
-                    <div class="flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" stroke-width="2.5">
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <svg class="w-3.5 h-3.5 text-indigo-500 flex-shrink-0 hidden sm:block" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <circle cx="11" cy="11" r="8" />
                             <path d="M21 21l-4.35-4.35" />
                         </svg>
                         <button @click="zoomOut()" title="Reducir zoom"
-                            class="w-6 h-6 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-600 rounded-lg flex items-center justify-center font-black text-sm transition-all active:scale-90">
+                            class="w-9 h-9 sm:w-6 sm:h-6 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-600 rounded-lg flex items-center justify-center font-black text-base sm:text-sm transition-all active:scale-90">
                             −
                         </button>
-                        <button @click="resetZoom()" title="Resetear zoom (100%)"
-                            class="min-w-[42px] h-6 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[9px] font-black uppercase transition-all active:scale-90"
+                        <button @click="resetZoom()" title="Restablecer zoom (100%)"
+                            class="min-w-[46px] h-9 sm:h-6 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] sm:text-[9px] font-black uppercase transition-all active:scale-90"
                             x-text="Math.round(canvasZoom * 100) + '%'">
                         </button>
                         <button @click="zoomIn()" title="Aumentar zoom"
-                            class="w-6 h-6 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-600 rounded-lg flex items-center justify-center font-black text-sm transition-all active:scale-90">
+                            class="w-9 h-9 sm:w-6 sm:h-6 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-600 rounded-lg flex items-center justify-center font-black text-base sm:text-sm transition-all active:scale-90">
                             +
                         </button>
-                        <button @click="autoFit()" title="Centrar todos los elementos (Ajustar vista)"
-                            class="ml-1 w-8 h-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center transition-all active:scale-90 shadow-md shadow-indigo-200">
+                        <button @click="autoFit()" title="Ajustar el croquis a la pantalla"
+                            class="sm:ml-1 w-9 h-9 sm:w-8 sm:h-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center transition-all active:scale-90 shadow-md shadow-indigo-200">
                             <i data-lucide="focus" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
 
-                    <!-- Separador -->
-                    <div class="w-px h-5 bg-slate-200"></div>
+                    <!-- Navegación de pisos (solo móvil, donde el badge superior está oculto) -->
+                    <template x-if="isCompact && totalPisos > 1">
+                        <div class="flex items-center gap-1 pl-2 border-l border-slate-200">
+                            <button @click="currentPiso > 1 && goToPiso(currentPiso - 1)" :disabled="currentPiso <= 1"
+                                class="w-8 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
+                                title="Piso anterior">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="3">
+                                    <path d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <span class="text-[10px] font-black text-indigo-700 min-w-[26px] text-center"
+                                x-text="'P' + currentPiso"></span>
+                            <button @click="currentPiso < totalPisos && goToPiso(currentPiso + 1)"
+                                :disabled="currentPiso >= totalPisos"
+                                class="w-8 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
+                                title="Piso siguiente">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="3">
+                                    <path d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </div>
+                    </template>
 
-                    <!-- Opacidad -->
-                    <div class="flex items-center gap-2">
+                    <!-- Separador -->
+                    <div class="w-px h-5 bg-slate-200 hidden lg:block"></div>
+
+                    <!-- Opacidad (se oculta en pantallas angostas para no saturar la barra) -->
+                    <div class="hidden lg:flex items-center gap-2">
                         <svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10" />
@@ -3899,8 +5043,16 @@
 
                 </div>
 
-                <!-- Tooltip flotante -->
-                <div x-show="hoveredEl" :style="`left: ${mouseX + 20}px; top: ${mouseY + 20}px`"
+                <!-- Pista de gestos (táctil) -->
+                <div x-show="_hintVisible" x-transition.opacity.duration.400ms
+                    class="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none max-w-[92vw]
+                           bg-slate-900/85 text-white text-[10px] font-bold px-3.5 py-2 rounded-xl shadow-xl flex items-center gap-2">
+                    <i data-lucide="move" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                    <span>Pellizca para acercar · arrastra para mover</span>
+                </div>
+
+                <!-- Tooltip flotante (solo con ratón: en táctil estorbaría bajo el dedo) -->
+                <div x-show="hoveredEl && !isTouch" :style="`left: ${mouseX + 20}px; top: ${mouseY + 20}px`"
                     class="absolute z-50 bg-white/90 backdrop-blur shadow-2xl border border-slate-200 rounded-2xl p-4 pointer-events-none transition-all w-48">
                     <template x-if="hoveredEl">
                         <div>
@@ -4048,6 +5200,7 @@
                     const NAME = @json($nombreEstab);
                     const ESTAB_ID = {{ $acta->establecimiento->id }};
                     const CSRF = '{{ csrf_token() }}';
+                    const COORDS_URL = @json(route('establecimientos.coordenadas', ['id' => '__ID__']));
 
                     let editMode = false;
                     let pendingLat = LAT;
@@ -4084,7 +5237,10 @@
                         `<strong style="font-size:11px">${NAME}</strong><br>
                                                                                                                         <span style="color:#64748b;font-size:10px">${LAT.toFixed(6)}, ${LNG.toFixed(6)}</span>`,
                         { offset: [0, -8] }
-                    ).openPopup();
+                    );
+                    /* El globo solo se abre solo en pantallas grandes: en las demás
+                       taparía buena parte del croquis */
+                    if (window.innerWidth >= 1280) marker.openPopup();
 
                     /* Clic en el mapa → mover marcador en modo edición */
                     map.on('click', function (e) {
@@ -4146,7 +5302,9 @@
                         const btn = document.querySelector('#minimap-save-banner button:first-child');
                         btn.textContent = 'Guardando…'; btn.disabled = true;
                         try {
-                            const res = await fetch(`/establecimientos/${ESTAB_ID}/coordenadas`, {
+                            /* La URL la genera Laravel: escrita a mano desde la raíz del
+                               dominio no llega, porque la app vive en un subdirectorio */
+                            const res = await fetch(COORDS_URL.replace('__ID__', ESTAB_ID), {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
                                 body: JSON.stringify({ latitud: pendingLat, longitud: pendingLng }),
@@ -4228,6 +5386,16 @@
                     if (window._minimapInstance) window._minimapInstance.invalidateSize();
                 });
             })();
+
+        /* ─── Salvo en pantallas grandes, el mini-mapa arranca plegado
+               para no robarle sitio al croquis ─── */
+        (function () {
+            const panel = document.getElementById('minimap-panel');
+            if (!panel || window.innerWidth >= 1280) return;
+            panel.classList.add('collapsed');
+            const chevron = document.getElementById('minimap-chevron');
+            if (chevron) chevron.style.transform = 'rotate(-90deg)';
+        })();
     </script>
 
 @endsection

@@ -577,7 +577,7 @@
                 didOpen: () => Swal.showLoading()
             });
 
-            fetch(`/usuario/actas-reunion/${currentReunionId}/activar-asistencia`, {
+            fetch(`{{ url('/usuario/actas-reunion') }}/${currentReunionId}/activar-asistencia`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -613,7 +613,7 @@
                 cancelButtonText: 'Cancelar',
                 showLoaderOnConfirm: true,
                 preConfirm: () => {
-                    return fetch(`/usuario/actas-reunion/${id}/anular`, {
+                    return fetch(`{{ url('/usuario/actas-reunion') }}/${id}/anular`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

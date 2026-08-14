@@ -355,6 +355,36 @@
     // --- AUTO-DETECCIÓN DE HARDWARE LOCAL ---
     var pollHardwareInterval = null;
 
+    /* URLs generadas por Laravel. No se pueden escribir a mano como '/usuario/ajax/...'
+       porque bajo Apache la app cuelga de un subdirectorio (/autopsia-ti/public) y una
+       ruta absoluta apuntaría a la raíz del dominio, devolviendo el 404 HTML de Apache. */
+    const HW_URLS = {
+        directo: '{{ route('usuario.ajax.hardware-directo') }}',
+        token:   '{{ route('usuario.ajax.hardware-token') }}',
+        bat:     '{{ route('usuario.ajax.hardware-bat', ['token' => '__TOKEN__']) }}',
+        check:   '{{ route('usuario.ajax.check-deteccion-hardware', ['token' => '__TOKEN__']) }}',
+    };
+
+    /**
+     * Lee la respuesta como JSON sin reventar si el servidor devolvió HTML.
+     * Pasa con la página de error 419 o con la redirección al login: en ambos casos
+     * llega "<!DOCTYPE ..." y un .json() directo lanza SyntaxError.
+     * Devuelve { ok, data, sesionExpirada }.
+     */
+    async function leerJsonSeguro(res) {
+        const texto = await res.text();
+        try {
+            return { ok: true, data: JSON.parse(texto), sesionExpirada: false };
+        } catch (e) {
+            const esPaginaHtml = texto.trim().startsWith('<');
+            return {
+                ok: false,
+                data: null,
+                sesionExpirada: esPaginaHtml && (res.status === 419 || res.status === 401 || res.redirected),
+            };
+        }
+    }
+
     window.iniciarDeteccionHardware = async function(modulo) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -373,7 +403,7 @@
             const timeoutId = setTimeout(() => controller.abort(), 4500);
 
             // Intentar detección directa instantánea (servidor local / Windows)
-            const resDirect = await fetch('/usuario/ajax/hardware-directo', {
+            const resDirect = await fetch(HW_URLS.directo, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -383,7 +413,8 @@
             });
             clearTimeout(timeoutId);
 
-            const dataDirect = await resDirect.json();
+            const lecturaDirect = await leerJsonSeguro(resDirect);
+            const dataDirect = lecturaDirect.data;
 
             if (dataDirect && dataDirect.success && dataDirect.hardware) {
                 Swal.close();
@@ -396,14 +427,25 @@
 
         // 2. Si la detección directa no aplica, mostrar modal de descarga .bat
         try {
-            const resToken = await fetch('/usuario/ajax/hardware-token', {
+            const resToken = await fetch(HW_URLS.token, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Content-Type': 'application/json'
                 }
             });
-            const dataToken = await resToken.json();
+            const lecturaToken = await leerJsonSeguro(resToken);
+            const dataToken = lecturaToken.data;
+
+            if (lecturaToken.sesionExpirada) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Tu sesión caducó',
+                    text: 'Recarga la página e inicia sesión de nuevo para usar la autodetección.',
+                    confirmButtonText: 'Recargar',
+                }).then((r) => { if (r.isConfirmed) location.reload(); });
+                return;
+            }
 
             if (!dataToken || !dataToken.token) {
                 Swal.fire('Error', 'No se pudo generar el token de rastreo', 'error');
@@ -411,7 +453,7 @@
             }
 
             const token = dataToken.token;
-            const batUrl = `/usuario/ajax/hardware-bat/${token}`;
+            const batUrl = HW_URLS.bat.replace('__TOKEN__', token);
 
             Swal.fire({
                 title: '⚡ Escáner de Hardware de esta PC',
@@ -646,8 +688,8 @@
 
         pollHardwareInterval = setInterval(async () => {
             try {
-                const res = await fetch(`/usuario/ajax/check-deteccion-hardware/${token}`);
-                const data = await res.json();
+                const res = await fetch(HW_URLS.check.replace('__TOKEN__', token));
+                const { data } = await leerJsonSeguro(res);
 
                 if (data && data.success && data.status === 'completed' && data.hardware) {
                     clearInterval(pollHardwareInterval);

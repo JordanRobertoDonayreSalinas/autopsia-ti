@@ -409,7 +409,7 @@
 
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-            fetch(`/usuario/ajax/verificar-dnie/${cleanDni}`, {
+            fetch(`{{ url('/usuario/ajax/verificar-dnie') }}/${cleanDni}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,

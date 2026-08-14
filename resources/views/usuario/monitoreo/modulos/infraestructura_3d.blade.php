@@ -3777,7 +3777,7 @@
                         const btn = document.querySelector('#minimap-save-banner button:first-child');
                         btn.textContent = 'Guardando…'; btn.disabled = true;
                         try {
-                            const res = await fetch(`/establecimientos/${ESTAB_ID}/coordenadas`, {
+                            const res = await fetch(`{{ url('/establecimientos') }}/${ESTAB_ID}/coordenadas`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
                                 body: JSON.stringify({ latitud: pendingLat, longitud: pendingLng }),
