@@ -86,6 +86,13 @@
             </div>
 
             <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scroll">
+                {{-- DASHBOARD --}}
+                <a href="{{ route('usuario.dashboard.general') }}"
+                    class="group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all {{ request()->routeIs('usuario.dashboard*') ? 'bg-emerald-600/10 text-emerald-400 font-semibold' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+
                 @if(Auth::user()->role === 'admin')
                 <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 mt-2">Plataforma</p>
 
@@ -95,42 +102,6 @@
                     <i data-lucide="users" class="w-5 h-5"></i>
                     <span class="font-medium">Gestionar Usuarios</span>
                 </a>
-
-                {{-- Dashboard Dropdown --}}
-                <div x-data="{ open: {{ request()->routeIs('usuario.dashboard*') ? 'true' : 'false' }} }">
-                    <button @click="open = !open"
-                        class="w-full group relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all {{ request()->routeIs('usuario.dashboard*') ? 'bg-emerald-600/10 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                        <div class="flex items-center gap-3">
-                            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                            <span class="font-medium">Dashboard</span>
-                        </div>
-                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform"
-                            :class="open ? 'rotate-180' : ''"></i>
-                    </button>
-
-                    <div x-show="open" x-collapse class="ml-4 mt-1 space-y-1" x-cloak>
-                        <a href="{{ route('usuario.dashboard.general') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.general') ? 'bg-teal-600/10 text-teal-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="git-merge" class="w-4 h-4"></i>
-                            <span class="text-sm font-medium">Mapa de Diagnóstico Situacional</span>
-                        </a>
-                        <a href="{{ route('usuario.dashboard.equipos') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.equipos') ? 'bg-teal-600/10 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="monitor" class="w-4 h-4"></i>
-                            <span class="text-sm font-medium">Equipos de Cómputo</span>
-                        </a>
-{{-- <a href="{{ route('usuario.dashboard.programacion.sectores') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.programacion.sectores') ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="map" class="w-4 h-4"></i>
-                            <span class="text-sm font-medium">Programación por Sectores</span>
-                        </a> --}}
-{{-- <a href="{{ route('usuario.dashboard.programacion.propuesta') }}"
-                            class="group relative flex items-center gap-3 px-4 py-2 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.programacion.propuesta') ? 'bg-amber-600/10 text-amber-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                            <i data-lucide="map-pin" class="w-4 h-4"></i>
-                            <span class="text-sm font-medium">Sectorización Propuesta</span>
-                        </a> --}}
-                    </div>
-                </div>
                 @endif
 
                 <a href="{{ route('usuario.perfil') }}"
