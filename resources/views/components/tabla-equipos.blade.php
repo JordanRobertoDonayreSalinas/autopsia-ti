@@ -514,11 +514,16 @@
         });
 
         setTimeout(() => {
-            let so = "Windows 11 64-bit";
+            let so = "Windows 10/11 64-bit";
             const ua = navigator.userAgent;
             if (ua.includes("Windows NT 10.0")) so = "Windows 10/11 64-bit";
             else if (ua.includes("Windows NT 6.3")) so = "Windows 8.1";
-            else if (ua.includes("Windows NT 6.1")) so = "Windows 7";
+            else if (ua.includes("Windows NT 6.2")) so = "Windows 8";
+            else if (ua.includes("Windows NT 6.1")) so = "Windows 7 SP1";
+            else if (ua.includes("Windows NT 6.0")) so = "Windows Vista";
+            else if (ua.includes("Windows NT 5.1") || ua.includes("Windows XP")) so = "Windows XP";
+            else if (ua.includes("Mac OS X")) so = "macOS";
+            else if (ua.includes("Linux")) so = "Linux / Ubuntu";
 
             const ramGB = navigator.deviceMemory || 8;
             const ramText = `${ramGB} GB RAM`;

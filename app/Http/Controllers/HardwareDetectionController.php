@@ -255,16 +255,31 @@ try {
     $tempFile = Join-Path $env:TEMP "hw_detection.json"
     [System.IO.File]::WriteAllText($tempFile, $json, [System.Text.Encoding]::UTF8)
 
-    # 2. Envío por red al servidor usando curl.exe nativo de Windows si existe, o Invoke-RestMethod como fallback
+    # 2. Envío por red al servidor (Compatibilidad universal: curl.exe -> VBScript MSXML2 -> Invoke-RestMethod)
+    $sent = $false
     if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
         $tempJsonFile = Join-Path $env:TEMP "hw_payload.json"
         [System.IO.File]::WriteAllText($tempJsonFile, $json, [System.Text.Encoding]::UTF8)
         & curl.exe -k -s -X POST "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -H "Content-Type: application/json" -d "@$tempJsonFile"
         Remove-Item $tempJsonFile -ErrorAction SilentlyContinue
-    } else {
+        $sent = $true
+    }
+
+    if (-not $sent) {
+        try {
+            $vbsCode = "Set h = CreateObject(""MSXML2.ServerXMLHTTP.6.0""): h.open ""POST"", ""SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware"", False: h.setRequestHeader ""Content-Type"", ""application/json"": h.send """ + ($json -replace '"', '""') + """"
+            $vbsFile = Join-Path $env:TEMP "hw_send.vbs"
+            [System.IO.File]::WriteAllText($vbsFile, $vbsCode, [System.Text.Encoding]::UTF8)
+            cscript //nologo $vbsFile | Out-Null
+            Remove-Item $vbsFile -ErrorAction SilentlyContinue
+            $sent = $true
+        } catch {}
+    }
+
+    if (-not $sent) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
-        $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -ErrorAction Stop
+        $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -UserAgent "Mozilla/5.0" -ErrorAction SilentlyContinue
     }
 
     Write-Host ""
