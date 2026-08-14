@@ -324,6 +324,7 @@ POWERSHELL;
         $velocidadRed      = $jsonData['velocidad_red'] ?? '0 Mbps';
         $velocidadDescarga = $jsonData['velocidad_descarga'] ?? 33.92;
         $velocidadSubida   = $jsonData['velocidad_subida']   ?? 262.02;
+        $proveedorInternet = $jsonData['proveedor_internet'] ?? $this->obtenerProveedorISP($tipoRed);
 
         $data = [
             'status'             => 'completed',
