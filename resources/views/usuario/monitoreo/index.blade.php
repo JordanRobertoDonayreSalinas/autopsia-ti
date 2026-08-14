@@ -751,7 +751,7 @@
                     formData.append('pdf_firmado', file);
                     formData.append('_token', '{{ csrf_token() }}');
 
-                    return fetch(`/usuario/monitoreo/${id}/subir-consolidado-final`, {
+                    return fetch(`{{ url('/usuario/monitoreo') }}/${id}/subir-consolidado-final`, {
                         method: 'POST',
                         body: formData,
                         headers: { 

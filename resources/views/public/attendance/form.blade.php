@@ -142,7 +142,7 @@
                 });
 
                 // Primero buscar localmente
-                fetch(`/usuario/monitoreo/profesional/buscar/${doc}?local_only=1`)
+                fetch(`{{ url('/usuario/monitoreo/profesional/buscar') }}/${doc}?local_only=1`)
                     .then(res => res.json())
                     .then(data => {
                         if (data.exists) {
@@ -165,7 +165,7 @@
                             });
                         } else {
                             // Si no existe localmente, buscar en RENIEC
-                            return fetch(`/usuario/monitoreo/profesional/buscar/${doc}`);
+                            return fetch(`{{ url('/usuario/monitoreo/profesional/buscar') }}/${doc}`);
                         }
                     })
                     .then(res => res ? res.json() : null)

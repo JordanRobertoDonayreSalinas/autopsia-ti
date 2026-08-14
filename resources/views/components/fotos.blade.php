@@ -111,7 +111,9 @@
                     if(!confirm('¿Estás seguro de eliminar esta foto de forma permanente?')) return;
 
                     // NOTA: Ajusta la ruta base si la reutilizas en otros módulos
-                    fetch(`/usuario/monitoreo/modulo/triaje/foto/${id}`, {
+                    {{-- OJO: esta ruta no está registrada en routes/web.php, así que responde 404
+                         aunque la URL base ya sea la correcta. Queda pendiente de definir. --}}
+                    fetch(`{{ url('/usuario/monitoreo/modulo/triaje/foto') }}/${id}`, {
                         method: 'DELETE',
                         headers: { 
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'), 

@@ -26,6 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
             '/logout',
             '/usuario/ajax/guardar-deteccion-hardware',
             '/usuario/ajax/hardware-directo',
+            // Va con las dos anteriores: es el paso alternativo del mismo flujo de
+            // detección y solo devuelve un token aleatorio en caché, sin tocar datos.
+            // Sin esta línea responde 419 (HTML) y el fetch del navegador revienta al
+            // hacer .json() sobre la página de error.
+            '/usuario/ajax/hardware-token',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
