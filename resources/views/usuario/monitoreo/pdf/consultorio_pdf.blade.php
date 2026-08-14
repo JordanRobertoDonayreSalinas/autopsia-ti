@@ -296,7 +296,7 @@
                 <td style="width: 25%;">
                     <div class="field-box" style="border-color: #6366f1; background: #f5f3ff;">
                         <span class="field-label" style="color: #4f46e5;">Piso / Ubicación</span>
-                        <span class="field-value" style="color: #4338ca;">{{ $contenido['piso'] ?? '1° PISO' }}</span>
+                        <span class="field-value" style="color: #4338ca;">{{ is_numeric($contenido['piso'] ?? '') ? ('PISO ' . $contenido['piso']) : ($contenido['piso'] ?? 'PISO 1') }}</span>
                     </div>
                 </td>
             </tr>

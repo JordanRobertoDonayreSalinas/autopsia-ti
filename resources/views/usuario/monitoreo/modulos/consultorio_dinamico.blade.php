@@ -65,16 +65,11 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2">¿Qué piso es?</label>
-                            <select name="contenido[piso]" class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm uppercase outline-none text-indigo-700 cursor-pointer focus:border-indigo-500 transition-all">
-                                <option value="1° PISO" {{ ($contenido['piso'] ?? '1° PISO') == '1° PISO' ? 'selected' : '' }}>1° PISO</option>
-                                <option value="2° PISO" {{ ($contenido['piso'] ?? '') == '2° PISO' ? 'selected' : '' }}>2° PISO</option>
-                                <option value="3° PISO" {{ ($contenido['piso'] ?? '') == '3° PISO' ? 'selected' : '' }}>3° PISO</option>
-                                <option value="4° PISO" {{ ($contenido['piso'] ?? '') == '4° PISO' ? 'selected' : '' }}>4° PISO</option>
-                                <option value="5° PISO" {{ ($contenido['piso'] ?? '') == '5° PISO' ? 'selected' : '' }}>5° PISO</option>
-                                <option value="6° PISO" {{ ($contenido['piso'] ?? '') == '6° PISO' ? 'selected' : '' }}>6° PISO</option>
-                                <option value="SÓTANO" {{ ($contenido['piso'] ?? '') == 'SÓTANO' ? 'selected' : '' }}>SÓTANO</option>
-                            </select>
+                            <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2">¿Qué piso es? (Número)</label>
+                            <input type="number" name="contenido[piso]" min="1" max="99" 
+                                value="{{ preg_replace('/[^0-9]/', '', $contenido['piso'] ?? '1') ?: '1' }}" 
+                                placeholder="Ej: 1"
+                                class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm outline-none text-indigo-700 focus:border-indigo-500 transition-all">
                         </div>
                     </div>
                 </div>
