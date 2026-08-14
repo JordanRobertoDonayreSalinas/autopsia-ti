@@ -120,7 +120,7 @@
             {{-- Etapa 3 --}}
             <div class="bg-white rounded-2xl border border-violet-100 p-5 shadow-sm group">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-[9px] font-black text-violet-500 uppercase tracking-widest">Monitoreo</span>
+                    <span class="text-[9px] font-black text-violet-500 uppercase tracking-widest">Diag. Situacional</span>
                     <span class="w-2 h-2 rounded-full bg-violet-500"></span>
                 </div>
                 <div id="stats-etapa3" class="text-2xl font-black text-violet-500 group-hover:text-violet-600 transition-colors">{{ $contadores['etapa3'] }}</div>
@@ -172,7 +172,7 @@
                             <span class="w-2 h-2 rounded-full bg-amber-500"></span> Con Asistencia
                         </button>
                         <button data-etapa="3" class="btn-etapa px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-violet-50 text-violet-700 hover:bg-violet-100 transition-all flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-violet-500"></span> Con Monitoreo
+                            <span class="w-2 h-2 rounded-full bg-violet-500"></span> Con Diagnóstico Situacional
                         </button>
                         <button data-etapa="4" class="btn-etapa px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Ciclo Completo
@@ -293,14 +293,14 @@
                         <span class="w-5 h-5 rounded-full bg-amber-500 border-2 border-white shadow-sm flex-shrink-0"></span>
                         <div>
                             <p class="text-[10px] font-bold text-amber-700 leading-none">Con Asistencia</p>
-                            <p class="text-[9px] text-amber-400">Listo para Monitoreo</p>
+                            <p class="text-[9px] text-amber-400">Listo para Diagnóstico Situacional</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="w-6 h-6 rounded-full bg-violet-500 border-2 border-white shadow-sm flex-shrink-0"></span>
                         <div>
-                            <p class="text-[10px] font-bold text-violet-700 leading-none">Con Monitoreo</p>
-                            <p class="text-[9px] text-violet-400">Monitoreo activo</p>
+                            <p class="text-[10px] font-bold text-violet-700 leading-none">Con Diagnóstico Situacional</p>
+                            <p class="text-[9px] text-violet-400">Diagnóstico activo</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -353,7 +353,7 @@
             0: { color: '#94a3b8', size: 9,  label: 'Sin Inicio' },
             1: { color: '#3b82f6', size: 13, label: 'Implementado' },
             2: { color: '#f59e0b', size: 17, label: 'Con Asistencia' },
-            3: { color: '#8b5cf6', size: 21, label: 'Con Monitoreo' },
+            3: { color: '#8b5cf6', size: 21, label: 'Con Diagnóstico Situacional' },
             4: { color: '#22c55e', size: 26, label: 'Ciclo Completo' },
         };
 
@@ -397,9 +397,9 @@
                     ${check(e.tiene_impl, 'Implementación' + (e.total_impl > 0 ? ' (' + e.total_impl + ' mód.)' : ''))}
                     ${modulosHtml}
                     ${check(e.tiene_asist, 'Asistencia Técnica' + (e.total_asistencias > 0 ? ' (' + e.total_asistencias + ' actas)' : ''))}
-                    ${check(e.tiene_monitoreo, 'Monitoreo' + (e.total_monitoreos > 0 ? ' (' + e.total_monitoreos + ' actas)' : ''))}
+                    ${check(e.tiene_monitoreo, 'Diagnóstico Situacional' + (e.total_monitoreos > 0 ? ' (' + e.total_monitoreos + ' actas)' : ''))}
                 </div>
-                ${e.etapa < 4 ? `<div class="px-4 pb-3"><p class="text-[9px] text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg">Siguiente: ${e.etapa === 0 ? '→ Necesita Implementación' : e.etapa === 1 ? '→ Programar Asistencia Técnica' : e.etapa === 2 ? '→ Programar Monitoreo' : '→ Monitoreo / Continuar'}</p></div>` : `<div class="px-4 pb-3"><p class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg">⭐ Ciclo completo alcanzado</p></div>`}
+                ${e.etapa < 4 ? `<div class="px-4 pb-3"><p class="text-[9px] text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg">Siguiente: ${e.etapa === 0 ? '→ Necesita Implementación' : e.etapa === 1 ? '→ Programar Asistencia Técnica' : e.etapa === 2 ? '→ Programar Diagnóstico Situacional' : '→ Diagnóstico Situacional / Continuar'}</p></div>` : `<div class="px-4 pb-3"><p class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg">⭐ Ciclo completo alcanzado</p></div>`}
             </div>`;
         }
 
