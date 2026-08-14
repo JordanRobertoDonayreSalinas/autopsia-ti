@@ -30,6 +30,10 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
@@ -104,7 +108,7 @@
                             :class="open ? 'rotate-180' : ''"></i>
                     </button>
 
-                    <div x-show="open" x-collapse class="ml-4 mt-1 space-y-1">
+                    <div x-show="open" x-collapse class="ml-4 mt-1 space-y-1" x-cloak>
                         <a href="{{ route('usuario.dashboard.general') }}"
                             class="group relative flex items-center gap-3 px-4 py-2 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.general') ? 'bg-teal-600/10 text-teal-400' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
                             <i data-lucide="git-merge" class="w-4 h-4"></i>
