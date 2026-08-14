@@ -256,8 +256,9 @@ try {
     [System.IO.File]::WriteAllText($tempFile, $json, [System.Text.Encoding]::UTF8)
 
     # 2. Envío por red al servidor
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-    $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -ErrorAction Stop
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+    $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -ErrorAction Stop
     Write-Host ""
     Write-Host "   [OK] Diagnostico de hardware completo (DxDiag) enviado con exito al servidor!" -ForegroundColor Green
     Write-Host ""
