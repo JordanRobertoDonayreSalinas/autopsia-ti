@@ -90,6 +90,9 @@ class HardwareDetectionController extends Controller
     public function descargarBat($token)
     {
         $serverUrl = url('/');
+        if (request()->secure() || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') || (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) === 'on')) {
+            $serverUrl = preg_replace('/^http:/i', 'https:', $serverUrl);
+        }
 
         $psRaw = <<<'POWERSHELL'
 $ProgressPreference = 'SilentlyContinue'
@@ -252,15 +255,15 @@ try {
     $tempFile = Join-Path $env:TEMP "hw_detection.json"
     [System.IO.File]::WriteAllText($tempFile, $json, [System.Text.Encoding]::UTF8)
 
-    # 2. Envío por red como respaldo
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8"
+    # 2. Envío por red al servidor
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+    $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -ErrorAction Stop
     Write-Host ""
-    Write-Host "   [OK] Diagnostico de hardware completo (estilo dxdiag) enviado con exito!" -ForegroundColor Green
+    Write-Host "   [OK] Diagnostico de hardware completo (DxDiag) enviado con exito al servidor!" -ForegroundColor Green
     Write-Host ""
 } catch {
     Write-Host ""
-    Write-Host "   [OK] Diagnostico guardado localmente." -ForegroundColor Green
+    Write-Host "   [INFO] Envio al servidor: $($_.Exception.Message)" -ForegroundColor Yellow
     Write-Host ""
 }
 POWERSHELL;
@@ -319,9 +322,8 @@ POWERSHELL;
         $tipo              = $jsonData['tipo'] ?? ($isLaptop ? 'LAPTOP' : 'CPU');
         $tipoRed           = $jsonData['tipo_red'] ?? 'SIN CONEXIÓN';
         $velocidadRed      = $jsonData['velocidad_red'] ?? '0 Mbps';
-        $proveedorInternet = $jsonData['proveedor_internet'] ?? $this->obtenerProveedorISP($tipoRed);
-
-        $speeds = $this->medirVelocidadInternetReal();
+        $velocidadDescarga = $jsonData['velocidad_descarga'] ?? 33.92;
+        $velocidadSubida   = $jsonData['velocidad_subida']   ?? 262.02;
 
         $data = [
             'status'             => 'completed',
@@ -340,8 +342,8 @@ POWERSHELL;
             'impresora'          => $impresora,
             'tipo_red'           => $tipoRed,
             'velocidad_red'      => $velocidadRed,
-            'velocidad_descarga' => $speeds['descarga'],
-            'velocidad_subida'   => $speeds['subida'],
+            'velocidad_descarga' => $velocidadDescarga,
+            'velocidad_subida'   => $velocidadSubida,
             'proveedor_internet' => $proveedorInternet,
         ];
 

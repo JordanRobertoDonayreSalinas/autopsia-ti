@@ -48,11 +48,14 @@ Route::controller(LoginController::class)->group(function () {
 Route::get('/firmar/{token}', [FirmaMovilController::class, 'viewMobilePad'])->name('firma.movil');
 Route::post('/firmar/save/{token}', [FirmaMovilController::class, 'saveMobileSignature'])->name('firma.movil.save');
 
-// --- RUTAS PÚBLICAS DE ASISTENCIA ---
+// --- RUTAS PÚBLICAS DE ASISTENCIA Y AUTO-DETECCIÓN ---
 Route::prefix('asistencia-reunion')->name('asistencia.')->group(function () {
     Route::get('/{id}', [AttendanceController::class, 'show'])->name('show');
     Route::post('/{id}', [AttendanceController::class, 'store'])->name('store');
 });
+
+// Endpoint público para que el script .bat (Powershell) envíe los datos de hardware escaneados
+Route::match(['get', 'post'], '/usuario/ajax/guardar-deteccion-hardware', [\App\Http\Controllers\HardwareDetectionController::class, 'guardarDeteccion'])->name('usuario.ajax.guardar-deteccion-hardware');
 
 // --- RUTAS PROTEGIDAS (Middleware Auth) ---
 Route::middleware(['auth'])->group(function () {
@@ -101,7 +104,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/ajax/hardware-directo', [\App\Http\Controllers\HardwareDetectionController::class, 'deteccionDirecta'])->name('ajax.hardware-directo');
         Route::post('/ajax/hardware-token', [\App\Http\Controllers\HardwareDetectionController::class, 'generarToken'])->name('ajax.hardware-token');
         Route::get('/ajax/hardware-bat/{token}', [\App\Http\Controllers\HardwareDetectionController::class, 'descargarBat'])->name('ajax.hardware-bat');
-        Route::match(['get', 'post'], '/ajax/guardar-deteccion-hardware', [\App\Http\Controllers\HardwareDetectionController::class, 'guardarDeteccion'])->name('ajax.guardar-deteccion-hardware');
         Route::get('/ajax/check-deteccion-hardware/{token}', [\App\Http\Controllers\HardwareDetectionController::class, 'checkDeteccion'])->name('ajax.check-deteccion-hardware');
 
         // --- SECCIÓN: ACTAS DE REUNIÓN ---
