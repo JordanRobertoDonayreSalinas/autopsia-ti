@@ -275,22 +275,28 @@
 
         <table class="form-grid">
             <tr>
-                <td style="width: 33%;">
+                <td style="width: 25%;">
                     <div class="field-box">
                         <span class="field-label">Fecha de Monitoreo</span>
                         <span class="field-value">{{ isset($contenido['fecha']) ? date('d/m/Y', strtotime($contenido['fecha'])) : date('d/m/Y') }}</span>
                     </div>
                 </td>
-                <td style="width: 33%;">
+                <td style="width: 25%;">
                     <div class="field-box">
                         <span class="field-label">Turno Evaluado</span>
                         <span class="field-value">{{ $contenido['turno'] ?? 'MAÑANA' }}</span>
                     </div>
                 </td>
-                <td style="width: 34%;">
-                    <div class="field-box" style="border-color: #6366f1; background-color: #eeef4ff2; background: #f5f3ff;">
+                <td style="width: 25%;">
+                    <div class="field-box" style="border-color: #6366f1; background: #f5f3ff;">
                         <span class="field-label" style="color: #4f46e5;">Tipo de Consultorio</span>
                         <span class="field-value" style="color: #4338ca;">{{ $contenido['tipo_consultorio'] ?? 'FISICO' }}</span>
+                    </div>
+                </td>
+                <td style="width: 25%;">
+                    <div class="field-box" style="border-color: #6366f1; background: #f5f3ff;">
+                        <span class="field-label" style="color: #4f46e5;">Piso / Ubicación</span>
+                        <span class="field-value" style="color: #4338ca;">{{ $contenido['piso'] ?? '1° PISO' }}</span>
                     </div>
                 </td>
             </tr>

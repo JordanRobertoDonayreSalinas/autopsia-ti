@@ -48,7 +48,7 @@
                         <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">DATOS GENERALES</h3>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-center">
                         <div>
                             <label class="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Fecha de Monitoreo</label>
                             <input type="date" name="contenido[fecha]" value="{{ $contenido['fecha'] ?? date('Y-m-d') }}"
@@ -62,6 +62,18 @@
                             <select name="contenido[tipo_consultorio]" class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm uppercase outline-none text-indigo-700 cursor-pointer focus:border-indigo-500 transition-all">
                                 <option value="FISICO" {{ ($contenido['tipo_consultorio'] ?? '') == 'FISICO' || ($contenido['tipo_consultorio'] ?? '') == 'FÍSICO' ? 'selected' : '' }}>FISICO</option>
                                 <option value="FUNCIONAL" {{ ($contenido['tipo_consultorio'] ?? '') == 'FUNCIONAL' ? 'selected' : '' }}>FUNCIONAL</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2">¿Qué piso es?</label>
+                            <select name="contenido[piso]" class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm uppercase outline-none text-indigo-700 cursor-pointer focus:border-indigo-500 transition-all">
+                                <option value="1° PISO" {{ ($contenido['piso'] ?? '1° PISO') == '1° PISO' ? 'selected' : '' }}>1° PISO</option>
+                                <option value="2° PISO" {{ ($contenido['piso'] ?? '') == '2° PISO' ? 'selected' : '' }}>2° PISO</option>
+                                <option value="3° PISO" {{ ($contenido['piso'] ?? '') == '3° PISO' ? 'selected' : '' }}>3° PISO</option>
+                                <option value="4° PISO" {{ ($contenido['piso'] ?? '') == '4° PISO' ? 'selected' : '' }}>4° PISO</option>
+                                <option value="5° PISO" {{ ($contenido['piso'] ?? '') == '5° PISO' ? 'selected' : '' }}>5° PISO</option>
+                                <option value="6° PISO" {{ ($contenido['piso'] ?? '') == '6° PISO' ? 'selected' : '' }}>6° PISO</option>
+                                <option value="SÓTANO" {{ ($contenido['piso'] ?? '') == 'SÓTANO' ? 'selected' : '' }}>SÓTANO</option>
                             </select>
                         </div>
                     </div>
