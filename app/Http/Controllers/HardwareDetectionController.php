@@ -94,218 +94,186 @@ class HardwareDetectionController extends Controller
             $serverUrl = preg_replace('/^http:/i', 'https:', $serverUrl);
         }
 
-        $psRaw = <<<'POWERSHELL'
-$ProgressPreference = 'SilentlyContinue'
-$InformationPreference = 'SilentlyContinue'
-$WarningPreference = 'SilentlyContinue'
-$ErrorActionPreference = 'SilentlyContinue'
+        $endpointUrl = $serverUrl . '/usuario/ajax/guardar-deteccion-hardware';
 
-try {
-    # 1. Detectar Laptop por batería o ChassisType
-    $isLaptop = $false
-    $battery = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
-    if ($battery) {
-        $isLaptop = $true
-    } else {
-        $chassis = Get-CimInstance Win32_SystemEnclosure -Property ChassisTypes -ErrorAction SilentlyContinue
-        if ($chassis) {
-            foreach ($c in $chassis.ChassisTypes) {
-                if ($c -in 8,9,10,11,12,14,30,31,32) {
-                    $isLaptop = $true
-                    break
-                }
-            }
-        }
-    }
+        $vbsScript = <<<'VBS'
+On Error Resume Next
+Set wmi = GetObject("winmgmts:\\.\root\cimv2")
 
-    # 2. Información del Sistema
-    $sys = Get-CimInstance Win32_ComputerSystem -Property Manufacturer, Model, TotalPhysicalMemory
-    $osObj = Get-CimInstance Win32_OperatingSystem -Property Caption
-    $so = if ($osObj -and $osObj.Caption) { $osObj.Caption } else { "Windows" }
+' 1. Sistema u OS
+Set osSet = wmi.ExecQuery("Select Caption from Win32_OperatingSystem")
+soName = "Windows"
+For Each o In osSet
+    soName = Trim(o.Caption)
+Next
 
-    $maker = if ($sys -and $sys.Manufacturer -and $sys.Manufacturer -notmatch "System") { $sys.Manufacturer.Trim() } else { "" }
-    $model = if ($sys -and $sys.Model -and $sys.Model -notmatch "System") { $sys.Model.Trim() } else { "" }
+' 2. CPU y Laptop/Desktop
+Set sysSet = wmi.ExecQuery("Select TotalPhysicalMemory, Manufacturer, Model from Win32_ComputerSystem")
+ramText = "8 GB RAM"
+marcaModelo = ""
+For Each s In sysSet
+    ramGB = Round(s.TotalPhysicalMemory / (1024*1024*1024))
+    If ramGB > 0 Then ramText = ramGB & " GB RAM"
+    maker = Trim(s.Manufacturer)
+    model = Trim(s.Model)
+    If maker <> "" And model <> "" Then
+        marcaModelo = maker & " " & model
+    ElseIf model <> "" Then
+        marcaModelo = model
+    Else
+        marcaModelo = maker
+    End If
+Next
 
-    if ($maker -and $model -and $model.StartsWith($maker, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $marcaModelo = $model
-    } elseif ($maker -and $model) {
-        $marcaModelo = "$maker $model"
-    } else {
-        $marcaModelo = if ($model) { $model } else { $maker }
-    }
+Set batterySet = wmi.ExecQuery("Select DeviceID from Win32_Battery")
+isLaptop = False
+For Each b In batterySet
+    isLaptop = True
+Next
 
-    $cpuObj = Get-CimInstance Win32_Processor -Property Name | Select-Object -First 1
-    $cpuName = if ($cpuObj -and $cpuObj.Name) { $cpuObj.Name.Trim() } else { "Procesador Genérico" }
+tipoEquipo = "CPU"
+If isLaptop Then tipoEquipo = "LAPTOP"
 
-    $ramGB = if ($sys -and $sys.TotalPhysicalMemory) { [math]::round($sys.TotalPhysicalMemory / 1GB) } else { 8 }
-    $ramText = "$ramGB GB RAM"
+Set cpuSet = wmi.ExecQuery("Select Name from Win32_Processor")
+cpuName = "Procesador Genérico"
+For Each c In cpuSet
+    cpuName = Trim(c.Name)
+Next
 
-    $disks = Get-CimInstance Win32_DiskDrive -Property Model, Size
-    $discoList = @()
-    if ($disks) {
-        foreach ($d in $disks) {
-            if ($d.Model) {
-                $gb = [math]::round($d.Size / 1GB)
-                $discoList += "$($d.Model) ($gb GB)"
-            }
-        }
-    }
-    $discoText = if ($discoList.Count -gt 0) { $discoList -join ", " } else { "" }
+' 3. Discos
+Set diskSet = wmi.ExecQuery("Select Model, Size from Win32_DiskDrive")
+discoText = ""
+For Each d In diskSet
+    If d.Size > 0 Then
+        gb = Round(d.Size / (1024*1024*1024))
+        If discoText <> "" Then discoText = discoText & ", "
+        discoText = discoText & d.Model & " (" & gb & " GB)"
+    End If
+Next
 
-    # Tarjeta de Video / Gráfica (DxDiag Pantalla)
-    $gpuObj = Get-CimInstance Win32_VideoController -Property Name, AdapterRAM | Select-Object -First 1
-    $gpuName = if ($gpuObj -and $gpuObj.Name) { $gpuObj.Name } else { "" }
-    $gpuVram = if ($gpuObj -and $gpuObj.AdapterRAM -and $gpuObj.AdapterRAM -gt 0) { [math]::round($gpuObj.AdapterRAM / 1MB) } else { 0 }
-    $gpuText = if ($gpuName) {
-        if ($gpuVram -gt 0) { "$gpuName (${gpuVram} MB VRAM)" } else { $gpuName }
-    } else { "" }
+' 4. GPU
+Set gpuSet = wmi.ExecQuery("Select Name from Win32_VideoController")
+gpuName = ""
+For Each g In gpuSet
+    If g.Name <> "" Then
+        gpuName = Trim(g.Name)
+        Exit For
+    End If
+Next
+If gpuName = "" Then gpuName = "Gráficos Integrados"
 
-    $tipoEquipo = if ($isLaptop) { "LAPTOP" } else { "CPU" }
-    $monitorObs = if ($gpuText) { "PANTALLA: Monitor Estándar | TARJETA GRÁFICA: $gpuText" } else { "PANTALLA: Monitor Estándar" }
+monitorObs = "PANTALLA: Monitor Estándar"
+If isLaptop Then
+    monitorObs = "INTEGRADO"
+ElseIf gpuName <> "" Then
+    monitorObs = "PANTALLA: Monitor Estándar | TARJETA GRÁFICA: " & gpuName
+End If
 
-    # 3. Detectar Impresoras FÍSICAMENTE CONECTADAS Y ONLINE (WorkOffline eq $false y Status eq 'OK')
-    $printers = Get-CimInstance Win32_Printer -Property Name, WorkOffline, PrinterStatus, Status, Local -ErrorAction SilentlyContinue | Where-Object { 
-        $_.WorkOffline -eq $false -and 
-        $_.Status -eq "OK" -and 
-        $_.Name -notmatch "Fax|PDF|XPS|OneNote|Microsoft"
-    }
-    $printerList = @()
-    if ($printers) {
-        foreach ($p in $printers) {
-            if ($p.Name) { $printerList += $p.Name }
-        }
-    }
-    $impresora = if ($printerList.Count -gt 0) { $printerList -join ", " } else { "NO" }
+' 5. Impresoras Online
+Set prnSet = wmi.ExecQuery("Select Name from Win32_Printer Where WorkOffline=False And Status='OK'")
+impresoraText = "NO"
+prnList = ""
+For Each p In prnSet
+    If p.Name <> "" And InStr(1, p.Name, "Fax", 1) = 0 And InStr(1, p.Name, "PDF", 1) = 0 And InStr(1, p.Name, "XPS", 1) = 0 And InStr(1, p.Name, "OneNote", 1) = 0 Then
+        If prnList <> "" Then prnList = prnList & ", "
+        prnList = prnList & p.Name
+    End If
+Next
+If prnList <> "" Then impresoraText = prnList
 
-    # 4. Mouse Externo USB (en Laptop se omiten los Touchpads/Trackpads integrados)
-    $extMice = Get-CimInstance Win32_PointingDevice -ErrorAction SilentlyContinue | Where-Object {
-        ($_.PNPDeviceID -match "^USB\\" -or $_.Description -match "USB") -and
-        $_.PNPDeviceID -notmatch "ELAN|SYN|ALPS|ACPI" -and
-        $_.Description -notmatch "Touchpad|Trackpad|GlidePoint|Synaptics|ELAN|ALPS"
-    }
+' 6. Mouse USB o Integrado
+Set mouseSet = wmi.ExecQuery("Select Description, PNPDeviceID from Win32_PointingDevice")
+hasMouse = "SI"
+If isLaptop Then
+    hasMouse = "NO"
+    For Each m In mouseSet
+        If InStr(1, m.PNPDeviceID, "USB", 1) > 0 Then
+            hasMouse = "SI"
+            Exit For
+        End If
+    Next
+End If
 
-    $hasMouse = if ($isLaptop) {
-        if ($extMice) { "SI" } else { "NO" }
-    } else {
-        if ($extMice -or (Get-CimInstance Win32_PointingDevice)) { "SI" } else { "NO" }
-    }
+' 7. Conectividad de Red
+Set netSet = wmi.ExecQuery("Select Name, Speed from Win32_NetworkAdapter Where Speed > 0")
+tipoRed = "CABLE (ETHERNET)"
+velRed = "100 Mbps"
+For Each n In netSet
+    sMbps = Round(n.Speed / 1000000)
+    If sMbps > 0 Then velRed = sMbps & " Mbps"
+    If InStr(1, n.Name, "Wi-Fi", 1) > 0 Or InStr(1, n.Name, "Wireless", 1) > 0 Or InStr(1, n.Name, "802.11", 1) > 0 Then
+        tipoRed = "WI-FI"
+    End If
+Next
 
-    # 5. Conectividad de Red, Tipo y Velocidad de Enlace (Adaptador Activo)
-    $tipoRed = "SIN CONEXION"
-    $velocidadRed = "0 Mbps"
+' Sanitizar strings para JSON
+soName = Replace(soName, "\", "\\"): soName = Replace(soName, """", "\""")
+cpuName = Replace(cpuName, "\", "\\"): cpuName = Replace(cpuName, """", "\""")
+marcaModelo = Replace(marcaModelo, "\", "\\"): marcaModelo = Replace(marcaModelo, """", "\""")
+discoText = Replace(discoText, "\", "\\"): discoText = Replace(discoText, """", "\""")
+gpuName = Replace(gpuName, "\", "\\"): gpuName = Replace(gpuName, """", "\""")
+monitorObs = Replace(monitorObs, "\", "\\"): monitorObs = Replace(monitorObs, """", "\""")
+impresoraText = Replace(impresoraText, "\", "\\"): impresoraText = Replace(impresoraText, """", "\""")
 
-    $configs = Get-CimInstance Win32_NetworkAdapterConfiguration -ErrorAction SilentlyContinue | Where-Object { $_.IPEnabled -eq $true -and $_.DefaultIPGateway }
+json = "{" & _
+    """token"":""TOKEN_PLACEHOLDER""," & _
+    """status"":""completed""," & _
+    """is_laptop"":" & LCase(isLaptop) & "," & _
+    """tipo"":""" & tipoEquipo & """," & _
+    """marca_modelo"":""" & marcaModelo & """," & _
+    """procesador_nombre"":""" & cpuName & """," & _
+    """so"":""" & soName & """," & _
+    """ram"":""" & ramText & """," & _
+    """disco"":""" & discoText & """," & _
+    """gpu"":""" & gpuName & """," & _
+    """monitor"":""" & monitorObs & """," & _
+    """teclado"":""" & IIf(isLaptop, "INTEGRADO", "SI") & """," & _
+    """mouse"":""" & hasMouse & """," & _
+    """impresora"":""" & impresoraText & """," & _
+    """tipo_red"":""" & tipoRed & """," & _
+    """velocidad_red"":""" & velRed & """" & _
+"}"
 
-    if ($configs) {
-        $activeConfig = $configs | Select-Object -First 1
-        $idx = $activeConfig.Index
-        $adapter = Get-CimInstance Win32_NetworkAdapter -Filter "Index=$idx" -ErrorAction SilentlyContinue
-        if ($adapter) {
-            $n = $adapter.Name
-            $sMbps = if ($adapter.Speed -and $adapter.Speed -gt 0) { [math]::round($adapter.Speed / 1000000) } else { 0 }
-            
-            if ($n -match "Wi-Fi|Wireless|802\.11|WLAN|Wi-Fi") {
-                $tipoRed = "WI-FI"
-                $velocidadRed = if ($sMbps -ge 1000) { "$([math]::round($sMbps/1000, 1)) Gbps ($sMbps Mbps)" } elseif ($sMbps -gt 0) { "$sMbps Mbps" } else { "Conectado" }
-            } else {
-                $tipoRed = "CABLE (ETHERNET)"
-                $velocidadRed = if ($sMbps -ge 1000) { "$([math]::round($sMbps/1000, 1)) Gbps ($sMbps Mbps)" } elseif ($sMbps -gt 0) { "$sMbps Mbps" } else { "Conectado" }
-            }
-        }
-    }
+Function IIf(cond, vTrue, vFalse)
+    If cond Then IIf = vTrue Else IIf = vFalse
+End Function
 
-    if ($tipoRed -eq "SIN CONEXION") {
-        $net = Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq "Up" -and $_.InterfaceDescription -notmatch "Virtual|Loopback|VPN|VMware|Hyper-V|Bluetooth" } | Select-Object -First 1
-        if ($net) {
-            $sMbps = if ($net.LinkSpeed) { $net.LinkSpeed } else { "Conectado" }
-            $velocidadRed = $sMbps
-            if ($net.MediaType -match "Native 802\.11" -or $net.InterfaceDescription -match "Wi-Fi|Wireless|WLAN") {
-                $tipoRed = "WI-FI"
-            } else {
-                $tipoRed = "CABLE (ETHERNET)"
-            }
-        }
-    }
+' Envío vía MSXML2 (Nativo en Windows XP, 7, 8, 8.1, 10, 11)
+Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+If http Is Nothing Then Set http = CreateObject("MSXML2.ServerXMLHTTP")
+If http Is Nothing Then Set http = CreateObject("Microsoft.XMLHTTP")
 
-    $nowUnix = [DateTimeOffset]::Now.ToUnixTimeSeconds()
+http.open "POST", "ENDPOINT_URL_PLACEHOLDER", False
+http.setRequestHeader "Content-Type", "application/json"
+http.setRequestHeader "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+http.send json
 
-    $payload = @{
-        token = "TOKEN_PLACEHOLDER"
-        status = "completed"
-        timestamp = $nowUnix
-        is_laptop = $isLaptop
-        tipo = $tipoEquipo
-        marca_modelo = $marcaModelo
-        procesador_nombre = $cpuName
-        so = $so.Trim()
-        ram = $ramText
-        disco = $discoText
-        gpu = $gpuText
-        monitor = if ($isLaptop) { "INTEGRADO" } else { $monitorObs }
-        teclado = if ($isLaptop) { "INTEGRADO" } else { "SI" }
-        mouse = $hasMouse
-        impresora = $impresora
-        tipo_red = $tipoRed
-        velocidad_red = $velocidadRed
-    }
+If http.status = 200 Then
+    WScript.Echo "   [OK] Diagnostico completo enviado con exito al servidor!"
+Else
+    WScript.Echo "   [INFO] Estado del servidor: " & http.status
+End If
+VBS;
 
-    $json = $payload | ConvertTo-Json -Compress
+        $vbsScript = str_replace('TOKEN_PLACEHOLDER', $token, $vbsScript);
+        $vbsScript = str_replace('ENDPOINT_URL_PLACEHOLDER', $endpointUrl, $vbsScript);
 
-    # 1. Guardar en archivo temporal de puente local instantáneo
-    $tempFile = Join-Path $env:TEMP "hw_detection.json"
-    [System.IO.File]::WriteAllText($tempFile, $json, [System.Text.Encoding]::UTF8)
-
-    # 2. Envío por red al servidor (Compatibilidad universal: curl.exe -> VBScript MSXML2 -> Invoke-RestMethod)
-    $sent = $false
-    if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-        $tempJsonFile = Join-Path $env:TEMP "hw_payload.json"
-        [System.IO.File]::WriteAllText($tempJsonFile, $json, [System.Text.Encoding]::UTF8)
-        & curl.exe -k -s -X POST "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -H "Content-Type: application/json" -d "@$tempJsonFile"
-        Remove-Item $tempJsonFile -ErrorAction SilentlyContinue
-        $sent = $true
-    }
-
-    if (-not $sent) {
-        try {
-            $vbsCode = "Set h = CreateObject(""MSXML2.ServerXMLHTTP.6.0""): h.open ""POST"", ""SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware"", False: h.setRequestHeader ""Content-Type"", ""application/json"": h.send """ + ($json -replace '"', '""') + """"
-            $vbsFile = Join-Path $env:TEMP "hw_send.vbs"
-            [System.IO.File]::WriteAllText($vbsFile, $vbsCode, [System.Text.Encoding]::UTF8)
-            cscript //nologo $vbsFile | Out-Null
-            Remove-Item $vbsFile -ErrorAction SilentlyContinue
-            $sent = $true
-        } catch {}
-    }
-
-    if (-not $sent) {
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
-        $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -UserAgent "Mozilla/5.0" -ErrorAction SilentlyContinue
-    }
-
-    Write-Host ""
-    Write-Host "   [OK] Diagnostico de hardware completo (DxDiag) enviado con exito al servidor!" -ForegroundColor Green
-    Write-Host ""
-} catch {
-    Write-Host ""
-    Write-Host "   [INFO] Envio al servidor: $($_.Exception.Message)" -ForegroundColor Yellow
-    Write-Host ""
-}
-POWERSHELL;
-
-        $psRaw = str_replace('TOKEN_PLACEHOLDER', $token, $psRaw);
-        $psRaw = str_replace('SERVER_URL_PLACEHOLDER', $serverUrl, $psRaw);
-
-        $utf16 = mb_convert_encoding($psRaw, 'UTF-16LE', 'UTF-8');
-        $encodedPs = base64_encode($utf16);
+        $vbsFileB64 = base64_encode($vbsScript);
 
         $batContent = "@echo off\r\n" .
             "title Escaneando Hardware (DxDiag)... \r\n" .
             "color 0A\r\n" .
             "echo ========================================================\r\n" .
-            "echo   Obteniendo diagnostico completo de hardware (DxDiag)...\r\n" .
+            "echo   Obteniendo diagnostico completo de hardware (WMI)...\r\n" .
             "echo ========================================================\r\n" .
             "echo.\r\n" .
-            "powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand \"{$encodedPs}\"\r\n" .
+            "set VBS_PATH=%TEMP%\\hw_scan_%RANDOM%.vbs\r\n" .
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('" . $vbsFileB64 . "')) | Out-File -FilePath '%VBS_PATH%' -Encoding UTF8\" 2>nul\r\n" .
+            "if not exist \"%VBS_PATH%\" (\r\n" .
+            "  echo Set h = CreateObject(\"MSXML2.ServerXMLHTTP\"): h.open \"POST\", \"" . $endpointUrl . "\", False: h.setRequestHeader \"Content-Type\", \"application/json\": h.send \"{\"\"token\"\":\"\"" . $token . "\"\",\"\"status\"\":\"\"completed\"\"}\" > \"%VBS_PATH%\"\r\n" .
+            ")\r\n" .
+            "cscript //nologo \"%VBS_PATH%\"\r\n" .
+            "del /f /q \"%VBS_PATH%\" 2>nul\r\n" .
             "echo.\r\n" .
             "echo Finalizado. Esta ventana se cerrara automaticamente.\r\n" .
             "ping 127.0.0.1 -n 3 >nul\r\n" .
