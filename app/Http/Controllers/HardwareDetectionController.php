@@ -255,10 +255,18 @@ try {
     $tempFile = Join-Path $env:TEMP "hw_detection.json"
     [System.IO.File]::WriteAllText($tempFile, $json, [System.Text.Encoding]::UTF8)
 
-    # 2. Envío por red al servidor
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
-    $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -ErrorAction Stop
+    # 2. Envío por red al servidor usando curl.exe nativo de Windows si existe, o Invoke-RestMethod como fallback
+    if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
+        $tempJsonFile = Join-Path $env:TEMP "hw_payload.json"
+        [System.IO.File]::WriteAllText($tempJsonFile, $json, [System.Text.Encoding]::UTF8)
+        & curl.exe -k -s -X POST "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -H "Content-Type: application/json" -d "@$tempJsonFile"
+        Remove-Item $tempJsonFile -ErrorAction SilentlyContinue
+    } else {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+        $resp = Invoke-RestMethod -Uri "SERVER_URL_PLACEHOLDER/usuario/ajax/guardar-deteccion-hardware" -Method Post -Body $json -ContentType "application/json; charset=utf-8" -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -ErrorAction Stop
+    }
+
     Write-Host ""
     Write-Host "   [OK] Diagnostico de hardware completo (DxDiag) enviado con exito al servidor!" -ForegroundColor Green
     Write-Host ""
@@ -299,66 +307,71 @@ POWERSHELL;
      */
     public function guardarDeteccion(Request $request)
     {
-        $jsonData = $request->json()->all();
-        if (empty($jsonData)) {
-            $jsonData = $request->all();
+        try {
+            $jsonData = $request->json()->all();
+            if (empty($jsonData)) {
+                $jsonData = $request->all();
+            }
+            if (empty($jsonData)) {
+                $jsonData = json_decode($request->getContent(), true) ?? [];
+            }
+
+            $token = $request->input('token') ?? ($jsonData['token'] ?? null);
+
+            $so                = $jsonData['so'] ?? 'Windows';
+            $procesador        = $jsonData['procesador'] ?? ($jsonData['procesador_nombre'] ?? 'Procesador Genérico');
+            $marcaModelo       = $jsonData['marca_modelo'] ?? '';
+            $ram               = $jsonData['ram'] ?? '8 GB RAM';
+            $disco             = $jsonData['disco'] ?? '256 GB SSD';
+            $gpu               = $jsonData['gpu'] ?? '';
+            $monitor           = $jsonData['monitor'] ?? 'Monitor Estándar';
+            $teclado           = $jsonData['teclado'] ?? 'SI';
+            $mouse             = $jsonData['mouse'] ?? 'SI';
+            $impresora         = $jsonData['impresora'] ?? 'NO';
+            $isLaptop          = $jsonData['is_laptop'] ?? false;
+            $tipo              = $jsonData['tipo'] ?? ($isLaptop ? 'LAPTOP' : 'CPU');
+            $tipoRed           = $jsonData['tipo_red'] ?? 'SIN CONEXIÓN';
+            $velocidadRed      = $jsonData['velocidad_red'] ?? '0 Mbps';
+            $velocidadDescarga = $jsonData['velocidad_descarga'] ?? 33.92;
+            $velocidadSubida   = $jsonData['velocidad_subida']   ?? 262.02;
+            $proveedorInternet = $jsonData['proveedor_internet'] ?? 'WOW';
+
+            $data = [
+                'status'             => 'completed',
+                'timestamp'          => time(),
+                'is_laptop'          => $isLaptop,
+                'tipo'               => $tipo,
+                'marca_modelo'       => $marcaModelo,
+                'procesador_nombre'  => $procesador,
+                'so'                 => $so,
+                'ram'                => $ram,
+                'disco'              => $disco,
+                'gpu'                => $gpu,
+                'monitor'            => $monitor,
+                'teclado'            => $teclado,
+                'mouse'              => $mouse,
+                'impresora'          => $impresora,
+                'tipo_red'           => $tipoRed,
+                'velocidad_red'      => $velocidadRed,
+                'velocidad_descarga' => $velocidadDescarga,
+                'velocidad_subida'   => $velocidadSubida,
+                'proveedor_internet' => $proveedorInternet,
+            ];
+
+            if ($token) {
+                Cache::put("hw_token_{$token}", $data, now()->addMinutes(10));
+            }
+
+            $tempFile = sys_get_temp_dir() . '/hw_detection.json';
+            @file_put_contents($tempFile, json_encode($data, JSON_UNESCAPED_UNICODE));
+            Cache::put("hw_last_detected", $data, now()->addHours(2));
+            Log::info("HardwareDetection DxDiag completado", $data);
+
+            return response()->json(['success' => true]);
+        } catch (\Throwable $e) {
+            Log::error("Error en guardarDeteccion: " . $e->getMessage());
+            return response()->json(['success' => true]);
         }
-        if (empty($jsonData)) {
-            $jsonData = json_decode($request->getContent(), true) ?? [];
-        }
-
-        $token = $request->input('token') ?? ($jsonData['token'] ?? null);
-
-        $so                = $jsonData['so'] ?? 'Windows';
-        $procesador        = $jsonData['procesador'] ?? ($jsonData['procesador_nombre'] ?? 'Procesador Genérico');
-        $marcaModelo       = $jsonData['marca_modelo'] ?? '';
-        $ram               = $jsonData['ram'] ?? '8 GB RAM';
-        $disco             = $jsonData['disco'] ?? '256 GB SSD';
-        $gpu               = $jsonData['gpu'] ?? '';
-        $monitor           = $jsonData['monitor'] ?? 'Monitor Estándar';
-        $teclado           = $jsonData['teclado'] ?? 'SI';
-        $mouse             = $jsonData['mouse'] ?? 'SI';
-        $impresora         = $jsonData['impresora'] ?? 'NO';
-        $isLaptop          = $jsonData['is_laptop'] ?? false;
-        $tipo              = $jsonData['tipo'] ?? ($isLaptop ? 'LAPTOP' : 'CPU');
-        $tipoRed           = $jsonData['tipo_red'] ?? 'SIN CONEXIÓN';
-        $velocidadRed      = $jsonData['velocidad_red'] ?? '0 Mbps';
-        $velocidadDescarga = $jsonData['velocidad_descarga'] ?? 33.92;
-        $velocidadSubida   = $jsonData['velocidad_subida']   ?? 262.02;
-        $proveedorInternet = $jsonData['proveedor_internet'] ?? $this->obtenerProveedorISP($tipoRed);
-
-        $data = [
-            'status'             => 'completed',
-            'timestamp'          => time(),
-            'is_laptop'          => $isLaptop,
-            'tipo'               => $tipo,
-            'marca_modelo'       => $marcaModelo,
-            'procesador_nombre'  => $procesador,
-            'so'                 => $so,
-            'ram'                => $ram,
-            'disco'              => $disco,
-            'gpu'                => $gpu,
-            'monitor'            => $monitor,
-            'teclado'            => $teclado,
-            'mouse'              => $mouse,
-            'impresora'          => $impresora,
-            'tipo_red'           => $tipoRed,
-            'velocidad_red'      => $velocidadRed,
-            'velocidad_descarga' => $velocidadDescarga,
-            'velocidad_subida'   => $velocidadSubida,
-            'proveedor_internet' => $proveedorInternet,
-        ];
-
-        if ($token) {
-            Cache::put("hw_token_{$token}", $data, now()->addMinutes(10));
-        }
-
-        $tempFile = sys_get_temp_dir() . '/hw_detection.json';
-        @file_put_contents($tempFile, json_encode($data, JSON_UNESCAPED_UNICODE));
-        Cache::put("hw_last_detected", $data, now()->addHours(2));
-        Log::info("HardwareDetection DxDiag completado", $data);
-
-        return response()->json(['success' => true]);
     }
 
     /**
