@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
 // --- IMPORTACIÓN DE CONTROLADORES ACTIVOS ---
+use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditoriaController;
@@ -234,9 +235,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{id}/subir-consolidado-final', [MonitoreoController::class, 'subirPDF'])->name('subirConsolidado');
             Route::get('/ver-detalle/{monitoreo}', [MonitoreoController::class, 'show'])->name('show');
             Route::post('/{id}/anular', [MonitoreoController::class, 'anular'])->name('anular');
-            Route::get('/{id}/emails', [MonitoreoController::class, 'getEquipoEmails'])->name('get-emails');
-            Route::post('/{id}/enviar-correo', [MonitoreoController::class, 'enviarCorreo'])->name('enviarCorreo');
-            Route::post('/consolidado-pdf-export', [MonitoreoController::class, 'consolidadoPDFExport'])->name('consolidadoPDFExport');
+            // RUTAS DE MODO OFFLINE / PWA
+            Route::get('/offline/descargar-datos', [OfflineSyncController::class, 'descargarDatosCampo'])->name('offline.descargar');
+            Route::post('/offline/sincronizar-lote', [OfflineSyncController::class, 'sincronizarLoteOffline'])->name('offline.sincronizar');
         });
     });
 
