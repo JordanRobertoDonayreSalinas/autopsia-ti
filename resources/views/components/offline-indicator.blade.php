@@ -89,6 +89,7 @@
                 window.addEventListener('online', () => {
                     this.isOnline = true;
                     this.checkPendingSync();
+                    this.autoSyncSilencioso();
                 });
                 window.addEventListener('offline', () => {
                     this.isOnline = false;
@@ -103,8 +104,16 @@
                     }
                 }
 
-                window.descargarDatosCampoOffline = () => this.downloadFieldData();
+                window.descargarDatosCampoOffline = (manual = true) => this.downloadFieldData(manual);
                 await this.checkPendingSync();
+
+                // 1. Auto-Precargado silencioso en segundo plano sin pedir clics
+                if (this.isOnline) {
+                    this.autoPrecacheSilencioso();
+                    if (this.pendingCount > 0) {
+                        this.autoSyncSilencioso();
+                    }
+                }
             },
 
             async checkPendingSync() {
@@ -113,37 +122,77 @@
                 }
             },
 
-            async downloadFieldData() {
+            async autoPrecacheSilencioso() {
+                try {
+                    if (!window.OfflineDB) return;
+                    const locales = await window.OfflineDB.obtenerEstablecimientos();
+                    // Si la BD local está vacía, descargar automáticamente en segundo plano
+                    if (!locales || locales.length === 0) {
+                        console.log('[PWA Auto-Cache] Descargando catálogo de IPRESS en segundo plano...');
+                        const res = await fetch("{{ route('usuario.monitoreo.offline.descargar') }}");
+                        const data = await res.json();
+                        if (data.success && data.establecimientos) {
+                            await window.OfflineDB.guardarEstablecimientos(data.establecimientos);
+                            console.log(`[PWA Auto-Cache] ${data.total} IPRESS guardadas automáticamente en IndexedDB para trabajo offline.`);
+                        }
+                    }
+                } catch(e) {
+                    console.warn('[PWA Auto-Cache Error]', e);
+                }
+            },
+
+            async autoSyncSilencioso() {
+                if (!this.isOnline || this.isSyncing || this.pendingCount === 0) return;
+                console.log('[PWA Auto-Sync] Detectadas actas pendientes. Sincronizando en segundo plano...');
+                const toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true
+                });
+                toast.fire({
+                    icon: 'info',
+                    title: `Sincronizando ${this.pendingCount} acta(s) pendiente(s)...`
+                });
+                await this.syncDataNow(true);
+            },
+
+            async downloadFieldData(manual = true) {
                 if (!this.isOnline) {
                     Swal.fire('Atención', 'Necesitas estar conectado a Internet para descargar el catálogo inicial de campo.', 'warning');
                     return;
                 }
                 this.isDownloading = true;
-                Swal.fire({
-                    title: 'Descargando Datos para Campo',
-                    text: 'Guardando catálogo de IPRESS y estructura inicial en tu laptop...',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
+                if (manual) {
+                    Swal.fire({
+                        title: 'Actualizando Datos Offline',
+                        text: 'Guardando catálogo completo de 524 IPRESS en tu laptop...',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+                }
                 try {
                     const res = await fetch("{{ route('usuario.monitoreo.offline.descargar') }}");
                     const data = await res.json();
                     if (data.success && window.OfflineDB) {
                         await window.OfflineDB.guardarEstablecimientos(data.establecimientos);
-                        Swal.fire('¡Datos de Campo Guardados!', `Se guardaron ${data.total} establecimientos en la memoria de tu laptop. Ya puedes trabajar 100% offline.`, 'success');
-                    } else {
+                        if (manual) {
+                            Swal.fire('¡Datos Guardados!', `Se guardaron ${data.total} establecimientos en la memoria de tu laptop. Ya puedes trabajar 100% offline.`, 'success');
+                        }
+                    } else if (manual) {
                         Swal.fire('Error', 'No se pudieron procesar los datos para el modo offline.', 'error');
                     }
                 } catch(e) {
-                    Swal.fire('Error', 'No se pudieron descargar los datos para trabajo offline.', 'error');
+                    if (manual) Swal.fire('Error', 'No se pudieron descargar los datos para trabajo offline.', 'error');
                 } finally {
                     this.isDownloading = false;
                 }
             },
 
-            async syncDataNow() {
+            async syncDataNow(isSilent = false) {
                 if (!this.isOnline) {
-                    Swal.fire('Modo Offline', 'Conéctate a Internet para poder sincronizar tus actas al servidor central.', 'info');
+                    if (!isSilent) Swal.fire('Modo Offline', 'Conéctate a Internet para poder sincronizar tus actas al servidor central.', 'info');
                     return;
                 }
 
@@ -169,14 +218,27 @@
                     if (data.success) {
                         await window.OfflineDB.limpiarSincronizados();
                         this.pendingCount = 0;
-                        Swal.fire('¡Sincronización Completa!', data.message, 'success').then(() => {
-                            window.location.reload();
-                        });
-                    } else {
+                        if (!isSilent) {
+                            Swal.fire('¡Sincronización Completa!', data.message, 'success').then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            const toast = Swal.mixin({
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 4000
+                            });
+                            toast.fire({
+                                icon: 'success',
+                                title: data.message || '¡Actas sincronizadas exitosamente!'
+                            });
+                        }
+                    } else if (!isSilent) {
                         Swal.fire('Error de Sincronización', data.message || 'No se pudo completar la sincronización.', 'error');
                     }
                 } catch(e) {
-                    Swal.fire('Error', 'Fallo al intentar conectar con el servidor central: ' + e.message, 'error');
+                    if (!isSilent) Swal.fire('Error', 'Fallo al intentar conectar con el servidor central: ' + e.message, 'error');
                 } finally {
                     this.isSyncing = false;
                 }
