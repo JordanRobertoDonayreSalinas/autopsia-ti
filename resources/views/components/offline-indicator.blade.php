@@ -55,7 +55,7 @@
                 <div class="space-y-2">
                     <button @click="downloadFieldData()" :disabled="isDownloading" 
                             class="w-full py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-2xl text-left flex items-center justify-between transition-all">
-                        <span class="uppercase tracking-tight text-[11px]" x-text="isDownloading ? 'Descargando...' : 'Descargar Datos para Campo'"></span>
+                        <span class="uppercase tracking-tight text-[11px]" x-text="isDownloading ? 'Descargando...' : 'Descargar Datos Offline'"></span>
                         <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     </button>
                     <p class="text-[9px] text-slate-400 font-medium px-1">Guarda el catálogo de IPRESS en tu laptop antes de viajar a zonas sin señal.</p>
