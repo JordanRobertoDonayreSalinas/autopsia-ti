@@ -6,6 +6,10 @@
 <div class="py-12 bg-[#f4f7fa] min-h-screen" 
      x-data="{ 
         showNewModal: false,
+        showEditModal: false,
+        editModalSlug: '',
+        editModalTitle: '',
+        editModalAction: '',
         showUploadModal: false,
         currentModule: '',
         currentModuleName: '',
@@ -121,13 +125,20 @@
                             <i data-lucide="stethoscope" class="w-7 h-7"></i>
                         </div>
                         
-                        <form action="{{ route('usuario.monitoreo.consultorio.destroy', [$acta->id, $cSlug]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio de la lista?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors" title="Eliminar Consultorio">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" @click="editModalSlug = '{{ $cSlug }}'; editModalTitle = '{{ addslashes($cTitulo) }}'; editModalAction = '{{ route('usuario.monitoreo.consultorio.renombrar', [$acta->id, $cSlug]) }}'; showEditModal = true;" 
+                                    class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-400 hover:text-emerald-600 flex items-center justify-center transition-colors" title="Renombrar Consultorio">
+                                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                             </button>
-                        </form>
+                            
+                            <form action="{{ route('usuario.monitoreo.consultorio.destroy', [$acta->id, $cSlug]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio de la lista?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors" title="Eliminar Consultorio">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
 
                     <div class="flex-1">
@@ -192,6 +203,47 @@
                     <button type="submit" 
                             class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs uppercase tracking-widest shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2">
                         <i data-lucide="check" class="w-4 h-4"></i> Crear e Iniciar Evaluación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- MODAL: EDITAR / RENOMBRAR CONSULTORIO --}}
+    <div x-show="showEditModal" 
+         x-cloak 
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div @click.away="showEditModal = false" 
+             class="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl border border-slate-100 transform transition-all">
+            
+            <div class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100">
+                <div class="h-12 w-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                    <i data-lucide="edit-3" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-black text-slate-900 uppercase">Renombrar Consultorio</h3>
+                    <p class="text-slate-400 font-bold text-xs">Modifique la denominación o título de este consultorio</p>
+                </div>
+            </div>
+
+            <form :action="editModalAction" method="POST" class="space-y-6">
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <label class="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Nombre del Consultorio / Módulo</label>
+                    <input type="text" name="nuevo_titulo" x-model="editModalTitle" required placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA, TRIAJE..." 
+                           class="w-full bg-slate-50 border-2 border-slate-200 focus:border-emerald-500 rounded-2xl p-4 font-bold text-slate-800 uppercase outline-none transition-all">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" @click="showEditModal = false" 
+                            class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-xl text-xs uppercase tracking-widest transition-all">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs uppercase tracking-widest shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> Guardar Nombre
                     </button>
                 </div>
             </form>

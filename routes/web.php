@@ -224,6 +224,7 @@ Route::middleware(['auth'])->group(function () {
 
             // RUTAS DINÁMICAS DE CONSULTORIOS / MÓDULOS
             Route::post('/{id}/crear-consultorio', [MonitoreoModuloGenericController::class, 'crearConsultorio'])->name('consultorio.crear');
+            Route::put('/{id}/consultorio/{slug}/renombrar', [MonitoreoModuloGenericController::class, 'renombrarConsultorio'])->name('consultorio.renombrar');
             Route::get('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'showConsultorio'])->name('consultorio.show');
             Route::post('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'storeConsultorio'])->name('consultorio.store');
             Route::get('/{id}/consultorio/{slug}/pdf', [MonitoreoModuloGenericController::class, 'pdfConsultorio'])->name('consultorio.pdf');

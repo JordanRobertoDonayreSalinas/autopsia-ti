@@ -39,13 +39,21 @@
                     $contenido = $detalle->contenido ?? [];
                 @endphp
 
-                <input type="hidden" name="contenido[titulo_consultorio]" value="{{ $tituloConsultorio ?? 'CONSULTORIO' }}">
-
                 {{-- 1.- DATOS GENERALES --}}
                 <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
                     <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
                         <span class="section-number bg-indigo-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-black text-sm">1</span>
-                        <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">DATOS GENERALES</h3>
+                        <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">DATOS GENERALES DEL CONSULTORIO / MÓDULO</h3>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Nombre o Denominación del Consultorio / Módulo
+                        </label>
+                        <input type="text" name="contenido[titulo_consultorio]" 
+                            value="{{ $contenido['titulo_consultorio'] ?? ($tituloConsultorio ?? 'CONSULTORIO') }}" required 
+                            placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA 01, TRIAJE..." 
+                            class="w-full bg-indigo-50/70 border-2 border-indigo-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-black text-indigo-900 text-base uppercase outline-none transition-all shadow-sm">
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-center">

@@ -49,6 +49,29 @@ class MonitoreoModuloGenericController extends Controller
     }
 
     /**
+     * Renombra un consultorio dinámico existente.
+     */
+    public function renombrarConsultorio(Request $request, $id, $slug)
+    {
+        $request->validate([
+            'nuevo_titulo' => 'required|string|max:150',
+        ]);
+
+        $nuevoTitulo = mb_strtoupper(trim($request->input('nuevo_titulo')));
+
+        $detalle = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+            ->where('modulo_nombre', $slug)
+            ->firstOrFail();
+
+        $contenido = $detalle->contenido ?? [];
+        $contenido['titulo_consultorio'] = $nuevoTitulo;
+
+        $detalle->update(['contenido' => $contenido]);
+
+        return redirect()->back()->with('success', "Nombre del consultorio actualizado a '{$nuevoTitulo}'.");
+    }
+
+    /**
      * Muestra el formulario de evaluación de un consultorio dinámico.
      */
     public function showConsultorio($id, $slug)
@@ -86,8 +109,10 @@ class MonitoreoModuloGenericController extends Controller
                 ->where('modulo_nombre', $slug)
                 ->firstOrFail();
 
-            // Preservar el título del consultorio
-            if (!isset($contenido['titulo_consultorio']) && isset($detalle->contenido['titulo_consultorio'])) {
+            // Preservar o actualizar el título del consultorio
+            if (!empty($contenido['titulo_consultorio'])) {
+                $contenido['titulo_consultorio'] = mb_strtoupper(trim($contenido['titulo_consultorio']));
+            } else if (isset($detalle->contenido['titulo_consultorio'])) {
                 $contenido['titulo_consultorio'] = $detalle->contenido['titulo_consultorio'];
             }
 
