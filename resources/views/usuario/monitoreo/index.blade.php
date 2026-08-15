@@ -150,6 +150,13 @@
                     </button>
                     @endif
 
+                    <button onclick="if(typeof window.descargarDatosCampoOffline==='function') window.descargarDatosCampoOffline();" type="button"
+                        class="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-400"
+                        title="Descargar catálogo de IPRESS en tu laptop para trabajo offline sin internet">
+                        <i data-lucide="download-cloud" class="w-5 h-5"></i>
+                        <span>Datos para Campo</span>
+                    </button>
+
                     <a href="{{ route('usuario.monitoreo.create') }}"
                         class="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg bg-white text-blue-700 hover:bg-blue-50 border border-transparent">
                         <i data-lucide="activity" class="w-5 h-5"></i>

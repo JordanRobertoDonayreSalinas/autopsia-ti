@@ -103,6 +103,7 @@
                     }
                 }
 
+                window.descargarDatosCampoOffline = () => this.downloadFieldData();
                 await this.checkPendingSync();
             },
 
@@ -118,12 +119,20 @@
                     return;
                 }
                 this.isDownloading = true;
+                Swal.fire({
+                    title: 'Descargando Datos para Campo',
+                    text: 'Guardando catálogo de IPRESS y estructura inicial en tu laptop...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
                 try {
                     const res = await fetch("{{ route('usuario.monitoreo.offline.descargar') }}");
                     const data = await res.json();
                     if (data.success && window.OfflineDB) {
                         await window.OfflineDB.guardarEstablecimientos(data.establecimientos);
-                        Swal.fire('¡Éxito!', `Se guardaron ${data.total} establecimientos en tu laptop para trabajo offline.`, 'success');
+                        Swal.fire('¡Datos de Campo Guardados!', `Se guardaron ${data.total} establecimientos en la memoria de tu laptop. Ya puedes trabajar 100% offline.`, 'success');
+                    } else {
+                        Swal.fire('Error', 'No se pudieron procesar los datos para el modo offline.', 'error');
                     }
                 } catch(e) {
                     Swal.fire('Error', 'No se pudieron descargar los datos para trabajo offline.', 'error');
