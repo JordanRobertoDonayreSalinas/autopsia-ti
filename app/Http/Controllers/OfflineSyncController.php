@@ -18,8 +18,7 @@ class OfflineSyncController extends Controller
     public function descargarDatosCampo()
     {
         try {
-            $establecimientos = Establecimiento::select('id', 'codigo_ipress', 'nombre', 'departamento', 'provincia', 'distrito', 'categoria')
-                ->where('estado', 'ACTIVO')
+            $establecimientos = Establecimiento::select('id', 'codigo', 'nombre', 'departamento', 'provincia', 'distrito', 'categoria', 'direccion')
                 ->get();
 
             return response()->json([

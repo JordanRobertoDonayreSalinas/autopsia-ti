@@ -19,7 +19,7 @@
                     // 1. Catálogo de Establecimientos (IPRESS)
                     if (!db.objectStoreNames.contains('establecimientos')) {
                         const estStore = db.createObjectStore('establecimientos', { keyPath: 'id' });
-                        estStore.createIndex('codigo_ipress', 'codigo_ipress', { unique: false });
+                        estStore.createIndex('codigo', 'codigo', { unique: false });
                         estStore.createIndex('departamento', 'departamento', { unique: false });
                     }
 
