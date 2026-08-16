@@ -513,9 +513,43 @@
             didOpen: () => { Swal.showLoading(); }
         });
 
-        setTimeout(() => {
-            let so = "Windows 10/11 64-bit";
+        // Función auxiliar que resuelve el SO y continúa con la detección
+        const detectarSO = async () => {
+            let so = "Windows 64-bit";
             const ua = navigator.userAgent;
+
+            // Intentar usar la API moderna userAgentData (Chrome/Edge) que sí distingue Win10 vs Win11
+            if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
+                try {
+                    const uaData = await navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'bitness']);
+                    const platform = uaData.platform || '';
+                    const platformVersion = uaData.platformVersion || '';
+                    const bitness = uaData.bitness === '64' ? '64-bit' : '32-bit';
+
+                    if (platform === 'Windows') {
+                        // En Windows 11 la major version de platformVersion es >= 13
+                        const majorVersion = parseInt(platformVersion.split('.')[0], 10);
+                        if (majorVersion >= 13) {
+                            so = `Windows 11 Pro ${bitness}`;
+                        } else if (majorVersion >= 1) {
+                            so = `Windows 10 Pro ${bitness}`;
+                        } else {
+                            so = `Windows ${bitness}`;
+                        }
+                    } else if (platform === 'macOS') {
+                        so = `macOS ${platformVersion}`;
+                    } else if (platform === 'Linux') {
+                        so = 'Linux / Ubuntu';
+                    } else {
+                        so = platform || so;
+                    }
+                    return so;
+                } catch (e) {
+                    // Si falla la API moderna, caer al User Agent
+                }
+            }
+
+            // Fallback: detección por User Agent (no distingue Win10 de Win11)
             if (ua.includes("Windows NT 10.0")) so = "Windows 10/11 64-bit";
             else if (ua.includes("Windows NT 6.3")) so = "Windows 8.1";
             else if (ua.includes("Windows NT 6.2")) so = "Windows 8";
@@ -524,6 +558,10 @@
             else if (ua.includes("Windows NT 5.1") || ua.includes("Windows XP")) so = "Windows XP";
             else if (ua.includes("Mac OS X")) so = "macOS";
             else if (ua.includes("Linux")) so = "Linux / Ubuntu";
+            return so;
+        };
+
+        detectarSO().then((so) => {
 
             const ramGB = navigator.deviceMemory || 8;
             const ramText = `${ramGB} GB RAM`;
@@ -583,7 +621,7 @@
 
             Swal.close();
             window.procesarDatosHardware(hw, modulo);
-        }, 600);
+        });
     };
 
     window.marcarEscanerDescargado = function(token, modulo) {
