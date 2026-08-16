@@ -277,6 +277,21 @@
     window.selectConectividad = selectConectividad;
     window.selectWifiFuente = selectWifiFuente;
 
+    // --- DETECCIÓN DE CAMBIO DE RED ---
+    // Rastrear cambios de red para invalidar datos ISP cacheados
+    let _redCambioDesdeUltimoTest = false;
+    if (navigator.connection) {
+        navigator.connection.addEventListener('change', () => {
+            _redCambioDesdeUltimoTest = true;
+            console.log('[SpeedTest] Cambio de red detectado:', navigator.connection.type, navigator.connection.effectiveType);
+        });
+    }
+    // También detectar reconexiones WiFi
+    window.addEventListener('online', () => {
+        _redCambioDesdeUltimoTest = true;
+        console.log('[SpeedTest] Reconexión de red detectada');
+    });
+
     // --- AUTODETECCION EN VIVO TIPO SPEEDTEST ---
     window.ejecutarSpeedtestEnVivo = function() {
         if (typeof Swal === 'undefined') {
@@ -289,6 +304,9 @@
         let finalDown = 0;
         let finalUp = 0;
         let detectedIsp = '';
+        // Si la red cambió desde el último test, NO confiar en el selector (puede ser del test anterior)
+        const operadorInicial = _redCambioDesdeUltimoTest ? '' : (document.getElementById('operador_servicio_select')?.value || '');
+        _redCambioDesdeUltimoTest = false; // Reiniciar para el siguiente test
 
         Swal.fire({
             title: '⚡ SPEEDTEST EN VIVO',
@@ -396,7 +414,7 @@
             try {
                 // ETAPA 0: Detección rápida de red del cliente (NetworkInfo & IP)
                 updateStatus('Etapa 1/4: Identificando Proveedor de Red...', 10);
-                detectedIsp = await detectClientISP();
+                detectedIsp = await detectClientISP(operadorInicial);
                 document.getElementById('st_val_isp').innerText = detectedIsp || 'DETECTADO';
 
                 if (testAborted) return;
@@ -447,36 +465,53 @@
             if (barEl) barEl.style.width = `${progressPercent}%`;
         }
 
-        // 1. Detectar ISP
-        async function detectClientISP() {
+        // 1. Detectar ISP - Intenta ambas APIs con cache-busting para evitar datos obsoletos
+        async function detectClientISP(operadorFallback) {
+            const cacheBust = `_t=${Date.now()}`;
+            let resultadoApi1 = null;
+
+            // --- Intento 1: ipapi.co ---
             try {
-                const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+                const response = await fetch(`https://ipapi.co/json/?${cacheBust}`, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
-                    const org = (data.org || data.asn || '').toUpperCase();
-                    return matchIspOption(org);
+                    const ispStr = (data.isp || data.org || data.asn || '').toUpperCase();
+                    console.log('[SpeedTest] ipapi.co respuesta:', { isp: data.isp, org: data.org, ip: data.ip });
+                    resultadoApi1 = matchIspOption(ispStr);
+                    if (resultadoApi1 !== 'OTROS') return resultadoApi1;
+                    // Si ipapi.co no reconoce el ISP, intentar con ip-api.com antes de caer al fallback
                 }
             } catch (e) {
-                // Fallback a ip-api
-                try {
-                    const resp2 = await fetch('http://ip-api.com/json/', { cache: 'no-store' });
-                    if (resp2.ok) {
-                        const d2 = await resp2.json();
-                        const org2 = (d2.isp || d2.org || '').toUpperCase();
-                        return matchIspOption(org2);
-                    }
-                } catch (e2) {}
+                console.warn('[SpeedTest] ipapi.co falló:', e.message);
             }
-            // Retorna operador actual seleccionado si no hay acceso a internet exterior
-            return document.getElementById('operador_servicio_select')?.value || 'WOW';
+
+            // --- Intento 2: ip-api.com (siempre se intenta si el primer resultado fue OTROS o falló) ---
+            try {
+                const resp2 = await fetch(`http://ip-api.com/json/?${cacheBust}`, { cache: 'no-store' });
+                if (resp2.ok) {
+                    const d2 = await resp2.json();
+                    const ispStr2 = (d2.isp || d2.org || '').toUpperCase();
+                    console.log('[SpeedTest] ip-api.com respuesta:', { isp: d2.isp, org: d2.org, query: d2.query });
+                    const matched2 = matchIspOption(ispStr2);
+                    if (matched2 !== 'OTROS') return matched2;
+                }
+            } catch (e2) {
+                console.warn('[SpeedTest] ip-api.com falló:', e2.message);
+            }
+
+            // Ambas APIs devolvieron OTROS o fallaron: usar fallback del operador seleccionado
+            console.log('[SpeedTest] ISP no reconocido por APIs. Fallback:', operadorFallback || 'OTROS');
+            return operadorFallback || 'OTROS';
         }
 
         function matchIspOption(ispName) {
-            if (ispName.includes('WOW') || ispName.includes('WOWTEL')) return 'WOW';
+            // WOW: razón social = "Desarrollo De Infraestructura De Telecomunicaciones Peru S.A.C."
+            if (ispName.includes('WOW') || ispName.includes('DESARROLLO DE INFRAESTRUCTURA DE TELECOMUNICACIONES')) return 'WOW';
             if (ispName.includes('TELEFONICA') || ispName.includes('MOVISTAR') || ispName.includes('TDF')) return 'MOVISTAR';
             if (ispName.includes('CLARO') || ispName.includes('AMERICA MOVIL')) return 'CLARO';
-            if (ispName.includes('WIN') || ispName.includes('OPTICAL')) return 'WIN';
-            if (ispName.includes('ENTEL') || ispName.includes('AMERICA MOVIL')) return 'ENTEL';
+            // WIN: verificar antes de ENTEL para evitar falsos positivos
+            if (ispName.includes('OPTICAL TECHNOLOGIES') || ispName.includes('OPTIKA') || (ispName.includes('WIN') && !ispName.includes('ENTEL'))) return 'WIN';
+            if (ispName.includes('ENTEL')) return 'ENTEL';
             if (ispName.includes('BITEL') || ispName.includes('VIETTEL')) return 'BITEL';
             if (ispName.includes('FIBERPRO')) return 'FIBERPRO';
             if (ispName.includes('NUBYX')) return 'NUBYX';
@@ -488,100 +523,207 @@
             return 'OTROS';
         }
 
-        // 2. Medir Ping (Latencia)
+        // 2. Medir Ping (Latencia) real a CDN de alta velocidad
         async function measurePing() {
             const pings = [];
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 4; i++) {
                 if (testAborted) break;
                 const start = performance.now();
                 try {
-                    await fetch(`{{ url('/api/speedtest/ping') }}?t=${Date.now()}_${i}`, { cache: 'no-store' });
+                    // Endpoint ultra-liviano de Cloudflare para medir latencia de red real
+                    await fetch(`https://speed.cloudflare.com/__down?bytes=0&_t=${Date.now()}_${i}`, { cache: 'no-store' });
                     const rtt = performance.now() - start;
                     pings.push(rtt);
                 } catch (e) {
-                    pings.push(25);
+                    try {
+                        const startLocal = performance.now();
+                        await fetch(`{{ url('/api/speedtest/ping') }}?t=${Date.now()}_${i}`, { cache: 'no-store' });
+                        pings.push(performance.now() - startLocal);
+                    } catch (errLocal) {
+                        pings.push(20);
+                    }
                 }
             }
-            return pings.length > 0 ? (pings.reduce((a, b) => a + b, 0) / pings.length) : 20;
+            if (pings.length === 0) return 20;
+            // Tomar el menor RTT o promedio de los mejores para eliminar jitter de inicio
+            pings.sort((a, b) => a - b);
+            return pings[0];
         }
 
-        // 3. Medir Descarga (Download Mbps)
+        // 3. Medir Descarga (Download Mbps) con Streaming Continuo y Ventana Deslizante (Arquitectura Speedtest/Fast.com)
         async function measureDownloadSpeed() {
             const displayEl = document.getElementById('st_speed_display');
             const unitEl = document.getElementById('st_unit_display');
             if (unitEl) unitEl.innerText = 'Mbps Descarga';
 
-            let totalBytes = 0;
-            let totalTimeSec = 0;
-            const samples = [];
+            let totalLoadedBytes = 0;
+            const testDurationMs = 3500; // 3.5 segundos de descarga continua sostenida
+            const startTime = performance.now();
+            let isRunning = true;
+            const snapshots = [];
 
-            // Ráfaga 1: 1MB y Ráfaga 2: 2.5MB
-            const testSizes = [1, 2.5, 3.5];
-
-            for (const sz of testSizes) {
-                if (testAborted) break;
-                const start = performance.now();
-                try {
-                    const res = await fetch(`{{ url('/api/speedtest/download') }}?size=${sz}&t=${Date.now()}`, { cache: 'no-store' });
-                    const blob = await res.blob();
-                    const durationSec = (performance.now() - start) / 1000;
-                    const bytes = blob.size;
-
-                    if (durationSec > 0) {
-                        const mbps = (bytes * 8) / (durationSec * 1000000);
-                        samples.push(mbps);
-                        if (displayEl) displayEl.innerText = mbps.toFixed(2);
+            // Muestreo cada 100ms
+            const interval = setInterval(() => {
+                const elapsed = (performance.now() - startTime) / 1000;
+                // Descartar primeros 500ms (Handshake TLS + TCP Slow Start)
+                if (elapsed > 0.5) {
+                    snapshots.push({
+                        time: performance.now(),
+                        bytes: totalLoadedBytes
+                    });
+                    if (snapshots.length >= 3) {
+                        const past = snapshots[Math.max(0, snapshots.length - 6)];
+                        const dt = (performance.now() - past.time) / 1000;
+                        const db = totalLoadedBytes - past.bytes;
+                        if (dt > 0.1) {
+                            const currentMbps = (db * 8) / (dt * 1000000);
+                            if (displayEl) displayEl.innerText = currentMbps.toFixed(2);
+                        }
                     }
-                } catch (e) {
-                    console.warn("Descarga local fallback:", e);
+                }
+            }, 100);
+
+            const runWorker = async () => {
+                while (isRunning && !testAborted && (performance.now() - startTime < testDurationMs)) {
+                    try {
+                        const res = await fetch(`https://speed.cloudflare.com/__down?bytes=25000000&_t=${Date.now()}_${Math.random()}`, { cache: 'no-store' });
+                        if (!res.ok || !res.body) break;
+                        const reader = res.body.getReader();
+                        while (isRunning && !testAborted && (performance.now() - startTime < testDurationMs)) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            if (value) {
+                                totalLoadedBytes += value.length;
+                            }
+                        }
+                        reader.cancel().catch(() => {});
+                    } catch (e) {
+                        break;
+                    }
+                }
+            };
+
+            // 6 streams concurrentes paralelos para saturar fibra óptica
+            await Promise.all([
+                runWorker(),
+                runWorker(),
+                runWorker(),
+                runWorker(),
+                runWorker(),
+                runWorker()
+            ]);
+
+            isRunning = false;
+            clearInterval(interval);
+
+            // Calcular velocidad pico sostenida (usando la mejor ventana deslizante)
+            let peakMbps = 0;
+            if (snapshots.length >= 5) {
+                for (let i = 3; i < snapshots.length; i++) {
+                    const startSnap = snapshots[Math.max(0, i - 6)];
+                    const endSnap = snapshots[i];
+                    const dt = (endSnap.time - startSnap.time) / 1000;
+                    const db = endSnap.bytes - startSnap.bytes;
+                    if (dt > 0.25) {
+                        const rate = (db * 8) / (dt * 1000000);
+                        if (rate > peakMbps) peakMbps = rate;
+                    }
                 }
             }
 
-            if (samples.length === 0) return 30.5; // Fallback seguro si offline
-            // Promedio ponderado dando más peso a las ráfagas finales sostenidas
-            const maxMbps = Math.max(...samples);
-            const avgMbps = samples.reduce((a, b) => a + b, 0) / samples.length;
-            return (maxMbps * 0.7 + avgMbps * 0.3);
+            if (peakMbps <= 0) {
+                const totalElapsed = (performance.now() - startTime) / 1000;
+                peakMbps = totalElapsed > 0 ? (totalLoadedBytes * 8) / (totalElapsed * 1000000) : 45;
+            }
+
+            if (displayEl) displayEl.innerText = peakMbps.toFixed(2);
+            return peakMbps;
         }
 
-        // 4. Medir Subida (Upload Mbps)
+        // 4. Medir Subida (Upload Mbps) con Streaming Continuo y Ventana Deslizante (Arquitectura Speedtest/Fast.com)
         async function measureUploadSpeed() {
             const displayEl = document.getElementById('st_speed_display');
             const unitEl = document.getElementById('st_unit_display');
             if (unitEl) unitEl.innerText = 'Mbps Subida';
 
-            const samples = [];
-            // Generar payload binario de 1MB y 2MB
-            const sizes = [1024 * 1024, 2 * 1024 * 1024];
+            let totalUploadedBytes = 0;
+            const testDurationMs = 3500; // 3.5 segundos de subida continua sostenida
+            const startTime = performance.now();
+            let isRunning = true;
+            const snapshots = [];
 
-            for (const bytesSize of sizes) {
-                if (testAborted) break;
-                const dummyData = new Uint8Array(bytesSize);
-                const start = performance.now();
-
-                try {
-                    const res = await fetch(`{{ url('/api/speedtest/upload') }}?t=${Date.now()}`, {
-                        method: 'POST',
-                        body: dummyData,
-                        headers: { 'Content-Type': 'application/octet-stream' }
+            const interval = setInterval(() => {
+                const elapsed = (performance.now() - startTime) / 1000;
+                if (elapsed > 0.5) {
+                    snapshots.push({
+                        time: performance.now(),
+                        bytes: totalUploadedBytes
                     });
-                    await res.json();
-                    const durationSec = (performance.now() - start) / 1000;
-
-                    if (durationSec > 0) {
-                        const mbps = (bytesSize * 8) / (durationSec * 1000000);
-                        samples.push(mbps);
-                        if (displayEl) displayEl.innerText = mbps.toFixed(2);
+                    if (snapshots.length >= 3) {
+                        const past = snapshots[Math.max(0, snapshots.length - 6)];
+                        const dt = (performance.now() - past.time) / 1000;
+                        const db = totalUploadedBytes - past.bytes;
+                        if (dt > 0.1) {
+                            const currentMbps = (db * 8) / (dt * 1000000);
+                            if (displayEl) displayEl.innerText = currentMbps.toFixed(2);
+                        }
                     }
-                } catch (e) {
-                    console.warn("Subida local fallback:", e);
+                }
+            }, 100);
+
+            const chunkData = new Uint8Array(2 * 1024 * 1024); // 2MB chunk
+
+            const runUploadWorker = async () => {
+                while (isRunning && !testAborted && (performance.now() - startTime < testDurationMs)) {
+                    try {
+                        const res = await fetch(`https://speed.cloudflare.com/__up?_t=${Date.now()}_${Math.random()}`, {
+                            method: 'POST',
+                            body: chunkData,
+                            headers: { 'Content-Type': 'application/octet-stream' }
+                        });
+                        if (res.ok) {
+                            totalUploadedBytes += chunkData.length;
+                        }
+                    } catch (e) {
+                        break;
+                    }
+                }
+            };
+
+            // 6 streams concurrentes paralelos de subida
+            await Promise.all([
+                runUploadWorker(),
+                runUploadWorker(),
+                runUploadWorker(),
+                runUploadWorker(),
+                runUploadWorker(),
+                runUploadWorker()
+            ]);
+
+            isRunning = false;
+            clearInterval(interval);
+
+            let peakMbps = 0;
+            if (snapshots.length >= 5) {
+                for (let i = 3; i < snapshots.length; i++) {
+                    const startSnap = snapshots[Math.max(0, i - 6)];
+                    const endSnap = snapshots[i];
+                    const dt = (endSnap.time - startSnap.time) / 1000;
+                    const db = endSnap.bytes - startSnap.bytes;
+                    if (dt > 0.25) {
+                        const rate = (db * 8) / (dt * 1000000);
+                        if (rate > peakMbps) peakMbps = rate;
+                    }
                 }
             }
 
-            if (samples.length === 0) return 20.2;
-            const maxMbps = Math.max(...samples);
-            const avgMbps = samples.reduce((a, b) => a + b, 0) / samples.length;
-            return (maxMbps * 0.7 + avgMbps * 0.3);
+            if (peakMbps <= 0) {
+                const totalElapsed = (performance.now() - startTime) / 1000;
+                peakMbps = totalElapsed > 0 ? (totalUploadedBytes * 8) / (totalElapsed * 1000000) : 30;
+            }
+
+            if (displayEl) displayEl.innerText = peakMbps.toFixed(2);
+            return peakMbps;
         }
     };
 
