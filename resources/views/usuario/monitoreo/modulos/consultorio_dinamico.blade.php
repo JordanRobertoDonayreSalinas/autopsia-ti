@@ -80,6 +80,61 @@
                                 class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm outline-none text-indigo-700 focus:border-indigo-500 transition-all">
                         </div>
                     </div>
+
+                    {{-- INSTALACIONES Y SERVICIOS BÁSICOS DEL CONSULTORIO --}}
+                    <div class="mt-6 pt-6 border-t border-slate-100">
+                        <label class="block text-indigo-900 text-[11px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i data-lucide="building-2" class="w-4 h-4 text-indigo-600"></i> Habilitación e Instalaciones del Consultorio
+                        </label>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            {{-- PREGUNTA 1: ELECTRICIDAD --}}
+                            <div class="bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 hover:border-indigo-200 transition-all">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                        <i data-lucide="zap" class="w-4 h-4"></i>
+                                    </div>
+                                    <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                        ¿El consultorio cuenta con electricidad?
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    @php $electricidad = strtoupper($contenido['cuenta_electricidad'] ?? 'SI'); @endphp
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_electricidad]" value="SI" {{ $electricidad === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> SÍ</span>
+                                    </label>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_electricidad]" value="NO" {{ $electricidad === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-600"></i> NO</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- PREGUNTA 2: PUNTO DE RED --}}
+                            <div class="bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 hover:border-indigo-200 transition-all">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <div class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center">
+                                        <i data-lucide="network" class="w-4 h-4"></i>
+                                    </div>
+                                    <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                        ¿El consultorio cuenta con punto de red?
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    @php $puntoRed = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); @endphp
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> SÍ</span>
+                                    </label>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-600"></i> NO</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
 

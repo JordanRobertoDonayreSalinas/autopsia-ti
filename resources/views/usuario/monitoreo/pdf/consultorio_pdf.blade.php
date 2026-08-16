@@ -301,6 +301,29 @@
                 </td>
             </tr>
         </table>
+
+        <table class="form-grid" style="margin-top: 8px;">
+            <tr>
+                <td style="width: 50%;">
+                    @php $elec = strtoupper($contenido['cuenta_electricidad'] ?? 'SI'); @endphp
+                    <div class="field-box" style="{{ $elec === 'SI' ? 'border-color: #10b981; background: #ecfdf5;' : 'border-color: #f43f5e; background: #fff1f2;' }}">
+                        <span class="field-label" style="{{ $elec === 'SI' ? 'color: #059669;' : 'color: #e11d48;' }}">¿Cuenta con Electricidad?</span>
+                        <span class="field-value" style="{{ $elec === 'SI' ? 'color: #065f46;' : 'color: #9f1239;' }} font-size: 9px; font-weight: 900;">
+                            {{ $elec === 'SI' ? '✓ SÍ (CUENTA CON ELECTRICIDAD)' : '✗ NO CUENTA CON ELECTRICIDAD' }}
+                        </span>
+                    </div>
+                </td>
+                <td style="width: 50%;">
+                    @php $pred = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); @endphp
+                    <div class="field-box" style="{{ $pred === 'SI' ? 'border-color: #10b981; background: #ecfdf5;' : 'border-color: #f43f5e; background: #fff1f2;' }}">
+                        <span class="field-label" style="{{ $pred === 'SI' ? 'color: #059669;' : 'color: #e11d48;' }}">¿Cuenta con Punto de Red?</span>
+                        <span class="field-value" style="{{ $pred === 'SI' ? 'color: #065f46;' : 'color: #9f1239;' }} font-size: 9px; font-weight: 900;">
+                            {{ $pred === 'SI' ? '✓ SÍ (PUNTO DE RED HABILITADO)' : '✗ NO CUENTA CON PUNTO DE RED' }}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
