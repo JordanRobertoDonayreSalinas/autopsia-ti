@@ -1,8 +1,8 @@
-const CACHE_NAME = 'autopsia-ti-pwa-v4';
+const CACHE_NAME = 'autopsia-ti-pwa-v5';
 const STATIC_ASSETS = [
   '/',
   '/usuario/monitoreo',
-  '/usuario/monitoreo/create',
+  '/usuario/monitoreo/crear-acta',
   '/favicon.png',
   '/favicon.ico',
   '/js/offline-db.js',
@@ -19,7 +19,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching static assets v4');
+      console.log('[Service Worker] Caching static assets v5');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[Service Worker] Precache warning:', err);
       });
@@ -79,7 +79,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(req).then(async (cached) => {
         if (cached) return cached;
         // Fallback garantizado para cualquier ruta de monitoreo/consultorio
-        const fallbackPage = await caches.match('/usuario/monitoreo') || await caches.match('/usuario/monitoreo/create') || await caches.match('/');
+        const fallbackPage = await caches.match('/usuario/monitoreo/crear-acta') || await caches.match('/usuario/monitoreo') || await caches.match('/');
         if (fallbackPage) return fallbackPage;
         return new Response('<h3 style="font-family:sans-serif;padding:20px;text-align:center;">Modo Campo Offline: Vuelva a la pantalla principal de Monitoreo para continuar evaluando.</h3>', {
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -106,7 +106,7 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
 
-        const fallbackPage = await caches.match('/usuario/monitoreo') || await caches.match('/usuario/monitoreo/create') || await caches.match('/');
+        const fallbackPage = await caches.match('/usuario/monitoreo/crear-acta') || await caches.match('/usuario/monitoreo') || await caches.match('/');
         if (fallbackPage) return fallbackPage;
         return new Response('<h3 style="font-family:sans-serif;padding:20px;text-align:center;">Modo Campo Offline: Vuelva a la pantalla principal de Monitoreo para continuar evaluando.</h3>', {
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
