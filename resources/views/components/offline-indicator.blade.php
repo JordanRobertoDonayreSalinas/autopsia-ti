@@ -73,14 +73,20 @@
                         <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
                     </a>
 
-                    <a href="{{ asset('apps/autopsia_ti_android.apk') }}" download="AutopsiaTI.apk" 
+                    <button type="button" @click="Swal.fire({
+                        title: 'Instalar App en Android',
+                        html: '<div class=\'text-left text-xs space-y-3 font-medium text-slate-600\'><p>Para instalar en cualquier celular o tablet Android sin errores:</p><ol class=\'list-decimal pl-4 space-y-1.5 font-bold text-slate-800\'><li>Abre este sistema en <b>Google Chrome</b> desde tu celular.</li><li>Toca el menú de 3 puntos (<b>⋮</b>) en la esquina superior derecha.</li><li>Selecciona <b>Instalar aplicación</b> o <b>Agregar a pantalla de inicio</b>.</li></ol><p class=\'text-[10px] text-emerald-600 font-bold mt-2\'>¡Listo! Se creará la app nativa con el icono de Autopsia TI y funcionará 100% offline.</p></div>',
+                        icon: 'info',
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#10b981'
+                    })" 
                        class="w-full py-2.5 px-3.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold text-[11px] rounded-xl flex items-center justify-between transition-all">
                         <span class="flex items-center gap-2">
                             <i data-lucide="smartphone" class="w-4 h-4 text-emerald-600"></i>
-                            <span>App Android (.APK)</span>
+                            <span>Instalar App Android (PWA)</span>
                         </span>
-                        <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
-                    </a>
+                        <i data-lucide="help-circle" class="w-3.5 h-3.5 text-emerald-500"></i>
+                    </button>
                 </div>
 
                 <template x-if="pendingCount > 0">
