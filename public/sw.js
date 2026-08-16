@@ -1,4 +1,4 @@
-const CACHE_NAME = 'autopsia-ti-pwa-v3';
+const CACHE_NAME = 'autopsia-ti-pwa-v4';
 const STATIC_ASSETS = [
   '/',
   '/usuario/monitoreo',
@@ -19,7 +19,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching static assets');
+      console.log('[Service Worker] Caching static assets v4');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[Service Worker] Precache warning:', err);
       });
@@ -76,11 +76,14 @@ self.addEventListener('fetch', (event) => {
   // Si el dispositivo está sin internet o con datos apagados, buscar DIRECTO en cache sin esperar
   if (!navigator.onLine) {
     event.respondWith(
-      caches.match(req).then((cached) => {
+      caches.match(req).then(async (cached) => {
         if (cached) return cached;
-        if (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) {
-          return caches.match('/usuario/monitoreo/create') || caches.match('/usuario/monitoreo') || caches.match('/');
-        }
+        // Fallback garantizado para cualquier ruta de monitoreo/consultorio
+        const fallbackPage = await caches.match('/usuario/monitoreo') || await caches.match('/usuario/monitoreo/create') || await caches.match('/');
+        if (fallbackPage) return fallbackPage;
+        return new Response('<h3 style="font-family:sans-serif;padding:20px;text-align:center;">Modo Campo Offline: Vuelva a la pantalla principal de Monitoreo para continuar evaluando.</h3>', {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
       })
     );
     return;
@@ -103,9 +106,11 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
 
-        if (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) {
-          return caches.match('/usuario/monitoreo/create') || caches.match('/usuario/monitoreo') || caches.match('/');
-        }
+        const fallbackPage = await caches.match('/usuario/monitoreo') || await caches.match('/usuario/monitoreo/create') || await caches.match('/');
+        if (fallbackPage) return fallbackPage;
+        return new Response('<h3 style="font-family:sans-serif;padding:20px;text-align:center;">Modo Campo Offline: Vuelva a la pantalla principal de Monitoreo para continuar evaluando.</h3>', {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
       })
   );
 });
