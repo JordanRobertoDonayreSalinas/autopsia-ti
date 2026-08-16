@@ -589,9 +589,12 @@ class MonitoreoController extends Controller
             ];
 
             $consultoriosDinamicos = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
-                ->where('modulo_nombre', '!=', 'infraestructura_2d')
-                ->where('modulo_nombre', '!=', 'config_modulos')
+                ->whereNotIn('modulo_nombre', ['infraestructura_2d', 'rrhh', 'config_modulos'])
                 ->get();
+
+            $moduloRrhh = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+                ->where('modulo_nombre', 'rrhh')
+                ->first();
 
             return view('usuario.monitoreo.modulos', compact(
                 'acta',
@@ -599,7 +602,8 @@ class MonitoreoController extends Controller
                 'modulosGuardados',
                 'modulosActivos',
                 'modulosFirmados',
-                'consultoriosDinamicos'
+                'consultoriosDinamicos',
+                'moduloRrhh'
             ));
         }
     }

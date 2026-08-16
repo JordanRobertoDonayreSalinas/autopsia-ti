@@ -25,6 +25,7 @@ use App\Http\Controllers\CronogramaActividadesController;
 use App\Http\Controllers\Infraestructura2DController;
 use App\Http\Controllers\Infraestructura2DPdfController;
 use App\Http\Controllers\MonitoreoModuloGenericController;
+use App\Http\Controllers\RecursosHumanosController;
 use App\Http\Controllers\SignatureBankController;
 use App\Http\Controllers\ReunionController;
 use App\Http\Controllers\DnieVerificadorController;
@@ -221,6 +222,13 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('/{id}/sync-data', [Infraestructura2DController::class, 'getSyncData'])->name('sync-data');
                 Route::post('/{id}', [Infraestructura2DController::class, 'store'])->name('store');
                 Route::get('/{id}/pdf', [Infraestructura2DPdfController::class, 'generar'])->name('pdf');
+            });
+
+            // Módulo Fijo: Recursos Humanos (RR.HH)
+            Route::prefix('modulo/rrhh')->name('rrhh.')->group(function () {
+                Route::get('/{id}', [RecursosHumanosController::class, 'index'])->name('index');
+                Route::post('/{id}', [RecursosHumanosController::class, 'store'])->name('store');
+                Route::get('/{id}/pdf', [RecursosHumanosController::class, 'pdf'])->name('pdf');
             });
 
             // RUTAS DINÁMICAS DE CONSULTORIOS / MÓDULOS

@@ -100,6 +100,47 @@
                 </div>
             </div>
 
+            {{-- 2. MÓDULO FIJO: RR.HH (RECURSOS HUMANOS) --}}
+            @php
+                $rrhhContent = isset($moduloRrhh->contenido) ? (is_array($moduloRrhh->contenido) ? $moduloRrhh->contenido : json_decode($moduloRrhh->contenido, true)) : [];
+                $totalTrabajadoresRrhh = count($rrhhContent['trabajadores'] ?? []);
+            @endphp
+            <div class="relative bg-white rounded-[2.5rem] border-2 border-violet-200 shadow-xl transition-all duration-500 group overflow-hidden flex flex-col hover:border-violet-400">
+                <div class="p-6 pb-0 flex justify-between items-start z-10">
+                    <div class="h-14 w-14 rounded-2xl bg-violet-600 flex items-center justify-center text-white shadow-lg">
+                        <i data-lucide="users-round" class="w-7 h-7"></i>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if($totalTrabajadoresRrhh > 0)
+                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-black text-[9px] rounded-lg uppercase tracking-widest flex items-center gap-1">
+                                <i data-lucide="check" class="w-3 h-3"></i> {{ $totalTrabajadoresRrhh }} Registrados
+                            </span>
+                        @endif
+                        <span class="px-3 py-1 bg-violet-100 text-violet-700 font-black text-[9px] rounded-lg uppercase tracking-widest">
+                            Módulo Fijo
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex-1">
+                    <a href="{{ route('usuario.monitoreo.rrhh.index', $acta->id) }}" class="block p-6 group/link">
+                        <h3 class="text-slate-800 text-sm font-black uppercase tracking-tight leading-tight mb-2 group-hover/link:text-violet-600 transition-colors">
+                            RR.HH (Recursos Humanos)
+                        </h3>
+                        <span class="text-[9px] font-black uppercase tracking-widest text-violet-500 flex items-center gap-1">
+                            <i data-lucide="id-card" class="w-3.5 h-3.5"></i> Padrón de Personal por Servicio
+                        </span>
+                    </a>
+                </div>
+
+                <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
+                    <a href="{{ route('usuario.monitoreo.rrhh.pdf', $acta->id) }}" target="_blank" 
+                       class="flex-1 h-10 bg-white text-violet-600 border border-violet-200 rounded-xl flex items-center justify-center gap-2 hover:bg-violet-600 hover:text-white transition-all shadow-sm font-black text-[10px] uppercase">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Generar Reporte RR.HH
+                    </a>
+                </div>
+            </div>
+
             {{-- 2. TARJETA PARA AÑADIR NUEVO CONSULTORIO --}}
             <div @click="showNewModal = true" 
                  class="cursor-pointer bg-dashed border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50 rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center transition-all group min-h-[220px]">
