@@ -1,7 +1,8 @@
-const CACHE_NAME = 'autopsia-ti-pwa-v1';
+const CACHE_NAME = 'autopsia-ti-pwa-v3';
 const STATIC_ASSETS = [
   '/',
   '/usuario/monitoreo',
+  '/usuario/monitoreo/create',
   '/favicon.png',
   '/favicon.ico',
   '/js/offline-db.js',
@@ -44,17 +45,49 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Interceptar peticiones con estrategia Network First, fallback a Cache
+// Fetch con timeout rapido (1500ms) para evitar congelamientos en redes moviles sin datos
+function fetchWithTimeout(request, timeout = 1500) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Network timeout - switching to offline cache'));
+    }, timeout);
+
+    fetch(request).then(
+      (response) => {
+        clearTimeout(timer);
+        resolve(response);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+// Interceptador de peticiones con estrategia Cache First / Network Fallback ultra-rapido
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   
-  // No cachear peticiones POST ni peticiones de login/logout
   if (req.method !== 'GET' || req.url.includes('/login') || req.url.includes('/logout')) {
     return;
   }
 
+  // Si el dispositivo está sin internet o con datos apagados, buscar DIRECTO en cache sin esperar
+  if (!navigator.onLine) {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached;
+        if (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) {
+          return caches.match('/usuario/monitoreo/create') || caches.match('/usuario/monitoreo') || caches.match('/');
+        }
+      })
+    );
+    return;
+  }
+
   event.respondWith(
-    fetch(req)
+    fetchWithTimeout(req, 1500)
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const resClone = networkResponse.clone();
@@ -70,9 +103,8 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
 
-        // Si es navegación HTML, devolver la página de monitoreo cacheada
         if (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) {
-          return caches.match('/usuario/monitoreo') || caches.match('/');
+          return caches.match('/usuario/monitoreo/create') || caches.match('/usuario/monitoreo') || caches.match('/');
         }
       })
   );

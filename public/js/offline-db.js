@@ -74,6 +74,19 @@
             });
         },
 
+        // --- BUSCAR ESTABLECIMIENTO LOCAL PARA AUTOCOMPLETE OFFLINE ---
+        async buscarEstablecimientos(term) {
+            const lista = await this.obtenerEstablecimientos();
+            if (!term) return lista.slice(0, 10);
+            const q = term.toLowerCase().trim();
+            return lista.filter(item => {
+                const cod = (item.codigo || '').toLowerCase();
+                const nom = (item.nombre || '').toLowerCase();
+                const dist = (item.distrito || '').toLowerCase();
+                return cod.includes(q) || nom.includes(q) || dist.includes(q);
+            }).slice(0, 15);
+        },
+
         // --- GUARDAR ACTA OFFLINE ---
         async guardarActaOffline(actaData) {
             const db = await openDB();

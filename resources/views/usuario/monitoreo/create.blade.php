@@ -511,10 +511,29 @@
                 $(`#remove_${id}`).addClass('hidden');
             };
 
-            // 2. Autocomplete Establecimiento
+            // 2. Autocomplete Establecimiento con soporte Offline
             $("#establecimiento_search").autocomplete({
                 minLength: 2,
-                source: "{{ route('establecimientos.buscar') }}",
+                source: function(request, response) {
+                    if (!navigator.onLine && window.OfflineDB) {
+                        window.OfflineDB.buscarEstablecimientos(request.term).then(data => {
+                            const formatted = data.map(item => ({
+                                id: item.id,
+                                value: (item.codigo ? item.codigo + ' - ' : '') + item.nombre,
+                                label: (item.codigo ? item.codigo + ' - ' : '') + item.nombre + ' (' + (item.distrito || '') + ')',
+                                distrito: item.distrito,
+                                provincia: item.provincia,
+                                categoria: item.categoria,
+                                red: item.red || '—',
+                                microred: item.microred || '—',
+                                responsable: item.responsable || ''
+                            }));
+                            response(formatted);
+                        });
+                    } else {
+                        $.getJSON("{{ route('establecimientos.buscar') }}", { term: request.term }, response);
+                    }
+                },
                 select: function(e, ui) {
                     $("#establecimiento_id").val(ui.item.id);
                     $("#distrito").val(ui.item.distrito || '—');
@@ -617,7 +636,7 @@
                 lucide.createIcons();
             }
 
-            // 4. SUBMIT
+            // 4. SUBMIT CON MOTOR HÍBRIDO OFFLINE / ONLINE
             $('#monitoreoForm').on('submit', function(e) {
                 e.preventDefault();
 
@@ -642,17 +661,34 @@
                     "{{ Auth::user()->apellido_paterno }} {{ Auth::user()->apellido_materno }} {{ Auth::user()->name }}"
                     .toUpperCase());
 
+                const isOffline = !navigator.onLine;
+
                 Swal.fire({
-                    title: '¿Guardar Acta?',
-                    text: "Se registrará el acta inicial y podrá comenzar con los módulos.",
-                    icon: 'question',
+                    title: isOffline ? '¿Guardar Acta Offline?' : '¿Guardar Acta?',
+                    text: isOffline 
+                        ? "Se guardará en la memoria local de tu dispositivo y se sincronizará cuando vuelvas a tener internet."
+                        : "Se registrará el acta inicial y podrá comenzar con los módulos.",
+                    icon: isOffline ? 'info' : 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, Guardar',
+                    confirmButtonText: isOffline ? 'Sí, Guardar Localmente' : 'Sí, Guardar',
                     confirmButtonColor: '#4f46e5',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        document.getElementById('monitoreoForm').submit();
+                        if (isOffline && window.OfflineDB) {
+                            const actaData = {
+                                establecimiento_id: $('#establecimiento_id').val(),
+                                establecimiento_nombre: $('#establecimiento_search').val(),
+                                fecha: new Date().toISOString().split('T')[0]
+                            };
+                            window.OfflineDB.guardarActaOffline(actaData).then((offlineId) => {
+                                Swal.fire('¡Acta Guardada Offline!', 'Se guardó en la memoria de tu teléfono. Podrás sincronizarla cuando te conectes a internet.', 'success').then(() => {
+                                    window.location.href = "{{ route('usuario.monitoreo.index') }}";
+                                });
+                            });
+                        } else {
+                            document.getElementById('monitoreoForm').submit();
+                        }
                     } else {
                         $('#componente_busqueda input, #componente_busqueda select').prop(
                             'disabled', false);
