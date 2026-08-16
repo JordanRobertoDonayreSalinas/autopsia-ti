@@ -61,42 +61,7 @@
                     <p class="text-[9px] text-slate-400 font-medium px-1">Guarda el catálogo de IPRESS en tu laptop antes de viajar a zonas sin señal.</p>
                 </div>
 
-                <div class="pt-3 border-t border-slate-100 space-y-2">
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 block px-1">Descargar Aplicaciones Instalables</span>
-                    
-                    <a href="{{ asset('apps/instalar_app_windows.bat') }}" download="Instalar_AutopsiaTI_Windows.bat" 
-                       class="w-full py-2.5 px-3.5 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-[11px] rounded-xl flex items-center justify-between transition-all">
-                        <span class="flex items-center gap-2">
-                            <i data-lucide="laptop" class="w-4 h-4 text-indigo-600"></i>
-                            <span>App Windows (.EXE / .BAT)</span>
-                        </span>
-                        <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
-                    </a>
 
-                    <a href="{{ asset('apps/autopsia_ti_android.apk') }}" download="AutopsiaTI.apk" 
-                       class="w-full py-2.5 px-3.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold text-[11px] rounded-xl flex items-center justify-between transition-all">
-                        <span class="flex items-center gap-2">
-                            <i data-lucide="smartphone" class="w-4 h-4 text-emerald-600"></i>
-                            <span>Descargar APK Android (.APK)</span>
-                        </span>
-                        <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
-                    </a>
-
-                    <button type="button" @click="Swal.fire({
-                        title: 'Instalar App en Android',
-                        html: '<div class=\'text-left text-xs space-y-3 font-medium text-slate-600\'><p>Para instalar en cualquier celular o tablet Android sin errores:</p><ol class=\'list-decimal pl-4 space-y-1.5 font-bold text-slate-800\'><li>Abre este sistema en <b>Google Chrome</b> desde tu celular.</li><li>Toca el menú de 3 puntos (<b>⋮</b>) en la esquina superior derecha.</li><li>Selecciona <b>Instalar aplicación</b> o <b>Agregar a pantalla de inicio</b>.</li></ol><p class=\'text-[10px] text-emerald-600 font-bold mt-2\'>¡Listo! Se creará la app nativa con el icono de Autopsia TI y funcionará 100% offline.</p></div>',
-                        icon: 'info',
-                        confirmButtonText: 'Entendido',
-                        confirmButtonColor: '#10b981'
-                    })" 
-                       class="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-xl flex items-center justify-between transition-all border border-emerald-200">
-                        <span class="flex items-center gap-1.5">
-                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-600"></i>
-                            <span>Instalar PWA en 1 Clic desde Chrome</span>
-                        </span>
-                        <i data-lucide="help-circle" class="w-3.5 h-3.5 text-emerald-500"></i>
-                    </button>
-                </div>
 
                 <template x-if="pendingCount > 0">
                     <div class="pt-2 border-t border-slate-100">
