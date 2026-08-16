@@ -1,4 +1,4 @@
-const CACHE_NAME = 'autopsia-ti-pwa-v5';
+const CACHE_NAME = 'autopsia-ti-pwa-v6';
 const STATIC_ASSETS = [
   '/',
   '/usuario/monitoreo',
@@ -19,10 +19,8 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching static assets v5');
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[Service Worker] Precache warning:', err);
-      });
+      console.log('[Service Worker] Pre-caching static assets v6');
+      return cache.addAll(STATIC_ASSETS).catch((err) => console.warn('[Service Worker] Precache warning:', err));
     })
   );
   self.skipWaiting();
@@ -45,7 +43,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch con timeout rapido (1500ms) para evitar congelamientos en redes moviles sin datos
+// Fetch con timeout rápido (1500ms) para evitar congelamientos en redes móviles sin datos
 function fetchWithTimeout(request, timeout = 1500) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -65,7 +63,7 @@ function fetchWithTimeout(request, timeout = 1500) {
   });
 }
 
-// Interceptador de peticiones con estrategia Cache First / Network Fallback ultra-rapido
+// Interceptador de peticiones con respuesta diferenciada por tipo de asset (HTML vs CSS vs JS)
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   
@@ -73,22 +71,50 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Si el dispositivo está sin internet o con datos apagados, buscar DIRECTO en cache sin esperar
+  const url = req.url;
+  const isHtml = (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) || req.mode === 'navigate';
+  const isCss = req.destination === 'style' || url.endsWith('.css') || url.includes('/css/') || url.includes('/build/assets/');
+  const isJs = req.destination === 'script' || url.endsWith('.js') || url.includes('/js/') || url.includes('cdn.') || url.includes('unpkg.');
+
+  // Si el dispositivo está sin internet o con datos apagados
   if (!navigator.onLine) {
     event.respondWith(
       caches.match(req).then(async (cached) => {
         if (cached) return cached;
-        // Fallback garantizado para cualquier ruta de monitoreo/consultorio
-        const fallbackPage = await caches.match('/usuario/monitoreo/crear-acta') || await caches.match('/usuario/monitoreo') || await caches.match('/');
-        if (fallbackPage) return fallbackPage;
-        return new Response('<h3 style="font-family:sans-serif;padding:20px;text-align:center;">Modo Campo Offline: Vuelva a la pantalla principal de Monitoreo para continuar evaluando.</h3>', {
-          headers: { 'Content-Type': 'text/html; charset=utf-8' }
-        });
+
+        // Si es CSS y no está en caché específica, entregar el CSS de Vite almacenado en la PWA
+        if (isCss) {
+          const cache = await caches.open(CACHE_NAME);
+          const keys = await cache.keys();
+          const cssKey = keys.find(k => k.url.includes('.css'));
+          if (cssKey) return cache.match(cssKey);
+          return new Response('/* Offline CSS Fallback */', { headers: { 'Content-Type': 'text/css' } });
+        }
+
+        // Si es JS y no está en caché específica, entregar cualquier JS compilado
+        if (isJs) {
+          const cache = await caches.open(CACHE_NAME);
+          const keys = await cache.keys();
+          const jsKey = keys.find(k => k.url.includes('.js'));
+          if (jsKey) return cache.match(jsKey);
+          return new Response('/* Offline JS Fallback */', { headers: { 'Content-Type': 'application/javascript' } });
+        }
+
+        // Si es navegación HTML, devolver la vista guardada con diseño
+        if (isHtml) {
+          const fallbackPage = await caches.match('/usuario/monitoreo/crear-acta') || 
+                               await caches.match('/usuario/monitoreo') || 
+                               await caches.match('/');
+          if (fallbackPage) return fallbackPage;
+        }
+
+        return new Response('Página Offline', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
       })
     );
     return;
   }
 
+  // Si está Online, pedir a la red y guardar copia fresca en caché
   event.respondWith(
     fetchWithTimeout(req, 1500)
       .then((networkResponse) => {
@@ -102,15 +128,18 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(async () => {
         const cachedResponse = await caches.match(req);
-        if (cachedResponse) {
-          return cachedResponse;
+        if (cachedResponse) return cachedResponse;
+
+        if (isCss) {
+          const cache = await caches.open(CACHE_NAME);
+          const keys = await cache.keys();
+          const cssKey = keys.find(k => k.url.includes('.css'));
+          if (cssKey) return cache.match(cssKey);
         }
 
-        const fallbackPage = await caches.match('/usuario/monitoreo/crear-acta') || await caches.match('/usuario/monitoreo') || await caches.match('/');
-        if (fallbackPage) return fallbackPage;
-        return new Response('<h3 style="font-family:sans-serif;padding:20px;text-align:center;">Modo Campo Offline: Vuelva a la pantalla principal de Monitoreo para continuar evaluando.</h3>', {
-          headers: { 'Content-Type': 'text/html; charset=utf-8' }
-        });
+        if (isHtml) {
+          return caches.match('/usuario/monitoreo/crear-acta') || caches.match('/usuario/monitoreo') || caches.match('/');
+        }
       })
   );
 });
