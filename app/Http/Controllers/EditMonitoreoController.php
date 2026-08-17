@@ -19,8 +19,12 @@ class EditMonitoreoController extends Controller
     {
         // Cargamos la cabecera con sus relaciones para evitar el problema de N+1 consultas
         $monitoreo = CabeceraMonitoreo::with(['establecimiento', 'equipo'])->findOrFail($id);
+        $usuarios = \App\Models\User::orderBy('apellido_paterno')
+            ->orderBy('apellido_materno')
+            ->orderBy('name')
+            ->get();
         
-        return view('usuario.monitoreo.edit', compact('monitoreo'));
+        return view('usuario.monitoreo.edit', compact('monitoreo', 'usuarios'));
     }
 
     /**

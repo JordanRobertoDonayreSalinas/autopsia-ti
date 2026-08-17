@@ -96,7 +96,7 @@
             <select name="contenido[operador_servicio]" id="operador_servicio_select"
                 class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-{{ $color }}-500 transition-all uppercase cursor-pointer">
                 <option value="" selected disabled>-- SELECCIONE --</option>
-                @foreach(['WOW', 'MOVISTAR', 'ENTEL', 'CLARO', 'BITEL', 'FIBERPRO', 'NUBYX', 'WIN', 'TICTEL', 'GILAT', 'ALTINET', 'DELAFIBER', 'COMPUIVAN', 'OTROS'] as $op)
+                @foreach(['WOW', 'MOVISTAR', 'ENTEL', 'CLARO', 'BITEL', 'FIBERPRO', 'NUBYX', 'WIN', 'TICTEL', 'GILAT', 'ALTINET', 'DELAFIBER', 'COMPUIVAN', 'STARLINK', 'OTROS'] as $op)
                     <option value="{{ $op }}" {{ ($contenido['operador_servicio'] ?? '') == $op ? 'selected' : '' }}>
                         {{ $op }}
                     </option>

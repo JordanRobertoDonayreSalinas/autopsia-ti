@@ -138,7 +138,6 @@
                 enctype="multipart/form-data" class="space-y-8 animate-slide-up">
                 @csrf
                 @method('PUT')
-                <input type="hidden" name="implementador" id="implementador_input" value="{{ $monitoreo->implementador }}">
                 <input type="hidden" name="redirect_to" id="redirect_to" value="index">
 
                 {{-- 1. TARJETA: DATOS GENERALES (IMPLEMENTADOR & FECHA) --}}
@@ -151,20 +150,39 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {{-- Implementador --}}
+                        {{-- Implementador Responsable --}}
                         <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200">
                             <label
                                 class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Implementador
                                 Responsable</label>
                             <div class="flex items-center gap-3">
                                 <div
-                                    class="h-10 w-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shadow-sm">
+                                    class="h-10 w-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
                                     <i data-lucide="user" class="w-5 h-5"></i>
                                 </div>
-                                <span class="text-sm font-bold text-slate-700 uppercase">
-                                    {{ Auth::user()->apellido_paterno }} {{ Auth::user()->apellido_materno }}
-                                    {{ Auth::user()->name }}
-                                </span>
+                                <select name="implementador" id="implementador" required
+                                    class="bg-white border border-slate-200 text-xs font-bold text-slate-800 rounded-xl p-2.5 w-full focus:ring-2 focus:ring-indigo-500 uppercase outline-none cursor-pointer">
+                                    @php
+                                        $selectedImplementador = mb_strtoupper(trim($monitoreo->implementador ?? ''));
+                                        $foundInList = false;
+                                    @endphp
+                                    @foreach($usuarios as $user)
+                                        @php
+                                            $nombreUser = trim("{$user->apellido_paterno} {$user->apellido_materno} {$user->name}");
+                                            $nombreUserUpper = mb_strtoupper($nombreUser);
+                                            $isSelected = (old('implementador', $selectedImplementador) == $nombreUserUpper);
+                                            if ($isSelected) $foundInList = true;
+                                        @endphp
+                                        <option value="{{ $nombreUser }}" {{ $isSelected ? 'selected' : '' }}>
+                                            {{ $nombreUserUpper }}
+                                        </option>
+                                    @endforeach
+                                    @if(!empty($selectedImplementador) && !$foundInList)
+                                        <option value="{{ $monitoreo->implementador }}" selected>
+                                            {{ $selectedImplementador }}
+                                        </option>
+                                    @endif
+                                </select>
                             </div>
                         </div>
 
@@ -778,10 +796,6 @@
                 $(this).find('input[type="text"]').not('[name^="busqueda_temporal"]').each(function() {
                     $(this).val($(this).val().toUpperCase().trim());
                 });
-
-                $('#implementador_input').val(
-                    "{{ Auth::user()->apellido_paterno }} {{ Auth::user()->apellido_materno }} {{ Auth::user()->name }}"
-                    .toUpperCase());
 
                 Swal.fire({
                     title: '¿Actualizar Acta?',

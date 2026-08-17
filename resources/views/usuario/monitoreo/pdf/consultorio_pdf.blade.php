@@ -324,6 +324,19 @@
                 </td>
             </tr>
         </table>
+
+        @if(!empty($contenido['servicio_asociado']))
+        <table class="form-grid" style="margin-top: 8px;">
+            <tr>
+                <td style="width: 100%;">
+                    <div class="field-box" style="border-color: #6366f1; background: #eef2ff;">
+                        <span class="field-label" style="color: #4f46e5;">Servicio del Consultorio</span>
+                        <span class="field-value" style="color: #312e81; font-weight: 900;">{{ strtoupper($contenido['servicio_asociado']) }}</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        @endif
     </div>
 
     {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
@@ -386,12 +399,36 @@
 
     {{-- 3.- TIPO DE CONECTIVIDAD --}}
     @php
+        $n = 2;
+        $hasComputoPdf = false;
+        if (isset($equipos) && count($equipos) > 0) {
+            foreach ($equipos as $eq) {
+                $descUpper = str_replace('-', ' ', strtoupper(trim($eq->descripcion ?? '')));
+                if (
+                    str_contains($descUpper, 'CPU') ||
+                    str_contains($descUpper, 'LAPTOP') ||
+                    str_contains($descUpper, 'COMPUTADORA') ||
+                    str_contains($descUpper, 'COMPUTADOR') ||
+                    str_contains($descUpper, 'ALL IN ONE') ||
+                    str_contains($descUpper, 'AIO') ||
+                    str_contains($descUpper, 'PC')
+                ) {
+                    $hasComputoPdf = true;
+                    break;
+                }
+            }
+        }
+    @endphp
+
+    @if($hasComputoPdf)
+    @php
+        $n++;
         $tipoConn = $contenido['tipo_conectividad'] ?? 'CABLEADO';
     @endphp
     <div class="section-card">
         <table class="section-header-table">
             <tr>
-                <td style="width: 26px;"><span class="section-number">3</span></td>
+                <td style="width: 26px;"><span class="section-number">{{ $n }}</span></td>
                 <td><span class="section-title-text">TIPO DE CONECTIVIDAD</span></td>
             </tr>
         </table>
@@ -450,12 +487,14 @@
             </tr>
         </table>
     </div>
+    @endif
 
-    {{-- 4.- OBSERVACIONES Y EVIDENCIAS --}}
+    {{-- OBSERVACIONES Y EVIDENCIAS --}}
+    @php $n++; @endphp
     <div class="section-card">
         <table class="section-header-table">
             <tr>
-                <td style="width: 26px;"><span class="section-number">4</span></td>
+                <td style="width: 26px;"><span class="section-number">{{ $n }}</span></td>
                 <td><span class="section-title-text">OBSERVACIONES Y EVIDENCIAS</span></td>
             </tr>
         </table>

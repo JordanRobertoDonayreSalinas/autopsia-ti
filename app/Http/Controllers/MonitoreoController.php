@@ -211,7 +211,12 @@ class MonitoreoController extends Controller
 
     public function create()
     {
-        return view('usuario.monitoreo.create');
+        $usuarios = User::orderBy('apellido_paterno')
+            ->orderBy('apellido_materno')
+            ->orderBy('name')
+            ->get();
+
+        return view('usuario.monitoreo.create', compact('usuarios'));
     }
 
     public function buscarFiltro(Request $request)

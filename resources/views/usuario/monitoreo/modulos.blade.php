@@ -36,7 +36,9 @@
                             <span class="text-indigo-200 text-[11px] font-bold uppercase tracking-widest">ACTA DE MONITOREO N°{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}</span>
                         </div>
                         <h2 class="text-3xl font-black tracking-tight uppercase italic">{{ $acta->establecimiento->nombre }}</h2>
-                        <p class="text-indigo-300/80 text-xs font-bold mt-1 uppercase tracking-widest">Panel de evaluación de consultorios y croquis 2D</p>
+                        <div class="flex flex-wrap items-center gap-4 mt-2 text-indigo-200 text-xs font-bold uppercase tracking-widest">
+                            <span class="flex items-center gap-1.5"><i data-lucide="user" class="w-4 h-4 text-emerald-400"></i> Implementador: {{ $acta->implementador ?? ($acta->user ? "{$acta->user->apellido_paterno} {$acta->user->name}" : 'NO ASIGNADO') }}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">

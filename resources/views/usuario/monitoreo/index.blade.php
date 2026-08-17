@@ -361,7 +361,9 @@
                                 <td class="px-3 py-3">
                                     <div class="flex items-center justify-between min-w-[150px] group/author">
                                         <span class="font-bold text-slate-700 leading-tight">
-                                            @if($monitoreo->user)
+                                            @if(!empty($monitoreo->implementador))
+                                                {{ mb_strtoupper($monitoreo->implementador, 'UTF-8') }}
+                                            @elseif($monitoreo->user)
                                                 {{ mb_strtoupper("{$monitoreo->user->apellido_paterno} {$monitoreo->user->apellido_materno} {$monitoreo->user->name}", 'UTF-8') }}
                                             @else
                                                 <span class="text-slate-400 italic text-[10px]">NO ASIGNADO</span>

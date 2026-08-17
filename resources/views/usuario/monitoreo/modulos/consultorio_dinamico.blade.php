@@ -20,9 +20,9 @@
                     <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight">
                         {{ $tituloConsultorio ?? 'CONSULTORIO / MÓDULO' }}
                     </h2>
-                    <p class="text-slate-500 font-bold uppercase text-xs mt-1">
-                        <i data-lucide="hospital" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i>
-                        {{ $acta->establecimiento->nombre }}
+                    <p class="text-slate-500 font-bold uppercase text-xs mt-1 flex flex-wrap items-center gap-4">
+                        <span><i data-lucide="hospital" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i> {{ $acta->establecimiento->nombre }}</span>
+                        <span><i data-lucide="user" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i> Implementador: {{ $acta->implementador ?? ($acta->user ? "{$acta->user->apellido_paterno} {$acta->user->name}" : 'NO ASIGNADO') }}</span>
                     </p>
                 </div>
                 <a href="{{ route('usuario.monitoreo.modulos', $acta->id) }}"
@@ -54,6 +54,17 @@
                             value="{{ $contenido['titulo_consultorio'] ?? ($tituloConsultorio ?? 'CONSULTORIO') }}" required 
                             placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA 01, TRIAJE..." 
                             class="w-full bg-indigo-50/70 border-2 border-indigo-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-black text-indigo-900 text-base uppercase outline-none transition-all shadow-sm">
+                    </div>
+
+                    {{-- SERVICIO DEL CONSULTORIO --}}
+                    <div class="mb-6">
+                        <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <i data-lucide="building" class="w-3.5 h-3.5"></i> Servicio del Consultorio
+                        </label>
+                        <input type="text" name="contenido[servicio_asociado]" 
+                            value="{{ $contenido['servicio_asociado'] ?? '' }}" 
+                            placeholder="INGRESE EL SERVICIO DEL CONSULTORIO..." 
+                            class="w-full bg-slate-50 border-2 border-slate-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-center">
@@ -137,10 +148,6 @@
                     </div>
                 </div>
 
-
-
-
-
                 {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
                 <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
                     <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
@@ -152,7 +159,29 @@
                 </div>
 
                 {{-- 3.- TIPO DE CONECTIVIDAD (RESTAURADO COMPLETO) --}}
-                <x-tipo-conectividad num="3" :contenido="$contenido" />
+                @php
+                    $hasComputo = false;
+                    if (isset($equipos) && count($equipos) > 0) {
+                        foreach ($equipos as $eq) {
+                            $descUpper = str_replace('-', ' ', strtoupper(trim($eq->descripcion ?? '')));
+                            if (
+                                str_contains($descUpper, 'CPU') ||
+                                str_contains($descUpper, 'LAPTOP') ||
+                                str_contains($descUpper, 'COMPUTADORA') ||
+                                str_contains($descUpper, 'COMPUTADOR') ||
+                                str_contains($descUpper, 'ALL IN ONE') ||
+                                str_contains($descUpper, 'AIO') ||
+                                str_contains($descUpper, 'PC')
+                            ) {
+                                $hasComputo = true;
+                                break;
+                            }
+                        }
+                    }
+                @endphp
+                <div id="container_tipo_conectividad" class="{{ !$hasComputo ? 'hidden' : '' }}">
+                    <x-tipo-conectividad num="3" :contenido="$contenido" />
+                </div>
 
                 {{-- 6.- OBSERVACIONES Y EVIDENCIAS --}}
                 <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
@@ -236,10 +265,42 @@
             updateSectionNumbers();
         }
 
+        function checkComputoEquipos() {
+            const containerConectividad = document.getElementById('container_tipo_conectividad');
+            if (!containerConectividad) return;
+
+            const descInputs = document.querySelectorAll('input[name*="[descripcion]"]');
+            let hasComputo = false;
+
+            descInputs.forEach(input => {
+                const rawVal = input.value.trim().toUpperCase();
+                const val = rawVal.replace(/-/g, ' ');
+                if (
+                    val.includes('CPU') ||
+                    val.includes('LAPTOP') ||
+                    val.includes('COMPUTADORA') ||
+                    val.includes('COMPUTADOR') ||
+                    val.includes('ALL IN ONE') ||
+                    val.includes('AIO') ||
+                    val.includes('PC')
+                ) {
+                    hasComputo = true;
+                }
+            });
+
+            if (hasComputo) {
+                containerConectividad.classList.remove('hidden');
+            } else {
+                containerConectividad.classList.add('hidden');
+            }
+
+            updateSectionNumbers();
+        }
+
         function updateSectionNumbers() {
             let index = 1;
             document.querySelectorAll('.monitoreo-section').forEach(section => {
-                if (!section.classList.contains('hidden')) {
+                if (!section.classList.contains('hidden') && !section.closest('.hidden')) {
                     const numberSpan = section.querySelector('.section-number');
                     if (numberSpan) {
                         numberSpan.textContent = index;
@@ -253,7 +314,22 @@
             const selectSihce = document.getElementById('cuenta_sihce');
             if (selectSihce) toggleSihceAndDocs(selectSihce.value);
 
-            updateSectionNumbers();
+            checkComputoEquipos();
+
+            const bodyEquipos = document.querySelector('tbody[id^="body_equipos_"]');
+            if (bodyEquipos) {
+                bodyEquipos.addEventListener('input', function (e) {
+                    if (e.target && e.target.name && e.target.name.includes('[descripcion]')) {
+                        checkComputoEquipos();
+                    }
+                });
+
+                const observer = new MutationObserver(function () {
+                    checkComputoEquipos();
+                });
+                observer.observe(bodyEquipos, { childList: true, subtree: true });
+            }
+
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
 
