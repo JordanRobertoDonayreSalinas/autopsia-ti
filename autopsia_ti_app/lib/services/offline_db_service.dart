@@ -78,8 +78,8 @@ class OfflineDbService {
     ''');
   }
 
-  // Guardar catálogo completo de IPRESS
-  Future<void> guardarCatálogo(List<Establecimiento> lista) async {
+  // Guardar catálogo completo de IPRESS sin acento en el método Dart
+  Future<void> guardarCatalogo(List<Establecimiento> lista) async {
     final db = await instance.database;
     final batch = db.batch();
     batch.delete('establecimientos');

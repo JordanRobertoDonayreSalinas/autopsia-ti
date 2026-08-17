@@ -22,7 +22,7 @@ class SyncService {
   }
 
   // 2. Descargar catálogo de 524 IPRESS y guardar en SQLite
-  Future<bool> descargarCatálogo() async {
+  Future<bool> descargarCatalogo() async {
     try {
       final res = await http.get(Uri.parse('$baseUrl/catalog')).timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
@@ -30,7 +30,7 @@ class SyncService {
         if (data['success'] == true) {
           final List listJson = data['establecimientos'] ?? [];
           final establecimientos = listJson.map((e) => Establecimiento.fromJson(e)).toList();
-          await OfflineDbService.instance.guardarCatálogo(establecimientos);
+          await OfflineDbService.instance.guardarCatalogo(establecimientos);
           return true;
         }
       }

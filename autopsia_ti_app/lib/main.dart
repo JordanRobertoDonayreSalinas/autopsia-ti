@@ -63,7 +63,7 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
   Future<void> _autoSync() async {
     if (_isSyncing) return;
     setState(() => _isSyncing = true);
-    await _syncService.descargarCatálogo();
+    await _syncService.descargarCatalogo();
     await _syncService.sincronizarPendientes();
     final pendientes = await OfflineDbService.instance.obtenerActasPendientes();
     setState(() {
