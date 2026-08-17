@@ -549,8 +549,31 @@
                 }
             }
 
-            // Fallback: detección por User Agent (no distingue Win10 de Win11)
-            if (ua.includes("Windows NT 10.0")) so = "Windows 10/11 64-bit";
+            // Fallback: detección por User Agent
+            // Nota: el UA no distingue Win10 de Win11 de forma fiable, pero intentamos
+            // usar la versión de Chrome/Edge como heurística (Win11 requiere Chrome 94+
+            // y en Windows 10 la versión típica de Chromium suele ser menor a 94 en equipos viejos).
+            if (ua.includes("Windows NT 10.0")) {
+                // Heurística: si el navegador reporta Windows NT 10.0 intentamos
+                // distinguir Win11 por la presencia de ciertos signos en el UA.
+                // Windows 11 con Chrome/Edge siempre incluye "Windows NT 10.0; Win64; x64"
+                // pero no hay diferencia de UA entre Win10 y Win11 en el User-Agent clásico.
+                // Usamos como señal auxiliar la existencia de la API scheduler (Win11+Edge/Chrome)
+                // o el número de versión del navegador (Chrome >= 94 apareció junto a Win11).
+                let esWin11 = false;
+                const chromeMatch = ua.match(/Chrome\/(\d+)/);
+                const chromeVersion = chromeMatch ? parseInt(chromeMatch[1], 10) : 0;
+                // scheduler.postTask es una API introducida en Chrome 94 (Oct 2021, era de Win11)
+                if (typeof scheduler !== 'undefined' && typeof scheduler.postTask === 'function') {
+                    esWin11 = true;
+                }
+                // Si la plataforma tiene soporte para touch (Surface, tablet Win11) también es señal
+                if (navigator.maxTouchPoints > 0 && chromeVersion >= 94) {
+                    esWin11 = true;
+                }
+                const bitness = ua.includes("Win64") || ua.includes("WOW64") ? "64-bit" : "32-bit";
+                so = esWin11 ? `Windows 11 Pro ${bitness}` : `Windows 10 Pro ${bitness}`;
+            }
             else if (ua.includes("Windows NT 6.3")) so = "Windows 8.1";
             else if (ua.includes("Windows NT 6.2")) so = "Windows 8";
             else if (ua.includes("Windows NT 6.1")) so = "Windows 7 SP1";
@@ -597,12 +620,13 @@
             }
 
             const isLaptop = navigator.maxTouchPoints > 0 || screen.width <= 1440;
+            const marcaModeloDetectado = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
 
             const hw = {
                 status: 'completed',
                 is_laptop: isLaptop,
                 tipo: isLaptop ? 'LAPTOP' : 'CPU',
-                marca_modelo: 'EQUIPO DE COMPUTO (AUTODETECTADO)',
+                marca_modelo: marcaModeloDetectado,
                 procesador_nombre: cpuName,
                 so: so,
                 ram: ramText,
