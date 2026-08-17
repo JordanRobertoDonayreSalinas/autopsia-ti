@@ -209,7 +209,7 @@
                     </td>
                     <td>
                         @if(!empty($t['colegiatura']))
-                            <div style="font-size: 7.5px; font-weight: 800; color: #475569;">{{ $t['colegiatura'] }}</div>
+                            <div style="font-size: 7.5px; font-weight: 800; color: #475569;">{{ !empty($t['colegio_profesional']) ? $t['colegio_profesional'] . ' ' : '' }}{{ $t['colegiatura'] }}</div>
                         @endif
                         @if(!empty($t['rne']))
                             <div style="font-size: 7px; font-weight: 800; color: #7c3aed;">RNE: {{ $t['rne'] }}</div>
