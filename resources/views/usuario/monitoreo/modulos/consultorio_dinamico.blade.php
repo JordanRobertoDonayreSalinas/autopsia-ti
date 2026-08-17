@@ -155,7 +155,7 @@
                         <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">EQUIPOS DE CÓMPUTO E IMPRESORA</h3>
                     </div>
 
-                    <x-tabla-equipos prefix="rrhh" :equipos="$equipos ?? []" />
+                    <x-tabla-equipos :prefix="$slug" :modulo="$slug" :equipos="$equipos ?? []" />
                 </div>
 
                 {{-- 3.- TIPO DE CONECTIVIDAD (RESTAURADO COMPLETO) --}}

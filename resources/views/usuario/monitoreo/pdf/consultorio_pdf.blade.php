@@ -390,6 +390,64 @@
                     @endforeach
                 </tbody>
             </table>
+
+            @php
+                $dxdiagEquipo = null;
+                foreach ($equipos as $eqItem) {
+                    $descUpper = str_replace('-', ' ', strtoupper(trim($eqItem->descripcion ?? '')));
+                    $esComputo = str_contains($descUpper, 'CPU') ||
+                                 str_contains($descUpper, 'LAPTOP') ||
+                                 str_contains($descUpper, 'ALL IN ONE') ||
+                                 str_contains($descUpper, 'AIO') ||
+                                 str_contains($descUpper, 'COMPUTADORA') ||
+                                 str_contains($descUpper, 'PC');
+                    if ($esComputo && !empty($eqItem->especificaciones)) {
+                        $specs = is_array($eqItem->especificaciones) ? $eqItem->especificaciones : json_decode($eqItem->especificaciones, true);
+                        if (!empty($specs) && is_array($specs)) {
+                            $dxdiagEquipo = $specs;
+                            break;
+                        }
+                    }
+                }
+            @endphp
+
+            @if(!empty($dxdiagEquipo))
+                <div style="margin-top: 8px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 8px;">
+                    <div style="font-size: 7.5px; font-weight: 900; color: #4338ca; text-transform: uppercase; margin-bottom: 5px;">
+                        ⚡ ESPECIFICACIONES TÉCNICAS DEL SISTEMA (DIAGNÓSTICO DXDIAG)
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 7.5px;">
+                        <tr>
+                            <td style="width: 33.33%; padding: 4px 6px; vertical-align: top; border: 1px solid #e2e8f0; background: #ffffff;">
+                                <span style="font-weight: 800; color: #64748b; font-size: 6.5px; display: block; text-transform: uppercase;">EQUIPO / MODELO:</span>
+                                <span style="font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $dxdiagEquipo['modelo'] ?? 'NO IDENTIFICADO' }}</span>
+                            </td>
+                            <td style="width: 33.33%; padding: 4px 6px; vertical-align: top; border: 1px solid #e2e8f0; background: #ffffff;">
+                                <span style="font-weight: 800; color: #64748b; font-size: 6.5px; display: block; text-transform: uppercase;">PROCESADOR:</span>
+                                <span style="font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $dxdiagEquipo['procesador'] ?? 'NO IDENTIFICADO' }}</span>
+                            </td>
+                            <td style="width: 33.33%; padding: 4px 6px; vertical-align: top; border: 1px solid #e2e8f0; background: #ffffff;">
+                                <span style="font-weight: 800; color: #64748b; font-size: 6.5px; display: block; text-transform: uppercase;">MEMORIA RAM:</span>
+                                <span style="font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $dxdiagEquipo['ram'] ?? '--' }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 33.33%; padding: 4px 6px; vertical-align: top; border: 1px solid #e2e8f0; background: #ffffff;">
+                                <span style="font-weight: 800; color: #64748b; font-size: 6.5px; display: block; text-transform: uppercase;">ALMACENAMIENTO:</span>
+                                <span style="font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $dxdiagEquipo['disco'] ?? '--' }}</span>
+                            </td>
+                            <td style="width: 33.33%; padding: 4px 6px; vertical-align: top; border: 1px solid #e2e8f0; background: #ffffff;">
+                                <span style="font-weight: 800; color: #64748b; font-size: 6.5px; display: block; text-transform: uppercase;">TARJETA DE VIDEO:</span>
+                                <span style="font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $dxdiagEquipo['gpu'] ?? '--' }}</span>
+                            </td>
+                            <td style="width: 33.33%; padding: 4px 6px; vertical-align: top; border: 1px solid #e2e8f0; background: #ffffff;">
+                                <span style="font-weight: 800; color: #64748b; font-size: 6.5px; display: block; text-transform: uppercase;">SISTEMA OPERATIVO:</span>
+                                <span style="font-weight: 900; color: #0f172a; text-transform: uppercase;">{{ $dxdiagEquipo['so'] ?? '--' }}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            @endif
         @else
             <div style="background-color: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px; padding: 10px; text-align: center; color: #94a3b8; font-size: 8px; font-weight: 800; text-transform: uppercase;">
                 No se registraron equipos en este consultorio.
