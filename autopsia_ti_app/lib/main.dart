@@ -133,7 +133,7 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
             NavigationRail(
               backgroundColor: const Color(0xFF0F172A),
               selectedIndex: 0,
-              unselectedIconTheme: const IconThemeData(color: Colors.slate),
+              unselectedIconTheme: const IconThemeData(color: Colors.white70),
               selectedIconTheme: const IconThemeData(color: Colors.indigoAccent),
               destinations: const [
                 NavigationRailDestination(
