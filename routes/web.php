@@ -218,6 +218,10 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('/{id}/sync-data', [Infraestructura2DController::class, 'getSyncData'])->name('sync-data');
                 Route::post('/{id}', [Infraestructura2DController::class, 'store'])->name('store');
                 Route::get('/{id}/pdf', [Infraestructura2DPdfController::class, 'generar'])->name('pdf');
+
+                // Colaboración en tiempo real: sondeo de estado y salida del editor
+                Route::post('/{id}/croquis-sync', [Infraestructura2DController::class, 'croquisSync'])->name('croquis-sync');
+                Route::post('/{id}/croquis-leave', [Infraestructura2DController::class, 'croquisLeave'])->name('croquis-leave');
             });
 
             // RUTAS DINÁMICAS DE CONSULTORIOS / MÓDULOS

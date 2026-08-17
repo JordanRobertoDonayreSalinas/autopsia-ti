@@ -84,6 +84,10 @@ class EditMonitoreoController extends Controller
             $monitoreo->pozo_tierra_cantidad = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_cantidad') : null;
             $monitoreo->pozo_tierra_operativos = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_operativos') : null;
             $monitoreo->pozo_tierra_inoperativos = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_inoperativos') : null;
+            $monitoreo->panel_solar = $request->input('panel_solar', 'NO');
+            $monitoreo->panel_solar_cantidad = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_cantidad') : null;
+            $monitoreo->panel_solar_operativos = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_operativos') : null;
+            $monitoreo->panel_solar_inoperativos = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_inoperativos') : null;
             $monitoreo->save();
 
             // 5. SINCRONIZAR EQUIPO DE MONITOREO

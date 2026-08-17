@@ -327,6 +327,71 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Panel Solar --}}
+                        <div class="pt-2">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">
+                                        ¿Cuenta con Panel Solar?
+                                    </label>
+                                    <select name="panel_solar" id="panel_solar" onchange="togglePanelSolarCampos()"
+                                        class="block w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-indigo-500 focus:ring-indigo-500 uppercase cursor-pointer">
+                                        <option value="NO" {{ old('panel_solar', $monitoreo->panel_solar ?? 'NO') == 'NO' ? 'selected' : '' }}>NO</option>
+                                        <option value="SI" {{ old('panel_solar', $monitoreo->panel_solar ?? 'NO') == 'SI' ? 'selected' : '' }}>SÍ</option>
+                                    </select>
+                                </div>
+
+                                <div id="container_panel_solar_campos" class="col-span-1 md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4" style="{{ old('panel_solar', $monitoreo->panel_solar ?? 'NO') == 'SI' ? '' : 'display: none;' }}">
+                                    <div>
+                                        <label class="text-xs font-bold text-indigo-600 uppercase mb-2 block">
+                                            Total Paneles
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i data-lucide="sun" class="h-4 w-4 text-indigo-500"></i>
+                                            </div>
+                                            <input type="number" name="panel_solar_cantidad" id="panel_solar_cantidad" min="1" max="99"
+                                                value="{{ old('panel_solar_cantidad', $monitoreo->panel_solar_cantidad ?? '') }}"
+                                                oninput="calcularPanelesInoperativos()"
+                                                placeholder="Total"
+                                                class="block w-full pl-9 pr-3 py-3 bg-indigo-50/50 border border-indigo-200 rounded-xl text-sm font-black text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="text-xs font-bold text-emerald-600 uppercase mb-2 block">
+                                            Operativos
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i data-lucide="check-circle" class="h-4 w-4 text-emerald-500"></i>
+                                            </div>
+                                            <input type="number" name="panel_solar_operativos" id="panel_solar_operativos" min="0" max="99"
+                                                value="{{ old('panel_solar_operativos', $monitoreo->panel_solar_operativos ?? '') }}"
+                                                oninput="calcularPanelesInoperativos()"
+                                                placeholder="Operativos"
+                                                class="block w-full pl-9 pr-3 py-3 bg-emerald-50/50 border border-emerald-200 rounded-xl text-sm font-black text-emerald-900 focus:border-emerald-500 focus:ring-emerald-500">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="text-xs font-bold text-rose-600 uppercase mb-2 block">
+                                            Inoperativos (Auto)
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i data-lucide="alert-circle" class="h-4 w-4 text-rose-500"></i>
+                                            </div>
+                                            <input type="number" name="panel_solar_inoperativos" id="panel_solar_inoperativos" readonly
+                                                value="{{ old('panel_solar_inoperativos', $monitoreo->panel_solar_inoperativos ?? 0) }}"
+                                                placeholder="Auto"
+                                                class="block w-full pl-9 pr-3 py-3 bg-rose-50 border border-rose-200 rounded-xl text-sm font-black text-rose-900 cursor-not-allowed">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -506,6 +571,42 @@
 
                 const inoperativos = Math.max(0, total - operativos);
                 $('#pozo_tierra_inoperativos').val(inoperativos);
+            };
+
+            window.togglePanelSolarCampos = function() {
+                const val = $('#panel_solar').val();
+                if (val === 'SI') {
+                    $('#container_panel_solar_campos').slideDown(200);
+                    if (!$('#panel_solar_cantidad').val()) {
+                        $('#panel_solar_cantidad').val(1);
+                    }
+                    if ($('#panel_solar_operativos').val() === '') {
+                        $('#panel_solar_operativos').val(1);
+                    }
+                    calcularPanelesInoperativos();
+                } else {
+                    $('#container_panel_solar_campos').slideUp(200);
+                    $('#panel_solar_cantidad').val('');
+                    $('#panel_solar_operativos').val('');
+                    $('#panel_solar_inoperativos').val(0);
+                }
+            };
+
+            window.calcularPanelesInoperativos = function() {
+                const total = parseInt($('#panel_solar_cantidad').val()) || 0;
+                let operativos = parseInt($('#panel_solar_operativos').val());
+
+                if (isNaN(operativos)) {
+                    operativos = 0;
+                }
+
+                if (operativos > total) {
+                    operativos = total;
+                    $('#panel_solar_operativos').val(total);
+                }
+
+                const inoperativos = Math.max(0, total - operativos);
+                $('#panel_solar_inoperativos').val(inoperativos);
             };
 
             // Cargar equipo existente

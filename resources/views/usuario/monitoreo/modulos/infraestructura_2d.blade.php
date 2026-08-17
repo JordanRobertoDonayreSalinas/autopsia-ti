@@ -368,6 +368,7 @@
                     ticketera: 'TICKETERA', escaner: 'LECTOR', ups: 'UPS',
                     router: 'ROUTER', ap: 'ACCESS POINT', switch: 'SWITCH',
                     pozo: 'POZO TIERRA', punto_red: 'PUNTO RED', equipo: 'EQUIPO',
+                    panel_solar: 'PANEL SOLAR',
                 };
 
                 /* Estado del equipo en el inventario: tiñe el equipo para verlo de un vistazo */
@@ -400,6 +401,7 @@
                         { tipo: 'punto_red', label: 'Punto Red', icon: 'share-2' },
                         { tipo: 'pozo', label: 'Pozo Tierra', icon: 'anchor' },
                         { tipo: 'ups', label: 'UPS', icon: 'battery-charging' },
+                        { tipo: 'panel_solar', label: 'Panel Solar', icon: 'sun' },
                     ],
                     get hwLabelActual() {
                         const todos = [...this.equiposComputo, ...this.equiposRed];
@@ -475,12 +477,11 @@
                     _pendingCursorX: 0,
                     _pendingCursorY: 0,
                     _colabActaId: {{ $acta->id }},
-                    /* Sin colaboración en tiempo real en este proyecto: las rutas croquis.sync
-                       y croquis.leave no existen aquí. Con las URLs vacías el polling no arranca
-                       y 'colaboradores' queda siempre vacío, así que el editor funciona en modo
-                       de un solo usuario. */
-                    _syncUrl: '',
-                    _leaveUrl: '',
+                    /* Colaboración en tiempo real: sondeo cada 900ms contra el servidor,
+                       que guarda y devuelve la posición del cursor, elementos, conexiones
+                       y eliminados de cada usuario activo en esta acta. */
+                    _syncUrl: '{{ route('usuario.monitoreo.infraestructura-2d.croquis-sync', $acta->id) }}',
+                    _leaveUrl: '{{ route('usuario.monitoreo.infraestructura-2d.croquis-leave', $acta->id) }}',
                     _csrfToken: '{{ csrf_token() }}',
                     deletedIds: [],              // IDs borrados localmente para sincronizar
                     _lastColabHash: '',          // Hash del estado remoto para detect cambios
@@ -490,6 +491,18 @@
 
                     /* ─ Datos de módulos (sincronización) ─ */
                     modulosData: @json($modulosData ?? []),  // [{ slug, label, equipos[], utiliza_sihce, tipo_conectividad }]
+
+                    /* ─ Pozo a tierra: dato del acta completa, no de un consultorio en particular ─ */
+                    pozoTierra: @json($acta->pozo_tierra ?? 'NO'),
+                    pozoTierraCantidad: {{ (int) ($acta->pozo_tierra_cantidad ?? 0) }},
+                    pozoTierraOperativos: {{ (int) ($acta->pozo_tierra_operativos ?? 0) }},
+                    pozoTierraInoperativos: {{ (int) ($acta->pozo_tierra_inoperativos ?? 0) }},
+
+                    /* ─ Panel solar: igual que el pozo a tierra, dato del acta completa ─ */
+                    panelSolar: @json($acta->panel_solar ?? 'NO'),
+                    panelSolarCantidad: {{ (int) ($acta->panel_solar_cantidad ?? 0) }},
+                    panelSolarOperativos: {{ (int) ($acta->panel_solar_operativos ?? 0) }},
+                    panelSolarInoperativos: {{ (int) ($acta->panel_solar_inoperativos ?? 0) }},
 
                     /* ─── Lifecycle ─── */
                     init() {
@@ -1930,6 +1943,15 @@
                                     c.beginPath(); c.moveTo(-hw, y); c.lineTo(hw, y); c.stroke();
                                 });
                             },
+                            panel_solar: (c) => {
+                                c.beginPath(); c.roundRect(-11, -8, 22, 16, 1.5); c.stroke();
+                                [-11, -3.7, 3.7, 11].forEach(x => {
+                                    c.beginPath(); c.moveTo(x, -8); c.lineTo(x, 8); c.stroke();
+                                });
+                                [-8, 0, 8].forEach(y => {
+                                    c.beginPath(); c.moveTo(-11, y); c.lineTo(11, y); c.stroke();
+                                });
+                            },
                             punto_red: (c) => {
                                 c.beginPath(); c.roundRect(-8, -9, 16, 13, 2); c.stroke();
                                 c.beginPath();
@@ -3208,6 +3230,13 @@
                                             L.push(`  <line x1="${f(ecx - hw2)}" y1="${f(ecy - 1 + off)}"` +
                                                 ` x2="${f(ecx + hw2)}" y2="${f(ecy - 1 + off)}"` +
                                                 ` stroke="#059669" stroke-width="0.6"${xfrm}/>`));
+                                    } else if (hw === 'panel_solar') {
+                                        L.push(`  <rect x="${f(ecx - 5.5)}" y="${f(ecy - 4)}" width="11" height="8"` +
+                                            ` fill="none" stroke="#d97706" stroke-width="0.5"${xfrm}/>`);
+                                        [-1.8, 1.8].forEach(x => L.push(`  <line x1="${f(ecx + x)}" y1="${f(ecy - 4)}"` +
+                                            ` x2="${f(ecx + x)}" y2="${f(ecy + 4)}" stroke="#d97706" stroke-width="0.4"${xfrm}/>`));
+                                        L.push(`  <line x1="${f(ecx - 5.5)}" y1="${f(ecy)}"` +
+                                            ` x2="${f(ecx + 5.5)}" y2="${f(ecy)}" stroke="#d97706" stroke-width="0.4"${xfrm}/>`);
                                     } else if (hw === 'punto_red') {
                                         L.push(`  <rect x="${f(ecx - 3)}" y="${f(ecy - 2)}" width="6" height="5" rx="0.5"` +
                                             ` fill="none" stroke="#10b981" stroke-width="0.6"${xfrm}/>`);
@@ -3441,8 +3470,21 @@
                             if (!res.ok) throw new Error('Error al sincronizar');
                             
                             const data = await res.json();
-                            this.modulosData = data;
-                            
+                            this.modulosData = data.modulos || [];
+
+                            // Datos del acta a nivel de establecimiento: se refrescan aquí
+                            // para que el botón funcione con los cambios recién guardados
+                            // en el acta (por ejemplo, panel solar o pozo a tierra) sin
+                            // tener que recargar la página.
+                            this.pozoTierra = data.pozo_tierra ?? 'NO';
+                            this.pozoTierraCantidad = data.pozo_tierra_cantidad ?? 0;
+                            this.pozoTierraOperativos = data.pozo_tierra_operativos ?? 0;
+                            this.pozoTierraInoperativos = data.pozo_tierra_inoperativos ?? 0;
+                            this.panelSolar = data.panel_solar ?? 'NO';
+                            this.panelSolarCantidad = data.panel_solar_cantidad ?? 0;
+                            this.panelSolarOperativos = data.panel_solar_operativos ?? 0;
+                            this.panelSolarInoperativos = data.panel_solar_inoperativos ?? 0;
+
                             if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
 
                             if (!this.modulosData || this.modulosData.length === 0) {
@@ -3499,8 +3541,15 @@
                        Cada servicio con equipos registrados se dibuja como un ambiente
                        con sus equipos dentro. Los servicios sin equipos no se dibujan. */
 
-                    /* Tipo de ambiente según el servicio, para que el plano se lea por color */
-                    _ambienteDeServicio(slug) {
+                    /* Tipo de ambiente según el servicio, para que el plano se lea por color.
+                       Si el consultorio respondió la pregunta "Físico o Funcional" en su ficha,
+                       eso manda: es dato real del establecimiento. Los módulos fijos (citas,
+                       urgencias, farmacia...) no traen esa pregunta, así que para ellos se
+                       sigue infiriendo el tipo de ambiente a partir del nombre del servicio. */
+                    _ambienteDeServicio(slug, tipoConsultorio) {
+                        if (tipoConsultorio === 'FUNCIONAL') return 'consultorio_funcional';
+                        if (tipoConsultorio === 'FISICO') return 'consultorio_fisico';
+
                         const s = (slug || '').toLowerCase();
                         if (s.includes('urgencia') || s.includes('emergencia')) return 'emergencias';
                         if (s.includes('parto') || s.includes('quirofano') || s.includes('quirófano')) return 'quirofano';
@@ -3559,16 +3608,29 @@
                         const rid = () => Math.random().toString(36).slice(2, 7);
                         const now = () => Date.now();
                         let salasNuevas = 0, equiposNuevos = 0, salasActualizadas = 0;
-                        let idx = 0;
+
+                        /* ── Piso de cada servicio: lo declara la propia ficha del
+                              consultorio dinámico ("¿Qué piso es?"); los módulos fijos,
+                              que no preguntan eso, se asumen en el piso 1. Cada piso
+                              lleva su propia cuenta de posición, para que la rejilla de
+                              salas se vea ordenada dentro de cada planta y no dependa
+                              de en qué piso esté parado el usuario al sincronizar. ── */
+                        const pisoDe = (m) => Math.max(1, parseInt(m.piso, 10) || 1);
+                        const maxPisoServicios = Math.max(1, ...layouts.map(({ m }) => pisoDe(m)));
+                        if (maxPisoServicios > this.totalPisos) this.totalPisos = maxPisoServicios;
+                        const idxPorPiso = {};
 
                         layouts.forEach(({ m, cols }) => {
                             const label = m.label;
                             const labelUp = label.toUpperCase();
+                            const pisoDestino = pisoDe(m);
 
                             /* ¿La sala ya está en el croquis? */
                             let sala = modoLimpiar ? null : this.elements.find(
                                 e => e.type === 'ambiente' && (e.name || '').toUpperCase() === labelUp
                             );
+
+                            const idx = idxPorPiso[pisoDestino] || 0;
 
                             if (!sala) {
                                 const col = idx % COLS_SALA;
@@ -3576,7 +3638,7 @@
                                 sala = {
                                     id: 'mod_' + m.slug + '_' + now() + '_' + rid(),
                                     type: 'ambiente',
-                                    subtype: this._ambienteDeServicio(m.slug),
+                                    subtype: this._ambienteDeServicio(m.slug, m.tipo_consultorio),
                                     x: STARTX + col * (RW + GAP),
                                     y: STARTY + row * (RH + GAP),
                                     w: RW, h: RH,
@@ -3587,7 +3649,7 @@
                                         light: true,
                                         red: m.tipo_conectividad === 'CABLEADO' ? 1 : 0,
                                     },
-                                    piso: this.currentPiso,
+                                    piso: pisoDestino,
                                     _ts: now(),
                                     _synced: true,
                                     _slug: m.slug,
@@ -3599,8 +3661,19 @@
                                 /* La sala existente debe poder acoger la rejilla de equipos */
                                 if (sala.w < RW) sala.w = RW;
                                 if (sala.h < RH) sala.h = RH;
+                                /* Si cambiaron Físico ↔ Funcional en la ficha, la sala ya
+                                   dibujada se repinta para reflejarlo (solo entre esos dos:
+                                   nunca le pisa un tipo especial como emergencias/quirófano). */
+                                const nuevoTipo = this._ambienteDeServicio(m.slug, m.tipo_consultorio);
+                                if ((sala.subtype === 'consultorio_fisico' || sala.subtype === 'consultorio_funcional') &&
+                                    (nuevoTipo === 'consultorio_fisico' || nuevoTipo === 'consultorio_funcional')) {
+                                    sala.subtype = nuevoTipo;
+                                }
+                                /* Si en la ficha cambiaron el piso, la sala se traslada a la
+                                   planta correcta (conserva su posición dentro de la nueva). */
+                                if (sala.piso !== pisoDestino) sala.piso = pisoDestino;
                             }
-                            idx++;
+                            idxPorPiso[pisoDestino] = idx + 1;
 
                             /* ── Equipos del servicio, en rejilla bajo el rótulo.
                                   Un servicio activo sin equipos se queda como sala vacía. ── */
@@ -3661,6 +3734,187 @@
                                 }
                             }
                         });
+
+                        /* Pozo a tierra y panel solar son datos del acta completa, no de un
+                           consultorio en particular: se colocan en el piso actualmente
+                           abierto en el editor, siguiendo la rejilla de ese piso donde haya
+                           quedado la de los consultorios que ya se ubicaron ahí. */
+                        let idx = idxPorPiso[this.currentPiso] || 0;
+
+                        /* ── Pozo a tierra: dato del acta completa, no de un consultorio en
+                              particular, así que va en su propia sala de apoyo. Si el acta
+                              marcó "NO" o no tiene ninguno, no se dibuja nada. ── */
+                        if (this.pozoTierra === 'SI' && this.pozoTierraCantidad > 0) {
+                            const POZO_LABEL = 'INFRAESTRUCTURA ELÉCTRICA';
+                            let salaPozo = modoLimpiar ? null : this.elements.find(
+                                e => e.type === 'ambiente' && (e.name || '').toUpperCase() === POZO_LABEL
+                            );
+
+                            const totalPozos = Math.max(1, this.pozoTierraOperativos + this.pozoTierraInoperativos);
+                            const colsPozo = Math.min(COLS_MAX, Math.max(2, totalPozos));
+                            const rowsPozo = Math.ceil(totalPozos / colsPozo);
+                            const RWP = Math.max(240, PADX * 2 + colsPozo * HWW + (colsPozo - 1) * HWGAP);
+                            const RHP = Math.max(190, HEAD + rowsPozo * HWH + (rowsPozo - 1) * HWGAP + FOOT);
+
+                            if (!salaPozo) {
+                                const col = idx % COLS_SALA;
+                                const row = Math.floor(idx / COLS_SALA);
+                                salaPozo = {
+                                    id: 'mod_pozo_tierra_' + now() + '_' + rid(),
+                                    type: 'ambiente',
+                                    subtype: 'administracion',
+                                    x: STARTX + col * (RW + GAP),
+                                    y: STARTY + row * (RH + GAP),
+                                    w: RWP, h: RHP,
+                                    name: POZO_LABEL,
+                                    rot: 0,
+                                    attrs: { wifi: false, light: true, red: 0 },
+                                    piso: this.currentPiso,
+                                    _ts: now(),
+                                    _synced: true,
+                                    _slug: 'pozo_tierra',
+                                };
+                                this.elements.push(salaPozo);
+                                salasNuevas++;
+                                idx++;
+                            } else {
+                                salasActualizadas++;
+                                if (salaPozo.w < RWP) salaPozo.w = RWP;
+                                if (salaPozo.h < RHP) salaPozo.h = RHP;
+                            }
+
+                            /* En modo agregar, solo se completan los pozos que falten por
+                               cada estado: si ya había 2 operativos dibujados y ahora la
+                               ficha dice 3, se agrega uno solo, no se duplican los 2 previos. */
+                            const yaOperativos = modoLimpiar ? 0 : this.elements.filter(e =>
+                                e.type === 'hardware' && e.parentId === salaPozo.id && e.subtype === 'pozo' &&
+                                (e.estado || 'OPERATIVO') === 'OPERATIVO'
+                            ).length;
+                            const yaInoperativos = modoLimpiar ? 0 : this.elements.filter(e =>
+                                e.type === 'hardware' && e.parentId === salaPozo.id && e.subtype === 'pozo' &&
+                                e.estado === 'INOPERATIVO'
+                            ).length;
+
+                            const faltanOperativos = Math.max(0, this.pozoTierraOperativos - yaOperativos);
+                            const faltanInoperativos = Math.max(0, this.pozoTierraInoperativos - yaInoperativos);
+
+                            const gridWP = colsPozo * HWW + (colsPozo - 1) * HWGAP;
+                            const originXP = salaPozo.x + (salaPozo.w - gridWP) / 2;
+                            const originYP = salaPozo.y + HEAD;
+                            let posPozo = yaOperativos + yaInoperativos;
+
+                            const colocarPozo = (estado) => {
+                                const c = posPozo % colsPozo;
+                                const r = Math.floor(posPozo / colsPozo);
+                                this.elements.push({
+                                    id: 'hw_pozo_tierra_' + rid(),
+                                    type: 'hardware',
+                                    subtype: 'pozo',
+                                    parentId: salaPozo.id,
+                                    x: originXP + c * (HWW + HWGAP),
+                                    y: originYP + r * (HWH + HWGAP),
+                                    w: HWW, h: HWH,
+                                    name: 'POZO TIERRA',
+                                    rot: 0,
+                                    estado,
+                                    piso: this.currentPiso,
+                                    _ts: now(),
+                                    _synced: true,
+                                });
+                                posPozo++;
+                                equiposNuevos++;
+                            };
+
+                            for (let i = 0; i < faltanOperativos; i++) colocarPozo('OPERATIVO');
+                            for (let i = 0; i < faltanInoperativos; i++) colocarPozo('INOPERATIVO');
+                        }
+
+                        /* ── Panel solar: mismo tratamiento que el pozo a tierra, dato del
+                              acta completa en su propia sala de apoyo. Si el acta marcó "NO"
+                              o no tiene ninguno, no se dibuja nada. ── */
+                        if (this.panelSolar === 'SI' && this.panelSolarCantidad > 0) {
+                            const PANEL_LABEL = 'PANEL SOLAR';
+                            let salaPanel = modoLimpiar ? null : this.elements.find(
+                                e => e.type === 'ambiente' && (e.name || '').toUpperCase() === PANEL_LABEL
+                            );
+
+                            const totalPaneles = Math.max(1, this.panelSolarOperativos + this.panelSolarInoperativos);
+                            const colsPanel = Math.min(COLS_MAX, Math.max(2, totalPaneles));
+                            const rowsPanel = Math.ceil(totalPaneles / colsPanel);
+                            const RWS = Math.max(240, PADX * 2 + colsPanel * HWW + (colsPanel - 1) * HWGAP);
+                            const RHS = Math.max(190, HEAD + rowsPanel * HWH + (rowsPanel - 1) * HWGAP + FOOT);
+
+                            if (!salaPanel) {
+                                const col = idx % COLS_SALA;
+                                const row = Math.floor(idx / COLS_SALA);
+                                salaPanel = {
+                                    id: 'mod_panel_solar_' + now() + '_' + rid(),
+                                    type: 'ambiente',
+                                    subtype: 'administracion',
+                                    x: STARTX + col * (RW + GAP),
+                                    y: STARTY + row * (RH + GAP),
+                                    w: RWS, h: RHS,
+                                    name: PANEL_LABEL,
+                                    rot: 0,
+                                    attrs: { wifi: false, light: true, red: 0 },
+                                    piso: this.currentPiso,
+                                    _ts: now(),
+                                    _synced: true,
+                                    _slug: 'panel_solar',
+                                };
+                                this.elements.push(salaPanel);
+                                salasNuevas++;
+                                idx++;
+                            } else {
+                                salasActualizadas++;
+                                if (salaPanel.w < RWS) salaPanel.w = RWS;
+                                if (salaPanel.h < RHS) salaPanel.h = RHS;
+                            }
+
+                            /* En modo agregar, solo se completan los paneles que falten por
+                               cada estado, igual que con los pozos a tierra. */
+                            const yaOperativosP = modoLimpiar ? 0 : this.elements.filter(e =>
+                                e.type === 'hardware' && e.parentId === salaPanel.id && e.subtype === 'panel_solar' &&
+                                (e.estado || 'OPERATIVO') === 'OPERATIVO'
+                            ).length;
+                            const yaInoperativosP = modoLimpiar ? 0 : this.elements.filter(e =>
+                                e.type === 'hardware' && e.parentId === salaPanel.id && e.subtype === 'panel_solar' &&
+                                e.estado === 'INOPERATIVO'
+                            ).length;
+
+                            const faltanOperativosP = Math.max(0, this.panelSolarOperativos - yaOperativosP);
+                            const faltanInoperativosP = Math.max(0, this.panelSolarInoperativos - yaInoperativosP);
+
+                            const gridWS = colsPanel * HWW + (colsPanel - 1) * HWGAP;
+                            const originXS = salaPanel.x + (salaPanel.w - gridWS) / 2;
+                            const originYS = salaPanel.y + HEAD;
+                            let posPanel = yaOperativosP + yaInoperativosP;
+
+                            const colocarPanel = (estado) => {
+                                const c = posPanel % colsPanel;
+                                const r = Math.floor(posPanel / colsPanel);
+                                this.elements.push({
+                                    id: 'hw_panel_solar_' + rid(),
+                                    type: 'hardware',
+                                    subtype: 'panel_solar',
+                                    parentId: salaPanel.id,
+                                    x: originXS + c * (HWW + HWGAP),
+                                    y: originYS + r * (HWH + HWGAP),
+                                    w: HWW, h: HWH,
+                                    name: 'PANEL SOLAR',
+                                    rot: 0,
+                                    estado,
+                                    piso: this.currentPiso,
+                                    _ts: now(),
+                                    _synced: true,
+                                });
+                                posPanel++;
+                                equiposNuevos++;
+                            };
+
+                            for (let i = 0; i < faltanOperativosP; i++) colocarPanel('OPERATIVO');
+                            for (let i = 0; i < faltanInoperativosP; i++) colocarPanel('INOPERATIVO');
+                        }
 
                         this.draw();
                         this._refreshIcons();
@@ -3841,7 +4095,29 @@
                                         }
                                     }
                                 }
+
+                                /* 3. Merge de conexiones (cableado): no tienen id propio ni
+                                   timestamp, así que solo se agregan las que faltan, sin
+                                   duplicar. Las que queden huérfanas (su elemento ya no
+                                   existe) se limpian abajo, después del merge completo. */
+                                for (const remoteConn of (colab.connections || [])) {
+                                    const yaExiste = this.connections.some(
+                                        c => c.from === remoteConn.from && c.to === remoteConn.to
+                                    );
+                                    if (!yaExiste) {
+                                        this.connections.push(remoteConn);
+                                        anyElementChange = true;
+                                    }
+                                }
                             }
+
+                            /* Conexiones huérfanas: su elemento fue borrado por otro usuario
+                               y ya se aplicó arriba, pero la conexión pudo llegar en el mismo
+                               ciclo de sondeo antes de que se descartara. */
+                            this.connections = this.connections.filter(c =>
+                                this.elements.some(e => e.id === c.from) &&
+                                this.elements.some(e => e.id === c.to)
+                            );
 
                             /* Limpiar deletedIds locales que ya fueron confirmados por el servidor
                                (después de un ciclo completo, todos los colaboradores los conocen) */
