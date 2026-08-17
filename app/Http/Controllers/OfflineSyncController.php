@@ -91,7 +91,8 @@ class OfflineSyncController extends Controller
                                 'estado'                => mb_strtoupper(trim($eq['estado'] ?? 'OPERATIVO')),
                                 'propio'                => mb_strtoupper(trim($eq['propio'] ?? 'EXCLUSIVO')),
                                 'nro_serie'             => mb_strtoupper(trim($eq['nro_serie'] ?? $eq['serie'] ?? '')),
-                                'observacion'           => mb_strtoupper(trim($eq['observacion'] ?? ''))
+                                'observacion'           => mb_strtoupper(trim($eq['observacion'] ?? '')),
+                                'especificaciones'      => $eq['especificaciones'] ?? null
                             ]);
                         }
                     }

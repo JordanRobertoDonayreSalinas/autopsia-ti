@@ -28,7 +28,15 @@ class EquipoComputo extends Model
         'estado',
         'nro_serie',    // Campo verificado según tu migración
         'propio',
-        'observacion'   // Campo verificado según tu migración
+        'observacion',  // Campo verificado según tu migración
+        'especificaciones'
+    ];
+
+    /**
+     * Conversión de tipos nativos.
+     */
+    protected $casts = [
+        'especificaciones' => 'array',
     ];
 
     /**

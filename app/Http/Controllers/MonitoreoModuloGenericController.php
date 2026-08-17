@@ -156,6 +156,14 @@ class MonitoreoModuloGenericController extends Controller
 
                 foreach ($equiposData as $eq) {
                     if (!empty($eq['descripcion'])) {
+                        $especificaciones = $eq['especificaciones'] ?? null;
+                        if (is_string($especificaciones) && !empty(trim($especificaciones))) {
+                            $decoded = json_decode($especificaciones, true);
+                            if (json_last_error() === JSON_ERROR_NONE) {
+                                $especificaciones = $decoded;
+                            }
+                        }
+
                         EquipoComputo::create([
                             'cabecera_monitoreo_id' => $id,
                             'modulo'                => $slug,
@@ -164,7 +172,8 @@ class MonitoreoModuloGenericController extends Controller
                             'estado'                => mb_strtoupper(trim($eq['estado'] ?? 'OPERATIVO')),
                             'propio'                => mb_strtoupper(trim($eq['propio'] ?? 'EXCLUSIVO')),
                             'nro_serie'             => mb_strtoupper(trim($eq['nro_serie'] ?? $eq['serie'] ?? '')),
-                            'observacion'           => mb_strtoupper(trim($eq['observacion'] ?? $eq['observaciones'] ?? ''))
+                            'observacion'           => mb_strtoupper(trim($eq['observacion'] ?? $eq['observaciones'] ?? '')),
+                            'especificaciones'      => is_array($especificaciones) ? $especificaciones : null
                         ]);
                     }
                 }

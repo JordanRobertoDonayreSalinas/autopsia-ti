@@ -1,4 +1,30 @@
-@props(['equipos' => [], 'modulo' => ''])
+@props(['equipos' => [], 'modulo' => '', 'prefix' => ''])
+
+@php
+    $modulo = !empty($modulo) ? $modulo : (!empty($prefix) ? $prefix : 'modulo');
+
+    // Buscar si algún equipo existente (LAPTOP, CPU, ALL-IN-ONE) tiene especificaciones guardadas
+    $savedDxdiag = null;
+    if (isset($equipos) && count($equipos) > 0) {
+        foreach ($equipos as $item) {
+            $descUpper = str_replace('-', ' ', strtoupper(trim($item->descripcion ?? '')));
+            $esComputo = str_contains($descUpper, 'CPU') ||
+                         str_contains($descUpper, 'LAPTOP') ||
+                         str_contains($descUpper, 'ALL IN ONE') ||
+                         str_contains($descUpper, 'AIO') ||
+                         str_contains($descUpper, 'COMPUTADORA') ||
+                         str_contains($descUpper, 'PC');
+
+            if ($esComputo && !empty($item->especificaciones)) {
+                $specs = is_array($item->especificaciones) ? $item->especificaciones : json_decode($item->especificaciones, true);
+                if (!empty($specs) && is_array($specs)) {
+                    $savedDxdiag = $specs;
+                    break;
+                }
+            }
+        }
+    }
+@endphp
 
 <div class="bg-white border border-slate-200 shadow-sm rounded-[2.5rem] overflow-hidden transition-all hover:shadow-lg group/container">
     {{-- CABECERA --}}
@@ -55,6 +81,11 @@
                             $prefix = 'CP';
                             $cleanValue = substr($fullValue, 3);
                         }
+
+                        $specsVal = '';
+                        if (!empty($eq->especificaciones)) {
+                            $specsVal = is_array($eq->especificaciones) ? json_encode($eq->especificaciones, JSON_UNESCAPED_UNICODE) : $eq->especificaciones;
+                        }
                     @endphp
 
                     <tr class="hover:bg-slate-50/50 transition-colors group/row" id="row_{{ $index }}">
@@ -62,6 +93,7 @@
                         <td class="px-6 py-4">
                             <input type="text" name="equipos[{{ $index }}][descripcion]" value="{{ $eq->descripcion }}" 
                                    class="input-table-text" required list="list_equipos_master" placeholder="Seleccione...">
+                            <input type="hidden" id="especificaciones_{{ $index }}" name="equipos[{{ $index }}][especificaciones]" value="{{ $specsVal }}">
                         </td>
 
                         {{-- 2. CANTIDAD --}}
@@ -128,7 +160,7 @@
             </tbody>
         </table>
     {{-- PANEL DE ESPECIFICACIONES TÉCNICAS (DXDIAG) --}}
-    <div id="panel_especificaciones_dxdiag_{{ $modulo }}" class="hidden border-t border-slate-100 bg-slate-50/70 p-6 transition-all">
+    <div id="panel_especificaciones_dxdiag_{{ $modulo }}" class="{{ empty($savedDxdiag) ? 'hidden' : '' }} border-t border-slate-100 bg-slate-50/70 p-6 transition-all">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
                 <div class="p-2 bg-indigo-600 rounded-xl text-white shadow-sm">
@@ -152,7 +184,7 @@
                 </div>
                 <div class="min-w-0">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Equipo / Modelo</span>
-                    <span id="dx_modelo_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">--</span>
+                    <span id="dx_modelo_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['modelo'] ?? '--' }}</span>
                 </div>
             </div>
 
@@ -162,7 +194,7 @@
                 </div>
                 <div class="min-w-0">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Procesador</span>
-                    <span id="dx_cpu_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">--</span>
+                    <span id="dx_cpu_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['procesador'] ?? '--' }}</span>
                 </div>
             </div>
 
@@ -172,7 +204,7 @@
                 </div>
                 <div class="min-w-0">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Memoria RAM</span>
-                    <span id="dx_ram_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">--</span>
+                    <span id="dx_ram_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['ram'] ?? '--' }}</span>
                 </div>
             </div>
 
@@ -182,7 +214,7 @@
                 </div>
                 <div class="min-w-0">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Almacenamiento (Disco/SSD)</span>
-                    <span id="dx_disco_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">--</span>
+                    <span id="dx_disco_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['disco'] ?? '--' }}</span>
                 </div>
             </div>
 
@@ -192,7 +224,7 @@
                 </div>
                 <div class="min-w-0">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Tarjeta de Video / Gráficos</span>
-                    <span id="dx_gpu_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">--</span>
+                    <span id="dx_gpu_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['gpu'] ?? '--' }}</span>
                 </div>
             </div>
 
@@ -202,7 +234,7 @@
                 </div>
                 <div class="min-w-0">
                     <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Sistema Operativo</span>
-                    <span id="dx_so_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">--</span>
+                    <span id="dx_so_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['so'] ?? '--' }}</span>
                 </div>
             </div>
         </div>
@@ -297,6 +329,7 @@
         row.innerHTML = `
             <td class="px-6 py-4">
                 <input type="text" name="equipos[${uniqueId}][descripcion]" class="input-table-text" required list="list_equipos_master" placeholder="Seleccione...">
+                <input type="hidden" id="especificaciones_${uniqueId}" name="equipos[${uniqueId}][especificaciones]" value="">
             </td>
             <td class="px-2 py-4 text-center">
                 <input type="number" name="equipos[${uniqueId}][cantidad]" value="1" class="input-table-text text-center font-bold" min="1">
@@ -695,23 +728,42 @@
             if (matchGpu) gpuNombre = matchGpu[1].trim();
         }
 
-        // Detección reforzada de Laptop por tipo, booleano o modelo (Notebook, EliteBook, ThinkPad, Book, etc.)
+        // Detección reforzada de All-in-One, Laptop o CPU por tipo, booleano o modelo
         const textoCompletoModelo = (marcaModelo + ' ' + (hw.so || '') + ' ' + (hw.tipo || '')).toLowerCase();
-        const esLaptop = hw.is_laptop === true || hw.is_laptop === 'true' || hw.tipo === 'LAPTOP' ||
-            /notebook|laptop|book|pad|surface|pavilion|envy|latitude|thinkpad|ideapad|zenbook|vivobook|gram|macbook|elitebook/i.test(textoCompletoModelo);
+        const esAIO = /all.in.one|aio|todo en uno/i.test(textoCompletoModelo);
+        const esLaptop = !esAIO && (hw.is_laptop === true || hw.is_laptop === 'true' || hw.tipo === 'LAPTOP' ||
+            /notebook|laptop|book|pad|surface|pavilion|envy|latitude|thinkpad|ideapad|zenbook|vivobook|gram|macbook|elitebook/i.test(textoCompletoModelo));
 
-        if (!marcaModelo) marcaModelo = esLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
+        let descPrincipal = 'CPU';
+        if (esAIO) {
+            descPrincipal = 'ALL-IN-ONE';
+        } else if (esLaptop) {
+            descPrincipal = 'LAPTOP';
+        }
+
+        if (!marcaModelo) marcaModelo = esLaptop ? 'Laptop Portátil' : (esAIO ? 'PC All-in-One' : 'PC de Escritorio');
         marcaModelo = marcaModelo.replace(/^([a-z0-9]+)\s+\1\b/i, '$1').trim();
         if (!cpuNombre) cpuNombre = (hw.procesador || 'Procesador Genérico').replace(/^PROCESADOR:\s*/i, '');
         if (!gpuNombre) gpuNombre = 'Intel(R) Graphics';
 
-        // 1. Fila Principal: LAPTOP o CPU (Bien Patrimonial Principal)
-        const descPrincipal = esLaptop ? 'LAPTOP' : 'CPU';
-        const obsPrincipal = `MARCA/MODELO: ${marcaModelo}`;
-        window.agregarFilaConDatos(modulo, descPrincipal, obsPrincipal, 'OPERATIVO', 'EXCLUSIVO');
+        // Objeto estructurado de Especificaciones Técnicas (DxDiag)
+        const specsDiagnostico = {
+            modelo: marcaModelo,
+            procesador: cpuNombre,
+            ram: hw.ram || '',
+            disco: hw.disco || '',
+            gpu: gpuNombre,
+            so: hw.so || '',
+            autodetectado: true,
+            fecha: new Date().toISOString()
+        };
 
-        // 2. Monitor y Teclado (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP SE OMITEN POR ESTAR INTEGRADOS)
-        if (!esLaptop) {
+        // 1. Fila Principal: LAPTOP, CPU o ALL-IN-ONE (Bien Patrimonial Principal)
+        const obsPrincipal = `MARCA/MODELO: ${marcaModelo}`;
+        window.agregarFilaConDatos(modulo, descPrincipal, obsPrincipal, 'OPERATIVO', 'EXCLUSIVO', specsDiagnostico);
+
+        // 2. Monitor y Teclado (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP O ALL-IN-ONE SE OMITEN O AJUSTAN)
+        if (!esLaptop && !esAIO) {
             if (hw.monitor && hw.monitor !== 'NO' && hw.monitor !== 'INTEGRADO') {
                 window.agregarFilaConDatos(modulo, 'MONITOR', hw.monitor, 'OPERATIVO', 'EXCLUSIVO');
             }
@@ -859,12 +911,17 @@
         }, 1000);
     };
 
-    window.agregarFilaConDatos = function(modulo, descripcion, observacion, estado = 'OPERATIVO', propio = 'EXCLUSIVO') {
+    window.agregarFilaConDatos = function(modulo, descripcion, observacion, estado = 'OPERATIVO', propio = 'EXCLUSIVO', especificaciones = null) {
         let body = document.getElementById(`body_equipos_${modulo}`);
         if (!body) {
             body = document.querySelector('tbody[id^="body_equipos_"]');
         }
         if (!body) return;
+
+        let specsStr = '';
+        if (especificaciones) {
+            specsStr = typeof especificaciones === 'object' ? JSON.stringify(especificaciones) : String(especificaciones);
+        }
 
         // Detección inteligente para evitar duplicar equipos al pulsar Autodetectar nuevamente
         const descUpper = descripcion.trim().toUpperCase();
@@ -874,11 +931,15 @@
         for (let r of rows) {
             const inputDesc = r.querySelector('input[name*="[descripcion]"]');
             const inputObs = r.querySelector('input[name*="[observacion]"]');
+            const inputSpecs = r.querySelector('input[name*="[especificaciones]"]');
             const valDesc = inputDesc ? inputDesc.value.trim().toUpperCase() : '';
             const valObs = inputObs ? inputObs.value.trim().toUpperCase() : '';
 
-            if (valDesc === descUpper && (!obsUpper || valObs === obsUpper || ['CPU', 'LAPTOP', 'MONITOR', 'TECLADO', 'MOUSE', 'IMPRESORA'].includes(valDesc))) {
-                console.log(`[Autodetección] El equipo '${descripcion}' ya está presente en la tabla. Se omitió duplicar.`);
+            if (valDesc === descUpper && (!obsUpper || valObs === obsUpper || ['CPU', 'LAPTOP', 'ALL-IN-ONE', 'MONITOR', 'TECLADO', 'MOUSE', 'IMPRESORA'].includes(valDesc))) {
+                if (specsStr && inputSpecs) {
+                    inputSpecs.value = specsStr;
+                }
+                console.log(`[Autodetección] El equipo '${descripcion}' ya está presente en la tabla. Se actualizaron especificaciones.`);
                 return;
             }
         }
@@ -894,6 +955,7 @@
         row.innerHTML = `
             <td class="px-6 py-4">
                 <input type="text" name="equipos[${uniqueId}][descripcion]" value="${descripcion}" class="input-table-text" required list="list_equipos_master" placeholder="Seleccione...">
+                <input type="hidden" id="especificaciones_${uniqueId}" name="equipos[${uniqueId}][especificaciones]" value='${specsStr.replace(/'/g, "&#39;")}'>
             </td>
             <td class="px-2 py-4 text-center">
                 <input type="number" name="equipos[${uniqueId}][cantidad]" value="1" class="input-table-text text-center font-bold" min="1">
