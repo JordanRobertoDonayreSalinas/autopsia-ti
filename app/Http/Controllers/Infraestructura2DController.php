@@ -35,7 +35,101 @@ class Infraestructura2DController extends Controller
     public function getSyncData($id)
     {
         $modulosData = $this->_buildModulosData($id);
-        return response()->json($modulosData);
+        $acta = CabeceraMonitoreo::findOrFail($id);
+
+        return response()->json([
+            'modulos' => $modulosData,
+            // Datos del acta a nivel de establecimiento (no de un consultorio en
+            // particular), para que "Sincronizar módulos" también los refresque
+            // sin depender de recargar la página.
+            'pozo_tierra'               => $acta->pozo_tierra ?? 'NO',
+            'pozo_tierra_cantidad'      => (int) ($acta->pozo_tierra_cantidad ?? 0),
+            'pozo_tierra_operativos'    => (int) ($acta->pozo_tierra_operativos ?? 0),
+            'pozo_tierra_inoperativos'  => (int) ($acta->pozo_tierra_inoperativos ?? 0),
+            'panel_solar'               => $acta->panel_solar ?? 'NO',
+            'panel_solar_cantidad'      => (int) ($acta->panel_solar_cantidad ?? 0),
+            'panel_solar_operativos'    => (int) ($acta->panel_solar_operativos ?? 0),
+            'panel_solar_inoperativos'  => (int) ($acta->panel_solar_inoperativos ?? 0),
+        ]);
+    }
+
+    /**
+     * Colores estables para los cursores de colaboración: cada usuario siempre
+     * ve el mismo color para otro usuario, sin necesidad de guardarlo en BD.
+     */
+    private const COLORES_COLAB = [
+        '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
+        '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e',
+    ];
+
+    /**
+     * Edición colaborativa del croquis en tiempo real (por sondeo cada 900ms
+     * desde el editor). Cada usuario sube su posición de cursor y su copia de
+     * elementos/conexiones/eliminados; el servidor le devuelve el mismo estado
+     * de los demás usuarios activos en esta acta, para que el editor haga el
+     * merge (por timestamp) y dibuje sus cursores, nombre y cantidad.
+     */
+    public function croquisSync(Request $request, $id)
+    {
+        $userId = auth()->id();
+        $now = now();
+
+        DB::table('mon_croquis_presencia')->updateOrInsert(
+            ['cabecera_monitoreo_id' => $id, 'user_id' => $userId],
+            [
+                'cursor_x'     => (int) $request->input('cursor_x', 0),
+                'cursor_y'     => (int) $request->input('cursor_y', 0),
+                'elements'     => json_encode($request->input('elements', [])),
+                'connections'  => json_encode($request->input('connections', [])),
+                'deleted_ids'  => json_encode($request->input('deletedIds', [])),
+                'last_seen_at' => $now,
+            ]
+        );
+
+        // Un usuario sin señal en los últimos segundos se considera desconectado
+        // (pestaña cerrada de golpe, sin red, etc.) y deja de contar como activo.
+        $limite = $now->copy()->subSeconds(6);
+
+        $otros = DB::table('mon_croquis_presencia')
+            ->where('cabecera_monitoreo_id', $id)
+            ->where('user_id', '!=', $userId)
+            ->where('last_seen_at', '>=', $limite)
+            ->get();
+
+        $userIds = $otros->pluck('user_id');
+        $usuarios = \App\Models\User::whereIn('id', $userIds)->get()->keyBy('id');
+
+        $colaboradores = $otros->map(function ($fila) use ($usuarios) {
+            $user = $usuarios->get($fila->user_id);
+            return [
+                'user_id'     => $fila->user_id,
+                'user_name'   => $user ? $user->full_name : 'Usuario',
+                'color'       => self::COLORES_COLAB[$fila->user_id % count(self::COLORES_COLAB)],
+                'cursor_x'    => (int) $fila->cursor_x,
+                'cursor_y'    => (int) $fila->cursor_y,
+                'elements'    => json_decode($fila->elements, true) ?? [],
+                'connections' => json_decode($fila->connections, true) ?? [],
+                'deletedIds'  => json_decode($fila->deleted_ids, true) ?? [],
+            ];
+        })->values();
+
+        return response()->json(['ok' => true, 'colaboradores' => $colaboradores]);
+    }
+
+    /**
+     * El usuario cierra o navega fuera del croquis: se retira de inmediato de
+     * la lista de colaboradores (no hay que esperar a que expire por inactividad).
+     * Se llama vía navigator.sendBeacon, que no permite cabeceras propias, así
+     * que el token CSRF viaja en el cuerpo del formulario.
+     */
+    public function croquisLeave(Request $request, $id)
+    {
+        DB::table('mon_croquis_presencia')
+            ->where('cabecera_monitoreo_id', $id)
+            ->where('user_id', auth()->id())
+            ->delete();
+
+        return response()->json(['ok' => true]);
     }
 
     /**
@@ -259,6 +353,23 @@ class Infraestructura2DController extends Controller
                 ? mb_strtoupper(trim((string)$content['titulo_consultorio']), 'UTF-8')
                 : ($labels[$slug] ?? ucwords(str_replace('_', ' ', $slug)));
 
+            /*
+             * Tipo de consultorio (FÍSICO/FUNCIONAL): solo lo responden los consultorios
+             * dinámicos, en su propio formulario. Los módulos fijos (citas, urgencias,
+             * farmacia...) no traen esta pregunta, así que su ambiente se sigue
+             * infiriendo del nombre del servicio, como hasta ahora.
+             */
+            $tipoConsultorio = mb_strtoupper(trim((string)($content['tipo_consultorio'] ?? '')), 'UTF-8');
+            if ($tipoConsultorio === 'FÍSICO') $tipoConsultorio = 'FISICO';
+
+            /*
+             * Piso: solo los consultorios dinámicos lo preguntan ("¿Qué piso es?"
+             * en su propia ficha). Los módulos fijos no traen esa pregunta, así
+             * que se asume piso 1, igual que el resto del croquis por defecto.
+             */
+            $piso = (int) ($content['piso'] ?? 1);
+            if ($piso < 1) $piso = 1;
+
             $result[] = [
                 'slug'              => $slug,
                 'label'             => $label,
@@ -268,6 +379,8 @@ class Infraestructura2DController extends Controller
                 'total_equipos'     => $totalEquipos,
                 'utiliza_sihce'     => $utiliza_sihce,
                 'tipo_conectividad' => $tipo_conectividad,
+                'tipo_consultorio'  => $tipoConsultorio, // 'FISICO' | 'FUNCIONAL' | '' (módulos fijos)
+                'piso'              => $piso,            // piso declarado en la ficha del consultorio
             ];
         }
 

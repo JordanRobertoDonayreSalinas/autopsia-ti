@@ -42,7 +42,11 @@ class CabeceraMonitoreo extends Model
         'pozo_tierra',
         'pozo_tierra_cantidad',
         'pozo_tierra_operativos',
-        'pozo_tierra_inoperativos'
+        'pozo_tierra_inoperativos',
+        'panel_solar',
+        'panel_solar_cantidad',
+        'panel_solar_operativos',
+        'panel_solar_inoperativos'
     ];
 
     /**

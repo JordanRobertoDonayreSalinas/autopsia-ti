@@ -103,7 +103,7 @@ class Infraestructura2DPdfController extends Controller
         $size = 8;
         $color = [0.39, 0.45, 0.54]; // Slate-500
 
-        $canvas->page_text(42, $h - 40, 'SISTEMA DE ACTAS · INFRAESTRUCTURA 2D', $font, $size, $color);
+        $canvas->page_text(42, $h - 40, 'SISTEMA DE INFRAESTRUCTURA DE CROQUIS 2D', $font, $size, $color);
 
         $textPag = 'PAG. {PAGE_NUM} / {PAGE_COUNT}';
         $widthPag = $fontMetrics->getTextWidth('PAG. 00 / 00', $font, $size);
