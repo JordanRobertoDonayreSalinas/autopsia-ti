@@ -13,7 +13,33 @@ use Illuminate\Support\Facades\Log;
 class OfflineSyncController extends Controller
 {
     /**
-     * Descarga catálogo de establecimientos para almacenamiento offline en IndexedDB.
+     * Devuelve la versión actual del sistema (v1.2.0) y la marca de tiempo del catálogo para Flutter/Apps.
+     */
+    public function apiVersion()
+    {
+        try {
+            $maxUpdated = Establecimiento::max('updated_at');
+            $catalogTimestamp = $maxUpdated ? strtotime($maxUpdated) : time();
+
+            return response()->json([
+                'success'          => true,
+                'app'              => 'Autopsia TI',
+                'system_version'   => '1.2.0',
+                'catalog_version'  => $catalogTimestamp,
+                'total_ipress'     => Establecimiento::count(),
+                'min_app_version'  => '1.0.0',
+                'timestamp'        => now()->toIso8601String(),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener versión: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Descarga catálogo de establecimientos para almacenamiento offline en IndexedDB / SQLite.
      */
     public function descargarDatosCampo()
     {

@@ -13,3 +13,10 @@ Route::prefix('speedtest')->group(function () {
     Route::post('/upload', [SpeedtestController::class, 'upload']);
 });
 
+// --- RUTAS API REST V1 PARA APP MULTIPLATAFORMA (FLUTTER / DESKTOP / MOBILE / TABLET) ---
+Route::prefix('v1')->group(function () {
+    Route::get('/version', [\App\Http\Controllers\OfflineSyncController::class, 'apiVersion']);
+    Route::get('/catalog', [\App\Http\Controllers\OfflineSyncController::class, 'descargarDatosCampo']);
+    Route::post('/sync', [\App\Http\Controllers\OfflineSyncController::class, 'sincronizarLoteOffline']);
+});
+
