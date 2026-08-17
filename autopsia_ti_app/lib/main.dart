@@ -101,22 +101,22 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _isOnline ? Colors.emerald.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
+                color: _isOnline ? Colors.green.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _isOnline ? Colors.emerald : Colors.amber),
+                border: Border.all(color: _isOnline ? Colors.green : Colors.amber),
               ),
               child: Row(
                 children: [
                   Icon(
                     _isOnline ? Icons.wifi : Icons.wifi_off,
-                    color: _isOnline ? Colors.emeraldAccent : Colors.amberAccent,
+                    color: _isOnline ? Colors.greenAccent : Colors.amberAccent,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _isOnline ? 'Online' : 'Modo Campo Offline',
                     style: TextStyle(
-                      color: _isOnline ? Colors.emeraldAccent : Colors.amberAccent,
+                      color: _isOnline ? Colors.greenAccent : Colors.amberAccent,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -173,7 +173,7 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
                               prefixIcon: const Icon(Icons.search),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               filled: true,
-                              fillColor: Colors.slate.shade50,
+                              fillColor: Colors.grey.shade100,
                             ),
                           ),
                         ],
