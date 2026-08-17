@@ -22,11 +22,13 @@
                 </h2>
                 <p class="text-slate-500 font-bold uppercase text-xs mt-1">
                     <i data-lucide="hospital" class="inline-block w-4 h-4 mr-1 text-violet-500"></i>
-                    {{ $acta->establecimiento->nombre }} &bull; CÓD: {{ $acta->establecimiento->codigo ?? 'S/C' }}
+                    EE.SS: {{ $acta->establecimiento->codigo ?? 'S/C' }} - {{ $acta->establecimiento->nombre }}
                 </p>
             </div>
             <div class="flex items-center gap-3">
                 <a href="{{ route('usuario.monitoreo.rrhh.pdf', $acta->id) }}" target="_blank"
+                    x-show="trabajadores.length > 0"
+                    x-transition
                     class="flex items-center gap-2 px-6 py-3 bg-white border-2 border-violet-200 text-violet-700 hover:bg-violet-50 rounded-2xl font-black text-xs transition-all uppercase shadow-sm">
                     <i data-lucide="file-text" class="w-4 h-4"></i> Generar Reporte PDF
                 </a>
@@ -173,18 +175,23 @@
                         </div>
                     </div>
 
-                    {{-- 8. COLEGIATURA CON PREFIJO AUTOMÁTICO --}}
+                    {{-- 8. COLEGIATURA CON PREFIJO / COLEGIO PROFESIONAL --}}
                     <div class="md:col-span-4">
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center justify-between">
-                            <span class="flex items-center gap-1"><i data-lucide="award" class="w-3.5 h-3.5 text-violet-500"></i> N° Colegiatura</span>
-                            <span class="text-[9px] font-black text-violet-600 uppercase" x-show="prefijoColegiatura" x-text="'Prefijo: ' + prefijoColegiatura"></span>
+                            <span class="flex items-center gap-1"><i data-lucide="award" class="w-3.5 h-3.5 text-violet-500"></i> N° Colegiatura (Máx 6 dígitos)</span>
+                            <span class="text-[9px] font-black text-violet-600 uppercase" x-show="form.colegio_profesional" x-text="'Colegio: ' + form.colegio_profesional"></span>
                         </label>
                         <div class="flex rounded-xl overflow-hidden border-2 border-slate-200 focus-within:border-violet-500 bg-slate-50 transition-all shadow-sm">
-                            <template x-if="prefijoColegiatura">
+                            <template x-if="form.colegio_profesional">
                                 <span class="px-3.5 py-3 bg-violet-100/90 text-violet-900 font-black text-xs uppercase flex items-center border-r border-violet-200 select-none tracking-wider"
-                                    x-text="prefijoColegiatura"></span>
+                                    x-text="form.colegio_profesional"></span>
                             </template>
-                            <input type="text" x-model="form.colegiatura_num" :placeholder="prefijoColegiatura ? 'EJ: 78452' : 'EJ: S/C O N° DE COLEGIATURA'"
+                            <input type="text" 
+                                x-model="form.colegiatura" 
+                                @input="form.colegiatura = form.colegiatura.replace(/\D/g, '').slice(0, 6)"
+                                @blur="if (form.colegiatura) { const d = form.colegiatura.replace(/\D/g, '').slice(0, 6); if (d) form.colegiatura = d.padStart(6, '0'); }"
+                                maxlength="6" 
+                                :placeholder="form.colegio_profesional ? 'EJ: 045123' : 'N° DE COLEGIATURA (MÁX 6 DÍGITOS)'"
                                 class="w-full px-4 py-3 bg-transparent font-bold text-sm text-slate-800 outline-none uppercase transition-all">
                         </div>
                     </div>
@@ -328,11 +335,11 @@
                                         <span class="text-slate-500 font-bold uppercase text-[11px]" x-text="t.nombres"></span>
                                     </td>
 
-                                    {{-- PROFESIÓN / COLEGIATURA / RNE (SIN EL PREFIJO 'COL:') --}}
+                                    {{-- PROFESIÓN / COLEGIATURA / RNE --}}
                                     <td class="py-3 px-4">
                                         <span class="font-bold text-slate-800 uppercase block text-[11px]" x-text="t.profesion || 'NO ESPECIFICADO'"></span>
                                         <div class="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
-                                            <span x-show="t.colegiatura" class="font-black text-slate-700" x-text="t.colegiatura"></span>
+                                            <span x-show="t.colegiatura" class="font-black text-slate-700" x-text="(t.colegio_profesional ? t.colegio_profesional + ' ' : '') + t.colegiatura"></span>
                                             <span x-show="t.rne" class="text-violet-600 font-bold" x-text="'RNE: ' + t.rne"></span>
                                         </div>
                                     </td>
@@ -400,7 +407,8 @@
                             <input type="hidden" :name="'trabajadores[' + idx + '][apellido_materno]'" :value="t.apellido_materno">
                             <input type="hidden" :name="'trabajadores[' + idx + '][nombres]'" :value="t.nombres">
                             <input type="hidden" :name="'trabajadores[' + idx + '][profesion]'" :value="t.profesion">
-                            <input type="hidden" :name="'trabajadores[' + idx + '][colegiatura]'" :value="t.colegiatura">
+                            <input type="hidden" :name="'trabajadores[' + idx + '][colegio_profesional]'" :value="t.colegio_profesional || ''">
+                            <input type="hidden" :name="'trabajadores[' + idx + '][colegiatura]'" :value="t.colegiatura || ''">
                             <input type="hidden" :name="'trabajadores[' + idx + '][correo]'" :value="t.correo">
                             <input type="hidden" :name="'trabajadores[' + idx + '][celular]'" :value="t.celular">
                             <input type="hidden" :name="'trabajadores[' + idx + '][rne]'" :value="t.rne">
@@ -543,7 +551,29 @@ function rrhhManager() {
     };
 
     return {
-        trabajadores: @json($trabajadores ?? []),
+        trabajadores: (@json($trabajadores ?? [])).map(t => {
+            let colNum = (t.colegiatura || '').toString().trim();
+            let colProf = (t.colegio_profesional || '').trim();
+            if (!colProf) {
+                const prof = (t.profesion || '').trim().toUpperCase();
+                const pref = mapaPrefijos[prof] || '';
+                if (pref && colNum.toUpperCase().startsWith(pref.toUpperCase())) {
+                    colProf = pref;
+                    colNum = colNum.substring(pref.length).trim();
+                } else if (pref) {
+                    colProf = pref;
+                }
+            }
+            colNum = colNum.replace(/\D/g, '').slice(0, 6);
+            if (colNum) {
+                colNum = colNum.padStart(6, '0');
+            }
+            return {
+                ...t,
+                colegio_profesional: colProf,
+                colegiatura: colNum
+            };
+        }),
         serviciosCatalogo: serviciosLista,
         profesionesCatalogo: profesionesLista,
         images: {
@@ -576,7 +606,8 @@ function rrhhManager() {
             nombres: '',
             profesion: 'MÉDICO CIRUJANO',
             profesion_otra: '',
-            colegiatura_num: '',
+            colegio_profesional: 'CMP',
+            colegiatura: '',
             correo: '',
             celular: '',
             rne: '',
@@ -596,7 +627,7 @@ function rrhhManager() {
 
         // Devuelve el prefijo oficial según la profesión seleccionada
         get prefijoColegiatura() {
-            if (this.form.profesion === 'OTROS') return '';
+            if (this.form.profesion === 'OTROS') return this.form.colegio_profesional || '';
             return mapaPrefijos[this.form.profesion] || '';
         },
 
@@ -639,6 +670,9 @@ function rrhhManager() {
         onProfesionChange() {
             if (this.form.profesion !== 'OTROS') {
                 this.form.profesion_otra = '';
+                this.form.colegio_profesional = mapaPrefijos[this.form.profesion] || '';
+            } else {
+                this.form.colegio_profesional = '';
             }
         },
 
@@ -670,9 +704,11 @@ function rrhhManager() {
                         if (this.profesionesCatalogo.includes(cargoDb)) {
                             this.form.profesion = cargoDb;
                             this.form.profesion_otra = '';
+                            this.form.colegio_profesional = mapaPrefijos[cargoDb] || '';
                         } else {
                             this.form.profesion = 'OTROS';
                             this.form.profesion_otra = cargoDb;
+                            this.form.colegio_profesional = '';
                         }
                     }
 
@@ -749,17 +785,11 @@ function rrhhManager() {
                 profesionFinal = especProf;
             }
 
-            // Construir colegiatura final con su prefijo si corresponde
-            let colegiaturaFinal = '';
-            const rawColNum = (this.form.colegiatura_num || '').trim().toUpperCase();
-            if (rawColNum) {
-                const pref = this.prefijoColegiatura;
-                if (pref && !rawColNum.startsWith(pref)) {
-                    colegiaturaFinal = `${pref} ${rawColNum}`;
-                } else {
-                    colegiaturaFinal = rawColNum;
-                }
-            }
+            // Sanitizar colegiatura a solo números (máximo 6 dígitos) completando con ceros a la izquierda
+            const rawCol = (this.form.colegiatura || '').toString().trim();
+            const digitsCol = rawCol.replace(/\D/g, '').slice(0, 6);
+            const colegiaturaFinal = digitsCol ? digitsCol.padStart(6, '0') : '';
+            const colegioProfFinal = (this.form.colegio_profesional || mapaPrefijos[profesionFinal] || '').trim().toUpperCase();
 
             const itemData = {
                 id: this.form.id || ('tr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
@@ -770,6 +800,7 @@ function rrhhManager() {
                 apellido_materno: this.form.apellido_materno.trim().toUpperCase(),
                 nombres: this.form.nombres.trim().toUpperCase(),
                 profesion: profesionFinal.toUpperCase(),
+                colegio_profesional: colegioProfFinal,
                 colegiatura: colegiaturaFinal,
                 correo: this.form.correo.trim().toLowerCase(),
                 celular: this.form.celular.trim(),
@@ -834,12 +865,23 @@ function rrhhManager() {
                 profVal = 'OTROS';
             }
 
-            // Extraer solo el número de la colegiatura si tiene prefijo
-            const prefActual = mapaPrefijos[profVal] || '';
-            let rawCol = (t.colegiatura || '').trim();
+            // Extraer solo el número de la colegiatura y el colegio profesional
+            let colProf = (t.colegio_profesional || '').trim();
+            let rawCol = (t.colegiatura || '').toString().trim();
             let colNum = rawCol;
-            if (prefActual && rawCol.toUpperCase().startsWith(prefActual.toUpperCase())) {
-                colNum = rawCol.substring(prefActual.length).trim();
+
+            if (!colProf) {
+                const prefActual = mapaPrefijos[profVal] || '';
+                if (prefActual && rawCol.toUpperCase().startsWith(prefActual.toUpperCase())) {
+                    colProf = prefActual;
+                    colNum = rawCol.substring(prefActual.length).trim();
+                } else if (prefActual) {
+                    colProf = prefActual;
+                }
+            }
+            colNum = colNum.replace(/\D/g, '').slice(0, 6);
+            if (colNum) {
+                colNum = colNum.padStart(6, '0');
             }
 
             this.form = {
@@ -853,7 +895,8 @@ function rrhhManager() {
                 nombres: t.nombres || '',
                 profesion: profVal,
                 profesion_otra: profOtraVal,
-                colegiatura_num: colNum,
+                colegio_profesional: colProf,
+                colegiatura: colNum,
                 correo: t.correo || '',
                 celular: t.celular || '',
                 rne: t.rne || '',
@@ -899,7 +942,8 @@ function rrhhManager() {
                 nombres: '',
                 profesion: 'MÉDICO CIRUJANO',
                 profesion_otra: '',
-                colegiatura_num: '',
+                colegio_profesional: 'CMP',
+                colegiatura: '',
                 correo: '',
                 celular: '',
                 rne: '',
