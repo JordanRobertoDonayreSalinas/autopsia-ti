@@ -197,7 +197,7 @@
     <div class="header">
         <h1>REPORTE CONSOLIDADO DE DIAGNÓSTICO SITUACIONAL IPRESS</h1>
         <div class="header-sub">
-            <strong>Establecimiento:</strong> {{ strtoupper($acta->establecimiento->nombre ?? 'ESTABLECIMIENTO NO REGISTRADO') }} 
+            <strong>Establecimiento: </strong>{{ $acta->establecimiento->codigo ?? 'S/C' }} - {{ strtoupper($acta->establecimiento->nombre ?? 'ESTABLECIMIENTO NO REGISTRADO') }} 
             &nbsp;|&nbsp; 
             <strong>Acta N°:</strong> {{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}
         </div>
