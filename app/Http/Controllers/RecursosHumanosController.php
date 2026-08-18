@@ -285,11 +285,25 @@ class RecursosHumanosController extends Controller
             ->where('modulo_nombre', 'rrhh')
             ->first();
 
-        $contenido = $detalle->contenido ?? [];
+        $contenido = $detalle ? $detalle->contenido : [];
+        if (is_string($contenido)) {
+            $contenido = json_decode($contenido, true) ?? [];
+        }
         $trabajadores = $contenido['trabajadores'] ?? [];
 
-        $pdf = Pdf::loadView('usuario.monitoreo.pdf.rrhh_pdf', compact('acta', 'detalle', 'contenido', 'trabajadores'));
+        $pdf = Pdf::setOptions([
+            'isPhpEnabled'         => true,
+            'isRemoteEnabled'      => true,
+            'isHtml5ParserEnabled' => true,
+        ])->loadView('usuario.monitoreo.pdf.rrhh_pdf', compact('acta', 'detalle', 'contenido', 'trabajadores'));
         $pdf->setPaper('a4', 'landscape');
-        return $pdf->stream("Reporte_RRHH_Acta_{$acta->numero_acta}.pdf");
+
+        return response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Reporte_RRHH_Acta_' . $acta->numero_acta . '.pdf"',
+            'Cache-Control'       => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma'              => 'no-cache',
+            'Expires'             => 'Sun, 02 Jan 1990 00:00:00 GMT',
+        ]);
     }
 }

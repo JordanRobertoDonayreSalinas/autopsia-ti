@@ -682,14 +682,14 @@ try {
 [System.Environment]::Exit(0)
 POWERSHELL;
 
-        $utf16 = mb_convert_encoding($psScript, 'UTF-16LE', 'UTF-8');
-        $b64 = base64_encode($utf16);
+        $tmpPs1 = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hw_direct_' . uniqid() . '.ps1';
+        @file_put_contents($tmpPs1, "\xEF\xBB\xBF" . $psScript);
 
         if (ob_get_length()) {
             @ob_clean();
         }
 
-        $cmd = "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {$b64}";
+        $cmd = 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' . $tmpPs1 . '"';
         $descriptors = [
             0 => ["pipe", "r"],
             1 => ["pipe", "w"],
@@ -703,7 +703,7 @@ POWERSHELL;
             fclose($pipes[0]);
             stream_set_blocking($pipes[1], false);
 
-            $timeout = 8.0;
+            $timeout = 10.0;
             $startProc = microtime(true);
 
             while (microtime(true) - $startProc < $timeout) {
@@ -730,6 +730,8 @@ POWERSHELL;
             proc_terminate($proc);
             proc_close($proc);
         }
+
+        @unlink($tmpPs1);
 
         if ($output) {
             $start = strpos($output, '{');

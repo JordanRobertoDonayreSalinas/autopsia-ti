@@ -1,4 +1,4 @@
-const CACHE_NAME = 'autopsia-ti-pwa-v6';
+const CACHE_NAME = 'autopsia-ti-pwa-v7';
 const STATIC_ASSETS = [
   '/',
   '/usuario/monitoreo',
@@ -67,7 +67,8 @@ function fetchWithTimeout(request, timeout = 1500) {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   
-  if (req.method !== 'GET' || req.url.includes('/login') || req.url.includes('/logout')) {
+  // No interceptar: POST, login/logout, ni rutas de generación de PDF
+  if (req.method !== 'GET' || req.url.includes('/login') || req.url.includes('/logout') || req.url.includes('/pdf')) {
     return;
   }
 
@@ -116,7 +117,7 @@ self.addEventListener('fetch', (event) => {
 
   // Si está Online, pedir a la red y guardar copia fresca en caché
   event.respondWith(
-    fetchWithTimeout(req, 1500)
+    fetchWithTimeout(req, 8000)
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const resClone = networkResponse.clone();

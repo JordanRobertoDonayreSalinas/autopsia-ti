@@ -124,6 +124,13 @@ class MonitoreoModuloGenericController extends Controller
                 $contenido['evidencia_path'] = $detalle->contenido['evidencia_path'];
             }
 
+            // Normalizar y validar cantidad de puntos de red (mínimo 1, sin negativos)
+            if (($contenido['cuenta_punto_red'] ?? '') === 'SI') {
+                $contenido['cantidad_puntos_red'] = max(1, (int)($contenido['cantidad_puntos_red'] ?? 1));
+            } else {
+                $contenido['cantidad_puntos_red'] = null;
+            }
+
             $detalle->update(['contenido' => $contenido]);
 
             // Sincronizar datos del profesional entrevistado si se enviaron
@@ -207,10 +214,29 @@ class MonitoreoModuloGenericController extends Controller
             ->firstOrFail();
 
         $contenido = $detalle->contenido ?? [];
+        if (is_string($contenido)) {
+            $contenido = json_decode($contenido, true) ?? [];
+        }
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('usuario.monitoreo.pdf.consultorio_pdf', compact('acta', 'detalle', 'contenido'));
+        $equipos = EquipoComputo::where('cabecera_monitoreo_id', $id)
+            ->where('modulo', $slug)
+            ->get();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
+            'isPhpEnabled'         => true,
+            'isRemoteEnabled'      => true,
+            'isHtml5ParserEnabled' => true,
+        ])->loadView('usuario.monitoreo.pdf.consultorio_pdf', compact('acta', 'detalle', 'contenido', 'equipos', 'slug'));
+        
         $pdf->setPaper('a4', 'portrait');
-        return $pdf->stream("Consultorio_{$slug}_Acta_{$id}.pdf");
+
+        return response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Consultorio_' . $slug . '_Acta_' . $id . '.pdf"',
+            'Cache-Control'       => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma'              => 'no-cache',
+            'Expires'             => 'Sun, 02 Jan 1990 00:00:00 GMT',
+        ]);
     }
 
     /**

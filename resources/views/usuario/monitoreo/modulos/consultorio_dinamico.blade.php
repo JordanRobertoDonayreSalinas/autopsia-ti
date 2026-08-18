@@ -133,15 +133,32 @@
                                     </label>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
-                                    @php $puntoRed = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); @endphp
+                                    @php 
+                                        $puntoRed = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); 
+                                        $cantPuntosRed = $contenido['cantidad_puntos_red'] ?? $contenido['puntos_red_cantidad'] ?? '1';
+                                    @endphp
                                     <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800'); document.getElementById('container_cantidad_puntos_red').classList.remove('hidden'); const inp = document.getElementById('input_cantidad_puntos_red'); if(inp && (!inp.value || parseInt(inp.value) < 1)) inp.value = '1';">
                                         <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> SÍ</span>
                                     </label>
                                     <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800'); document.getElementById('container_cantidad_puntos_red').classList.add('hidden');">
                                         <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-600"></i> NO</span>
                                     </label>
+                                </div>
+
+                                {{-- CAMPO DINÁMICO: CANTIDAD DE PUNTOS DE RED CUANDO ES SÍ --}}
+                                <div id="container_cantidad_puntos_red" class="mt-4 pt-3 border-t border-slate-200/70 {{ $puntoRed === 'SI' ? '' : 'hidden' }}">
+                                    <label class="block text-[10px] font-black text-indigo-900 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                                        <i data-lucide="hash" class="w-3.5 h-3.5 text-indigo-600"></i> Cantidad de Puntos de Red (Mínimo: 1) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="number" min="1" max="99" step="1" name="contenido[cantidad_puntos_red]" id="input_cantidad_puntos_red"
+                                        value="{{ max(1, (int)$cantPuntosRed) }}" 
+                                        placeholder="Ej: 1"
+                                        onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E'||event.key==='.') event.preventDefault();"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value && parseInt(this.value) < 1) this.value = '1';"
+                                        onblur="if(!this.value || parseInt(this.value) < 1) this.value = '1';"
+                                        class="w-full px-4 py-2.5 bg-white border-2 border-indigo-200 focus:border-indigo-600 rounded-xl font-black text-xs text-indigo-900 outline-none transition-all shadow-sm">
                                 </div>
                             </div>
                         </div>
@@ -355,6 +372,14 @@
             const pisoInput = document.querySelector('input[name="contenido[piso]"]');
             if (!pisoInput || !pisoInput.value.trim() || parseInt(pisoInput.value) < 1) {
                 faltantes.push("DATOS GENERALES: Número de Piso");
+            }
+
+            const puntoRedRadio = document.querySelector('input[name="contenido[cuenta_punto_red]"]:checked');
+            if (puntoRedRadio && puntoRedRadio.value === 'SI') {
+                const cantPuntos = document.getElementById('input_cantidad_puntos_red');
+                if (!cantPuntos || !cantPuntos.value.trim() || parseInt(cantPuntos.value) < 1) {
+                    faltantes.push("DATOS GENERALES: Cantidad de Puntos de Red");
+                }
             }
 
             // 2. EQUIPOS DE CÓMPUTO

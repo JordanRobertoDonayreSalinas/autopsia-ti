@@ -26,7 +26,7 @@
                 </p>
             </div>
             <div class="flex items-center gap-3">
-                <a href="{{ route('usuario.monitoreo.rrhh.pdf', $acta->id) }}" target="_blank"
+                <a href="{{ route('usuario.monitoreo.rrhh.pdf', $acta->id) }}?v={{ time() }}" target="_blank"
                     x-show="trabajadores.length > 0"
                     x-transition
                     class="flex items-center gap-2 px-6 py-3 bg-white border-2 border-violet-200 text-violet-700 hover:bg-violet-50 rounded-2xl font-black text-xs transition-all uppercase shadow-sm">

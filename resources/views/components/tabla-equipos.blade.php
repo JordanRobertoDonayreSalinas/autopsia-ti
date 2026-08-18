@@ -433,7 +433,7 @@
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 4500);
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             // Intentar detección directa instantánea (servidor local / Windows)
             const resDirect = await fetch(HW_URLS.directo, {
