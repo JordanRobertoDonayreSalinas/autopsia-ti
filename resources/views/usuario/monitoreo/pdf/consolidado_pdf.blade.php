@@ -2,681 +2,1141 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acta de Diagnóstico Situacional N° {{ ltrim($acta->numero_acta, '0') }}</title>
+    <title>Acta Consolidada de Diagnóstico Situacional N° {{ ltrim($acta->numero_acta, '0') }}</title>
     <style>
-        /* Configuración de Página */
-        @page { margin: 1.5cm 1.5cm 2cm 1.5cm; }
+        /* ═══════════════════════════════════════════════════════════════
+           REPORTE CONSOLIDADO DE DIAGNÓSTICO SITUACIONAL IPRESS
+           Diseño Ejecutivo, Resumido e Institucional
+           Tipografía: DejaVu Sans (Nativa DomPDF TrueType)
+           ═══════════════════════════════════════════════════════════════ */
+        @page { 
+            margin: 0.7cm 1cm 1.2cm 1cm; 
+        }
+
         body { 
-            font-family: 'Helvetica', 'Arial', sans-serif; 
-            font-size: 9px; 
-            color: #334155; 
-            line-height: 1.3; 
+            font-family: 'DejaVu Sans', sans-serif; 
+            font-size: 8px; 
+            color: #1e293b; 
+            line-height: 1.25; 
+            background-color: #ffffff;
             margin: 0;
+            padding: 0;
         }
 
-        /* Encabezado Principal */
-        .header { 
-            text-align: center; 
-            margin-bottom: 15px; 
-            border-bottom: 2px solid #0f172a;
-            padding-bottom: 8px;
-        }
-        .header h1 { 
-            margin: 0; 
-            font-size: 14px; 
-            color: #0f172a; 
-            text-transform: uppercase; 
-        }
-        .header-sub {
-            font-size: 10px;
-            margin-top: 4px;
-            color: #1e293b;
+        /* ── BARRA SUPERIOR DECORATIVA ── */
+        .top-accent {
+            height: 3.5px;
+            background-color: #4f46e5;
+            margin-bottom: 7px;
         }
 
-        /* Títulos de Sección Principales */
-        .section-header { 
-            background-color: #e2e8f0; 
-            padding: 5px 10px; 
-            font-weight: bold; 
-            font-size: 10px;
-            color: #0f172a;
-            margin: 15px 0 8px 0; 
-            text-transform: uppercase;
+        /* ── ENCABEZADO PRINCIPAL ── */
+        .header-block {
+            margin-bottom: 6px;
         }
-
-        /* Contenedor de cada Módulo */
-        .modulo-container {
-            border: 1px solid #cbd5e1;
-            margin-bottom: 12px;
-            border-radius: 2px;
+        .header-grid {
+            width: 100%;
+            border-collapse: collapse;
         }
-        .modulo-title {
-            background-color: #f1f5f9;
-            padding: 4px 8px;
-            font-weight: bold;
-            font-size: 10px;
-            color: #0f172a;
-            border-bottom: 1px solid #cbd5e1;
-            text-transform: uppercase;
-        }
-        .sub-section {
-            background-color: #f8fafc;
-            font-size: 8px;
-            font-weight: bold;
-            color: #475569;
-            padding: 3px 8px;
-            border-bottom: 1px solid #e2e8f0;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        /* Tablas de Datos (Compactas) */
-        table.data-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 0;
-        }
-        table.data-table th, table.data-table td { 
-            border: 1px solid #e2e8f0; 
-            padding: 4px 6px; 
-            word-wrap: break-word;
+        .header-grid td {
+            border: none;
+            padding: 0;
             vertical-align: middle;
         }
-        table.data-table th {
-            background-color: #f1f5f9;
-            text-align: left;
-            font-size: 8px;
+
+        .tag-pill {
+            background-color: #4f46e5;
+            color: #ffffff;
+            font-size: 6.5px;
+            font-weight: bold;
+            padding: 2.5px 8px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+        }
+        .tag-acta {
+            color: #64748b;
+            font-size: 7.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-left: 6px;
+            letter-spacing: 0.3px;
+        }
+        .header-title {
+            font-size: 13.5px;
+            font-weight: bold;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: -0.3px;
+            margin: 3px 0 1.5px 0;
+        }
+        .header-subtitle {
+            font-size: 7.5px;
             color: #475569;
+            line-height: 1.2;
+        }
+        .header-subtitle strong {
+            color: #1e293b;
+        }
+
+        /* Tarjetas de resumen en encabezado */
+        .summary-cards {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 4px 0;
+        }
+        .summary-cards td {
+            border: none;
+            padding: 0;
+        }
+        .stat-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 4px 6px;
+            text-align: center;
+        }
+        .stat-card-accent {
+            background-color: #eef2ff;
+            border: 1px solid #c7d2fe;
+        }
+        .stat-value {
+            font-size: 11px;
+            font-weight: bold;
+            color: #4f46e5;
+            display: block;
+            line-height: 1.1;
             text-transform: uppercase;
         }
-        .bg-label { 
-            background-color: #f8fafc; 
-            font-weight: bold; 
-            color: #475569;
-            font-size: 8px;
-        }
-        .uppercase { text-transform: uppercase; font-size: 8px; }
-
-        /* --- EVIDENCIA FOTOGRÁFICA --- */
-        .no-evidence-box {
-            border: 2px dashed #cbd5e1;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
+        .stat-label {
+            font-size: 6px;
             color: #64748b;
-            font-style: italic;
-            background-color: #f8fafc;
-            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            display: block;
+            margin-top: 1px;
         }
 
-        /* --- ESTILO UNIFICADO PARA FOTOS (PREMIUM) --- */
-        .photo-img, .foto, .preview-image, .photo-box img {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            border-radius: 10px;
+        .header-divider {
+            border: none;
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 5px 0 7px 0;
+        }
+
+        /* ── SECCIONES DEL REPORTE ── */
+        .section-card {
+            background-color: #ffffff;
             border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+        }
+        .section-header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 3px;
+        }
+        .section-header-table td {
+            border: none;
+            padding: 0;
+            vertical-align: middle;
         }
         
-        .foto-caption {
+        .section-badge {
+            background-color: #4f46e5;
+            color: #ffffff;
+            font-size: 7.5px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: inline-block;
+            text-align: center;
+            line-height: 1;
+        }
+        .section-title-text {
+            font-size: 8.5px;
+            font-weight: bold;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            margin-left: 5px;
+        }
+
+        /* ── GRID DE CAMPOS FORMULARIO ── */
+        .form-grid {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 5px 0;
+            margin-left: -5px;
+            margin-right: -5px;
+        }
+        .form-grid td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+        .field-box {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 4px 6px;
+        }
+        .field-label {
+            font-size: 6px;
+            font-weight: bold;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 1.5px;
+            display: block;
+        }
+        .field-value {
+            font-size: 7.5px;
+            font-weight: bold;
+            color: #0f172a;
+            text-transform: uppercase;
+        }
+
+        /* ── BADGES & ESTILOS DE ESTADO ── */
+        .badge {
+            display: inline-block;
+            padding: 1.5px 5px;
+            border-radius: 3px;
+            font-size: 6.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 0.2px;
+        }
+        .badge-operativo { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-regular { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .badge-inoperativo { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .badge-propio { background-color: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
+        .badge-si { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-no { background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+        /* ── TABLAS EJECUTIVAS ── */
+        table.summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2px;
+            margin-bottom: 3px;
+        }
+        table.summary-table th {
+            background-color: #4f46e5;
+            color: #ffffff;
             font-size: 7px;
             font-weight: bold;
-            color: #1e293b;
-            margin-top: 4px;
             text-transform: uppercase;
-            text-align: center;
+            padding: 4px 5px;
+            text-align: left;
+            border: 1px solid #4f46e5;
+            letter-spacing: 0.2px;
+        }
+        table.summary-table td {
+            border: 1px solid #e2e8f0;
+            padding: 3.5px 5px;
+            font-size: 7.5px;
+            vertical-align: middle;
+            color: #334155;
+        }
+        table.summary-table tr:nth-child(even) {
+            background-color: #fafbff;
         }
 
-        /* Firmas - DISEÑO ACTUALIZADO SEGÚN IMAGEN */
-        .firmas-grid {
-            width: 100%;
-            margin-top: 15px;
+        /* ── TARJETAS KPI DE CONECTIVIDAD ── */
+        .kpi-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 5px 6px;
             text-align: center;
+        }
+        .kpi-card-active {
+            background-color: #eef2ff;
+            border-color: #c7d2fe;
+        }
+        .kpi-title {
+            font-size: 6px;
+            font-weight: bold;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .kpi-val {
+            font-size: 9px;
+            font-weight: bold;
+            color: #4f46e5;
+            margin-top: 1px;
+            text-transform: uppercase;
+        }
+
+        /* ── PANEL FOTOGRÁFICO ── */
+        .photo-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            background-color: #fafbff;
+            padding: 4px;
+            text-align: center;
+        }
+        .photo-img {
+            width: 100%;
+            max-height: 110px;
+            object-fit: cover;
+            border-radius: 3px;
+            border: 1px solid #cbd5e1;
+        }
+        .photo-caption {
+            font-size: 6.5px;
+            font-weight: bold;
+            color: #4f46e5;
+            text-transform: uppercase;
+            margin-top: 2px;
+            letter-spacing: 0.2px;
+        }
+
+        /* ── FIRMAS DE CONFORMIDAD ── */
+        .firmas-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 12px 6px;
+            margin-top: 4px;
             page-break-inside: avoid;
         }
-        .firma-card { 
-            width: 31%; 
-            display: inline-block; 
-            vertical-align: top; 
-            margin: 5px 1%;
+        .firmas-table td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+            width: 50%;
+        }
+        .firma-box {
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
             background-color: #ffffff;
-            border: 1px solid #cbd5e1; /* Borde gris/celeste claro del marco */
-            border-radius: 6px; /* Esquinas redondeadas como en la imagen */
-            box-sizing: border-box;
+            padding: 6px 10px 8px 10px;
+            text-align: center;
         }
-        .firma-espacio {
-            height: 50px; /* Espacio en blanco para firmar encima de la línea */
-            width: 100%;
+        .firma-space {
+            height: 90px;
         }
-        .firma-bottom {
-            padding: 0 10px 12px 10px; /* Espaciado interno inferior */
+        .firma-line {
+            border-top: 1px solid #94a3b8;
+            margin: 0 auto 5px auto;
+            width: 90%;
         }
-        .linea-firma { 
-            border-top: 1px solid #94a3b8; /* Línea recta sólida, no punteada */
-            margin: 0 auto 6px auto; 
-            width: 95%; /* La línea no toca los bordes de la caja */
-        }
-        .nombre-firma { 
-            font-size: 8px; 
-            font-weight: bold; 
-            color: #0f172a; /* Azul muy oscuro/negro */
-            display: block;
+        .firma-name {
+            font-size: 7.5px;
+            font-weight: bold;
+            color: #0f172a;
             text-transform: uppercase;
-            margin-bottom: 2px;
-        }
-        .cargo-firma { 
-            font-size: 7px; 
-            color: #64748b; /* Gris azulado más claro */
             display: block;
+        }
+        .firma-role {
+            font-size: 6.5px;
+            color: #64748b;
             text-transform: uppercase;
+            display: block;
+            margin-top: 1px;
         }
 
-        /* Footer */
-        #footer {
+        /* ── FOOTER FIJO INSTITUCIONAL ── */
+        .footer-fixed {
             position: fixed;
-            bottom: -1.5cm;
+            bottom: -0.75cm;
             left: 0;
             right: 0;
-            height: 40px;
-            text-align: center;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 5px;
         }
-        .footer-text { font-size: 8px; color: #94a3b8; }
-        .page-number:before { content: "Página " counter(page); }
-        .no-break { page-break-inside: avoid; }
+        .footer-inner {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 3px;
+            width: 100%;
+        }
+        .footer-text {
+            font-size: 6.5px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="footer">
-        <div class="footer-text">
-            Acta de Diagnóstico Situacional IPRESS NO ESPECIALIZADAS N° {{ ltrim($acta->numero_acta, '0') }} | <span class="page-number"></span> 
-        </div>
-    </div>
-
-    <div class="header">
-        <h1>REPORTE CONSOLIDADO DE DIAGNÓSTICO SITUACIONAL IPRESS</h1>
-        <div class="header-sub">
-            <strong>Establecimiento: </strong>{{ $acta->establecimiento->codigo ?? 'S/C' }} - {{ strtoupper($acta->establecimiento->nombre ?? 'ESTABLECIMIENTO NO REGISTRADO') }} 
-            &nbsp;|&nbsp; 
-            <strong>Acta N°:</strong> {{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}
-        </div>
-    </div>
-
-    <div class="section-header" style="margin-top: 0;">1. INFORMACIÓN DE CONTROL</div>
-    <table class="data-table">
-        <tr>
-            <td class="bg-label" style="width: 20%;">FECHA DE MONITOREO:</td>
-            <td style="width: 30%;">{{ \Carbon\Carbon::parse($acta->fecha)->format('d/m/Y') }}</td>
-            <td class="bg-label" style="width: 20%;">MONITOR / IMPLEMENTADOR:</td>
-            <td class="uppercase" style="width: 30%;">{{ $monitor['nombre'] ?? 'N/A' }}</td>
-        </tr>
-        <tr>
-            <td class="bg-label">JEFE DEL ESTABLECIMIENTO:</td>
-            <td class="uppercase">{{ $jefe['nombre'] ?? 'N/A' }}</td>
-            <td class="bg-label">POZO A TIERRA:</td>
-            <td class="uppercase font-bold" style="color: #3730a3;">
-                @if(($acta->pozo_tierra ?? 'NO') === 'SI')
-                    SÍ (TOTAL: {{ $acta->pozo_tierra_cantidad ?? 1 }} | OP: {{ $acta->pozo_tierra_operativos ?? 0 }} | INOP: {{ $acta->pozo_tierra_inoperativos ?? 0 }})
-                @else
-                    NO
-                @endif
-            </td>
-        </tr>
-        <tr>
-            <td class="bg-label">PANEL SOLAR:</td>
-            <td class="uppercase font-bold" style="color: #3730a3;">
-                @if(($acta->panel_solar ?? 'NO') === 'SI')
-                    SÍ (TOTAL: {{ $acta->panel_solar_cantidad ?? 1 }} | OP: {{ $acta->panel_solar_operativos ?? 0 }} | INOP: {{ $acta->panel_solar_inoperativos ?? 0 }})
-                @else
-                    NO
-                @endif
-            </td>
-            <td colspan="2"></td>
-        </tr>
-    </table>
-
-    @if(isset($equipoMonitoreo) && $equipoMonitoreo->count() > 0)
-        <div class="sub-section" style="border-top: none; margin-top: 5px;">EQUIPO DE ACOMPAÑAMIENTO</div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th style="width: 45%">NOMBRE COMPLETO</th>
-                    <th style="width: 20%">DNI</th>
-                    <th style="width: 35%">CARGO</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($equipoMonitoreo as $acom)
-                <tr>
-                    <td class="uppercase">{{ trim(($acom->nombres ?? '') . ' ' . ($acom->apellido_paterno ?? '') . ' ' . ($acom->apellido_materno ?? '')) }}</td>
-                    <td class="uppercase">{{ $acom->dni ?? $acom->doc ?? '-' }}</td>
-                    <td class="uppercase">{{ $acom->cargo ?? '-' }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
-
-    <div class="section-header">2. ANÁLISIS GENERAL DE CONECTIVIDAD DEL ESTABLECIMIENTO</div>
-    <table class="data-table">
-        <tr>
-            <td class="bg-label" style="width: 25%;">VEL. DESCARGA (PICO / PROM):</td>
-            <td class="uppercase" style="width: 25%;">{{ $analisisConectividad['max_descarga'] }} Mbps / {{ $analisisConectividad['avg_descarga'] }} Mbps</td>
-            <td class="bg-label" style="width: 25%;">VEL. SUBIDA (PICO / PROM):</td>
-            <td class="uppercase" style="width: 25%;">{{ $analisisConectividad['max_subida'] }} Mbps / {{ $analisisConectividad['avg_subida'] }} Mbps</td>
-        </tr>
-        <tr>
-            <td class="bg-label">OPERADOR PREDOMINANTE:</td>
-            <td class="uppercase">{{ $analisisConectividad['mod_operador'] }}</td>
-            <td class="bg-label">TECNOLOGÍA PREDOMINANTE:</td>
-            <td class="uppercase">{{ $analisisConectividad['mod_tipo'] }}</td>
-        </tr>
-    </table>
-
-    <div class="section-header">3. RESUMEN DE HALLAZGOS POR MÓDULOS</div>
+    {{-- BARRA SUPERIOR DECORATIVA --}}
+    <div class="top-accent"></div>
 
     @php
-        $ordenEstricto = [
-            'gestion_administrativa' => 'GESTION ADMINISTRATIVA',
-            'citas'                  => 'CITAS',
-            'triaje'                 => 'TRIAJE',
-            'consulta_medicina'      => 'CONSULTA EXTERNA: MEDICINA',
-            'consulta_odontologia'   => 'CONSULTA EXTERNA: ODONTOLOGIA',
-            'odontologia'            => 'CONSULTA EXTERNA: ODONTOLOGIA', 
-            'consulta_nutricion'     => 'CONSULTA EXTERNA: NUTRICION',
-            'nutricion'              => 'CONSULTA EXTERNA: NUTRICION', 
-            'consulta_psicologia'    => 'CONSULTA EXTERNA: PSICOLOGIA',
-            'psicologia'             => 'CONSULTA EXTERNA: PSICOLOGIA', 
-            'cred'                   => 'CRED',
-            'inmunizaciones'         => 'INMUNIZACIONES',
-            'atencion_prenatal'      => 'ATENCION PRENATAL',
-            'prenatal'               => 'ATENCION PRENATAL', 
-            'planificacion_familiar' => 'PLANIFICACION FAMILIAR',
-            'planificacion'          => 'PLANIFICACION FAMILIAR', 
-            'parto'                  => 'PARTO',
-            'puerperio'              => 'PUERPERIO',
-            'fua_electronico'        => 'FUA ELECTRONICO',
-            'farmacia'               => 'FARMACIA',
-            'referencias'            => 'REFERENCIAS Y CONTRAREFERENCIAS',
-            'refcon'                 => 'REFERENCIAS Y CONTRAREFERENCIAS', 
-            'laboratorio'            => 'LABORATORIO',
-            'urgencias'              => 'URGENCIAS Y EMERGENCIAS',
-            'infraestructura_2d'     => 'INFRAESTRUCTURA Y CROQUIS 2D'
-        ];
+        $secNum = 1;
+        $creador = $acta->user;
+        $monitorNombre = $monitor['nombre'] ?? ($creador ? mb_strtoupper("{$creador->apellido_paterno} {$creador->apellido_materno} {$creador->name}", 'UTF-8') : 'USUARIO NO IDENTIFICADO');
+        $jefeNombre = $jefe['nombre'] ?? mb_strtoupper($acta->responsable ?? 'NO REGISTRADO', 'UTF-8');
+
+        // Normalizar colección de módulos
+        $modulosCol = collect($modulos ?? []);
         
-        $impresos = []; 
-        $contadorModulo = 1;
-        $hiddenKeys = ['id', 'acta_id', 'foto_evidencia', 'fotos_evidencia', 'comentarios', 'observaciones', 'password', 'token', 'created_at', 'updated_at', '_token'];
+        // Separar consultorios clínicos/dinámicos del módulo de RRHH y Croquis
+        $consultoriosLista = [];
+        $rrhhModulo = null;
+        $croquisModulo = null;
+        $fotosConsolidadas = [];
+
+        foreach ($modulosCol as $modItem) {
+            $slug = strtolower($modItem->modulo_nombre ?? '');
+            if ($slug === 'config_modulos') continue;
+
+            $rawCont = $modItem->contenido;
+            $cont = is_array($rawCont) ? $rawCont : (is_string($rawCont) ? json_decode($rawCont, true) : []);
+            if (!is_array($cont)) $cont = [];
+
+            if ($slug === 'rrhh') {
+                $rrhhModulo = [
+                    'item' => $modItem,
+                    'contenido' => $cont
+                ];
+                if (!empty($cont['foto_1'])) {
+                    $p = storage_path('app/public/' . $cont['foto_1']);
+                    if (file_exists($p)) {
+                        $fotosConsolidadas[] = [
+                            'titulo' => 'RR.HH. — FOTO 1',
+                            'src'    => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($p))
+                        ];
+                    }
+                }
+                if (!empty($cont['foto_2'])) {
+                    $p = storage_path('app/public/' . $cont['foto_2']);
+                    if (file_exists($p)) {
+                        $fotosConsolidadas[] = [
+                            'titulo' => 'RR.HH. — FOTO 2',
+                            'src'    => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($p))
+                        ];
+                    }
+                }
+            } elseif ($slug === 'infraestructura_2d') {
+                $croquisModulo = [
+                    'item' => $modItem,
+                    'contenido' => $cont
+                ];
+            } else {
+                // Consultorio o módulo asistencial
+                $tituloCons = !empty($cont['titulo_consultorio']) 
+                    ? strtoupper($cont['titulo_consultorio']) 
+                    : strtoupper(str_replace(['_', '-'], ' ', preg_replace('/_\d+$/', '', $slug)));
+                
+                $consultoriosLista[] = [
+                    'slug'      => $slug,
+                    'titulo'    => $tituloCons,
+                    'servicio'  => strtoupper($cont['servicio_asociado'] ?? 'GENERAL'),
+                    'tipo'      => strtoupper($cont['tipo_consultorio'] ?? 'FÍSICO'),
+                    'piso'      => is_numeric($cont['piso'] ?? '') ? ('PISO ' . $cont['piso']) : strtoupper($cont['piso'] ?? 'PISO 1'),
+                    'electricidad' => strtoupper($cont['cuenta_electricidad'] ?? 'SI'),
+                    'punto_red' => strtoupper($cont['cuenta_punto_red'] ?? 'SI'),
+                    'cant_puntos' => $cont['cantidad_puntos_red'] ?? null,
+                    'conectividad' => strtoupper($cont['tipo_conectividad'] ?? 'SIN CONEXIÓN'),
+                    'isp'       => strtoupper($cont['operador_servicio'] ?? ($cont['operador'] ?? 'N/A')),
+                    'descarga'  => !empty($cont['velocidad_descarga']) ? ($cont['velocidad_descarga'] . ' ' . ($cont['velocidad_descarga_unidad'] ?? 'Mbps')) : '',
+                    'subida'    => !empty($cont['velocidad_subida']) ? ($cont['velocidad_subida'] . ' ' . ($cont['velocidad_subida_unidad'] ?? 'Mbps')) : '',
+                    'observaciones' => $cont['observaciones'] ?? '',
+                    'evidencia_path'=> $cont['evidencia_path'] ?? ($cont['foto_evidencia'] ?? '')
+                ];
+
+                // Extraer foto de evidencia del consultorio
+                $evPath = $cont['evidencia_path'] ?? ($cont['foto_evidencia'] ?? '');
+                if (!empty($evPath)) {
+                    $p = storage_path('app/public/' . $evPath);
+                    if (file_exists($p)) {
+                        $fotosConsolidadas[] = [
+                            'titulo' => 'EVIDENCIA: ' . $tituloCons,
+                            'src'    => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($p))
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Extraer fotos de cabecera si existen
+        if (!empty($acta->foto1)) {
+            $p = storage_path('app/public/' . $acta->foto1);
+            if (file_exists($p)) {
+                $fotosConsolidadas[] = [
+                    'titulo' => 'ESTABLECIMIENTO — FOTO 1',
+                    'src'    => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($p))
+                ];
+            }
+        }
+        if (!empty($acta->foto2)) {
+            $p = storage_path('app/public/' . $acta->foto2);
+            if (file_exists($p)) {
+                $fotosConsolidadas[] = [
+                    'titulo' => 'ESTABLECIMIENTO — FOTO 2',
+                    'src'    => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($p))
+                ];
+            }
+        }
+
+        // Equipos de cómputo
+        $equiposCol = collect($equipos ?? []);
+        $totalEquipos = $equiposCol->count();
+        $totalOperativos = $equiposCol->filter(fn($e) => strtoupper(trim($e->estado ?? '')) === 'OPERATIVO')->count();
+        $totalRegulares  = $equiposCol->filter(fn($e) => strtoupper(trim($e->estado ?? '')) === 'REGULAR')->count();
+        $totalInoperativos = $equiposCol->filter(fn($e) => strtoupper(trim($e->estado ?? '')) === 'INOPERATIVO')->count();
+
+        // Análisis de Conectividad si no viene provisto
+        if (empty($analisisConectividad) || empty($analisisConectividad['max_descarga'])) {
+            $descList = [];
+            $subList = [];
+            $opList = [];
+            $tipoList = [];
+            foreach ($consultoriosLista as $cItem) {
+                if (!empty($cItem['descarga'])) {
+                    $val = floatval($cItem['descarga']);
+                    if ($val > 0) $descList[] = $val;
+                }
+                if (!empty($cItem['subida'])) {
+                    $val = floatval($cItem['subida']);
+                    if ($val > 0) $subList[] = $val;
+                }
+                if (!empty($cItem['isp']) && $cItem['isp'] !== 'N/A' && $cItem['isp'] !== 'OTROS') {
+                    $opList[] = $cItem['isp'];
+                }
+                if (!empty($cItem['conectividad']) && $cItem['conectividad'] !== 'SIN CONEXIÓN') {
+                    $tipoList[] = $cItem['conectividad'];
+                }
+            }
+            $analisisConectividad = [
+                'max_descarga' => count($descList) > 0 ? max($descList) : 0,
+                'max_subida'   => count($subList) > 0 ? max($subList) : 0,
+                'avg_descarga' => count($descList) > 0 ? round(array_sum($descList) / count($descList), 2) : 0,
+                'avg_subida'   => count($subList) > 0 ? round(array_sum($subList) / count($subList), 2) : 0,
+                'mod_operador' => count($opList) > 0 ? array_keys(array_count_values($opList), max(array_count_values($opList)))[0] : 'NO ESPECIFICADO',
+                'mod_tipo'     => count($tipoList) > 0 ? array_keys(array_count_values($tipoList), max(array_count_values($tipoList)))[0] : 'SIN CONEXIÓN',
+            ];
+        }
+
+        // Trabajadores de RRHH
+        $trabajadores = $rrhhModulo['contenido']['trabajadores'] ?? [];
+        $totalPersonal = count($trabajadores);
     @endphp
 
-    @foreach($ordenEstricto as $nombreTecnico => $tituloPublico)
-        @php 
-            $mod = collect($modulos)->first(function($item) use ($nombreTecnico) {
-                return strtolower($item->modulo_nombre) === strtolower($nombreTecnico);
-            });
-        @endphp
-
-        @if($mod && !in_array($mod->id, $impresos))
-            @php 
-                $impresos[] = $mod->id; 
-                $rawCont = $mod->contenido;
-                $cont = is_array($rawCont) ? $rawCont : (is_string($rawCont) ? json_decode($rawCont, true) : []); 
-            @endphp
-            
-            <div class="modulo-container">
-                <div class="modulo-title">MÓDULO {{ $contadorModulo }}: {{ $tituloPublico }}</div>
-                
-                @if(is_array($cont))
-                    @php
-                        $filasUnificadas = [];
-                        foreach($cont as $k => $v) {
-                            if(in_array($k, $hiddenKeys)) continue;
-                            if(is_array($v)) {
-                                if(!isset($v[0])) {
-                                    foreach($v as $subK => $subV) {
-                                        if(!is_array($subV) && !in_array($subK, $hiddenKeys) && $subV !== null && trim($subV) !== '') {
-                                            $filasUnificadas[$k . ' ' . $subK] = $subV;
-                                        }
-                                    }
-                                }
-                            } else {
-                                if($v !== null && trim($v) !== '') {
-                                    $filasUnificadas[$k] = $v;
-                                }
-                            }
-                        }
-
-                        // Juntar las unidades de medida con los valores de velocidad para que no salgan en filas separadas
-                        $v_keys = [
-                            ['val' => 'conectividad descarga', 'uni' => 'conectividad descarga_unidad', 'old_uni' => 'conectividad unidad'],
-                            ['val' => 'conectividad subida', 'uni' => 'conectividad subida_unidad', 'old_uni' => 'conectividad unidad'],
-                            ['val' => 'conectividad velocidad_descarga', 'uni' => 'conectividad velocidad_descarga_unidad', 'old_uni' => 'conectividad velocidad_internet_unidad'],
-                            ['val' => 'conectividad velocidad_subida', 'uni' => 'conectividad velocidad_subida_unidad', 'old_uni' => 'conectividad velocidad_internet_unidad'],
-                            ['val' => 'velocidad_descarga', 'uni' => 'velocidad_descarga_unidad', 'old_uni' => 'velocidad_internet_unidad'],
-                            ['val' => 'velocidad_subida', 'uni' => 'velocidad_subida_unidad', 'old_uni' => 'velocidad_internet_unidad']
-                        ];
-                        
-                        foreach ($v_keys as $vk) {
-                            if (isset($filasUnificadas[$vk['val']])) {
-                                $uni = $filasUnificadas[$vk['uni']] ?? $filasUnificadas[$vk['old_uni']] ?? 'Mbps';
-                                $filasUnificadas[$vk['val']] .= ' ' . $uni;
-                            }
-                            unset($filasUnificadas[$vk['uni']]);
-                            unset($filasUnificadas[$vk['old_uni']]);
-                        }
-
-                        // Categorizador Dinámico
-                        $grupoConsultorio = [];
-                        $grupoProfesional = [];
-                        $grupoDoc = [];
-                        $grupoSoporte = [];
-                        $grupoOtros = [];
-
-                        foreach($filasUnificadas as $label => $val) {
-                            $lblLower = strtolower($label);
-                            
-                            if(str_contains($lblLower, 'sihce') || str_contains($lblLower, 'dj') || str_contains($lblLower, 'confidencialidad') || str_contains($lblLower, 'dni fisico') || str_contains($lblLower, 'tipo dni') || str_contains($lblLower, 'dnie') || str_contains($lblLower, 'digital')) {
-                                $grupoDoc[$label] = $val;
-                            } elseif(str_contains($lblLower, 'fecha') || str_contains($lblLower, 'turno') || str_contains($lblLower, 'consultorio') || str_contains($lblLower, 'ventanilla') || str_contains($lblLower, 'horario')) {
-                                $grupoConsultorio[$label] = $val;
-                            } elseif(str_contains($lblLower, 'profesional') || str_contains($lblLower, 'personal') || str_contains($lblLower, 'rrhh') || str_contains($lblLower, 'cargo') || str_contains($lblLower, 'email') || str_contains($lblLower, 'telefono') || str_contains($lblLower, 'celular') || str_contains($lblLower, 'contacto') || str_contains($lblLower, 'rol') || str_contains($lblLower, 'especialidad')) {
-                                $grupoProfesional[$label] = $val;
-                            } elseif(str_contains($lblLower, 'capacitacion') || str_contains($lblLower, 'comunica') || str_contains($lblLower, 'soporte') || str_contains($lblLower, 'conectividad') || str_contains($lblLower, 'operador') || str_contains($lblLower, 'wifi')) {
-                                $grupoSoporte[$label] = $val;
-                            } else {
-                                $grupoOtros[$label] = $val;
-                            }
-                        }
-
-                        // Helper para imprimir chunks de 2 columnas
-                        $renderChunkTable = function($grupoArray) {
-                            if(count($grupoArray) == 0) return '';
-                            $html = '<table class="data-table">';
-                            foreach(array_chunk($grupoArray, 2, true) as $chunk) {
-                                $html .= '<tr>';
-                                $i = 0;
-                                foreach($chunk as $l => $v) {
-                                    $valStr = is_bool($v) ? ($v ? 'SI' : 'NO') : $v;
-                                    $cleanLabel = strtoupper(str_replace(['_', 'inst'], [' ', 'entidad'], $l));
-                                    $html .= '<td class="bg-label" style="width: 25%;">'.$cleanLabel.':</td>';
-                                    $html .= '<td class="uppercase" style="width: 25%;">'.$valStr.'</td>';
-                                    $i++;
-                                }
-                                if($i == 1) { // Rellenar espacio vacío si es impar
-                                    $html .= '<td class="bg-label" style="width: 25%;"></td><td style="width: 25%;"></td>';
-                                }
-                                $html .= '</tr>';
-                            }
-                            $html .= '</table>';
-                            return $html;
-                        };
-                    @endphp
-
-                    {{-- Bloque Consultorio y Profesional --}}
-                    @if(count($grupoConsultorio) > 0 || count($grupoProfesional) > 0)
-                        <table style="width: 100%; border-collapse: collapse; border: none; padding: 0;">
-                            <tr>
-                                @if(count($grupoConsultorio) > 0)
-                                <td style="width: 50%; padding: 0; vertical-align: top; border-right: 1px solid #e2e8f0;">
-                                    <div class="sub-section" style="border-top: none;">DETALLE DEL CONSULTORIO</div>
-                                    <table class="data-table" style="border: none;">
-                                        @foreach($grupoConsultorio as $l => $v)
-                                        <tr>
-                                            <td class="bg-label" style="border-left:none;">{{ strtoupper(str_replace('_', ' ', $l)) }}:</td>
-                                            <td class="uppercase" style="border-right:none;">{{ is_bool($v) ? ($v ? 'SI' : 'NO') : $v }}</td>
-                                        </tr>
-                                        @endforeach
-                                    </table>
-                                </td>
-                                @endif
-                                
-                                @if(count($grupoProfesional) > 0)
-                                <td style="{{ count($grupoConsultorio) > 0 ? 'width: 50%;' : 'width: 100%;' }} padding: 0; vertical-align: top;">
-                                    <div class="sub-section" style="border-top: none;">DATOS DEL PROFESIONAL</div>
-                                    <table class="data-table" style="border: none;">
-                                        @foreach($grupoProfesional as $l => $v)
-                                        <tr>
-                                            <td class="bg-label" style="border-left:none;">{{ strtoupper(str_replace('_', ' ', $l)) }}:</td>
-                                            <td class="uppercase" style="border-right:none;">{{ is_bool($v) ? ($v ? 'SI' : 'NO') : $v }}</td>
-                                        </tr>
-                                        @endforeach
-                                    </table>
-                                </td>
-                                @endif
-                            </tr>
-                        </table>
-                    @endif
-
-                    {{-- Documentación y Firma --}}
-                    @if(count($grupoDoc) > 0)
-                        <div class="sub-section">DOCUMENTACIÓN Y FIRMA DIGITAL</div>
-                        {!! $renderChunkTable($grupoDoc) !!}
-                    @endif
-
-                    {{-- Capacitación y Soporte --}}
-                    @if(count($grupoSoporte) > 0)
-                        <div class="sub-section">CAPACITACIÓN Y SOPORTE</div>
-                        {!! $renderChunkTable($grupoSoporte) !!}
-                    @endif
-
-                    {{-- Otros Datos --}}
-                    @if(count($grupoOtros) > 0)
-                        <div class="sub-section">DATOS ADICIONALES DEL MÓDULO</div>
-                        {!! $renderChunkTable($grupoOtros) !!}
-                    @endif
-
-                    {{-- Fotos Dinámicas del Módulo --}}
-                    @php
-                        $fotosModulo = [];
-                        
-                        $extraerEvidencias = function($val) {
-                            if (empty($val)) return [];
-                            if (is_array($val)) return $val;
-                            if (is_string($val)) {
-                                $decoded = json_decode($val, true);
-                                if (json_last_error() === JSON_ERROR_NONE) {
-                                    return is_array($decoded) ? $decoded : [$decoded];
-                                }
-                                return [$val]; // Era un string plano sin formato JSON
-                            }
-                            return [$val];
-                        };
-
-                        // 1. Array de posibles evidencias dentro de $cont
-                        $evidenciasCont = [];
-                        if (!empty($cont['fotos_evidencia'])) {
-                            $evidenciasCont = $extraerEvidencias($cont['fotos_evidencia']);
-                        } elseif (!empty($cont['foto_evidencia'])) {
-                            $evidenciasCont = $extraerEvidencias($cont['foto_evidencia']);
-                        }
-
-                        if (!empty($evidenciasCont) && is_array($evidenciasCont)) {
-                            foreach($evidenciasCont as $ruta) {
-                                if (!empty($ruta)) {
-                                    $isFullUrl = str_starts_with($ruta, 'http');
-                                    $realPath = $isFullUrl ? $ruta : public_path('storage/' . ltrim($ruta, '/'));
-                                    $fallbackPath = $isFullUrl ? $ruta : storage_path('app/public/' . ltrim($ruta, '/'));
-                                    
-                                    if($isFullUrl || file_exists($realPath)) {
-                                        $fotosModulo[] = $realPath;
-                                    } elseif (file_exists($fallbackPath)) {
-                                        $fotosModulo[] = $fallbackPath;
-                                    }
-                                }
-                            }
-                        }
-
-                        // 2. Revisar foto_1 y foto_2 (Pueden estar en $cont o directamente en $mod)
-                        if (empty($fotosModulo)) {
-                            foreach(['foto_1', 'foto_2'] as $fKey) {
-                                $fPath = $cont[$fKey] ?? ($mod->$fKey ?? null);
-                                if (!empty($fPath)) {
-                                    $fIsFull = str_starts_with($fPath, 'http');
-                                    $fRealPath = $fIsFull ? $fPath : public_path('storage/' . ltrim($fPath, '/'));
-                                    $fallbackPath = $fIsFull ? $fPath : storage_path('app/public/' . ltrim($fPath, '/'));
-                                    
-                                    if($fIsFull || file_exists($fRealPath)) {
-                                        $fotosModulo[] = $fRealPath;
-                                    } elseif (file_exists($fallbackPath)) {
-                                        $fotosModulo[] = $fallbackPath;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        $cantidadMod = count($fotosModulo);
-                    @endphp
-
-                    @if ($cantidadMod > 0)
-                        <div class="sub-section">FOTOGRAFÍAS</div>
-                        @if ($cantidadMod == 1)
-                        <div style="width: 100%; text-align: center; margin-top: 5px;">
-                            <div style="display: inline-block; border: 1px solid #e2e8f0; padding: 5px; background: #fff; border-radius: 10px;">
-                                <img src="{{ $fotosModulo[0] }}" style="width: 100%; height: 250px; object-fit: cover; border-radius: 8px;">
-                            </div>
-                        </div>
-                        @else
-                        <table style="width: 100%; border: none; margin-top: 5px;">
-                            <tr>
-                                @foreach ($fotosModulo as $index => $fotoUrl)
-                                    @if ($index > 0 && $index % 2 == 0)
-                            </tr>
-                            <tr>
-                                    @endif
-
-                                    <td style="border: none; padding: 5px; text-align: center; width: 50%;">
-                                        <div style="border: 1px solid #e2e8f0; padding: 4px; background: #fff; border-radius: 10px;">
-                                            <img src="{{ $fotoUrl }}" style="width: 100%; height: 250px; object-fit: cover; border-radius: 8px;">
-                                        </div>
-                                    </td>
-                                @endforeach
-
-                                @if ($cantidadMod % 2 != 0)
-                                    <td style="border: none;"></td>
-                                @endif
-                            </tr>
-                        </table>
+    {{-- ═══ ENCABEZADO PRINCIPAL ═══ --}}
+    <div class="header-block">
+        <table class="header-grid">
+            <tr>
+                {{-- COLUMNA IZQUIERDA: IDENTIFICACIÓN INSTITUCIONAL --}}
+                <td style="width: 65%;">
+                    <div>
+                        <span class="tag-pill">Diagnóstico Situacional IPRESS</span>
+                        <span class="tag-acta">Acta N° <strong>#{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}</strong></span>
+                    </div>
+                    <div class="header-title">REPORTE CONSOLIDADO</div>
+                    <div class="header-subtitle">
+                        <strong>Establecimiento: </strong>{{ $acta->establecimiento->codigo ?? 'S/C' }} - {{ strtoupper($acta->establecimiento->nombre ?? 'ESTABLECIMIENTO NO REGISTRADO') }}
+                        @if(!empty($acta->establecimiento->categoria))
+                            &nbsp;({{ strtoupper($acta->establecimiento->categoria) }})
                         @endif
-                    @endif
+                        <br>
+                        <strong>Red:</strong> {{ strtoupper($acta->establecimiento->red ?? 'General') }}
+                        @if(!empty($acta->establecimiento->microred))
+                            &nbsp;&bull;&nbsp; <strong>Microred:</strong> {{ strtoupper($acta->establecimiento->microred) }}
+                        @endif
+                        @if(!empty($acta->establecimiento->provincia))
+                            &nbsp;&bull;&nbsp; <strong>Provincia:</strong> {{ strtoupper($acta->establecimiento->provincia) }}
+                        @endif
+                    </div>
+                </td>
 
-                @else
-                    <div style="padding: 10px; font-style: italic; font-size: 8px;">Sin información detallada registrada.</div>
-                @endif
-            </div>
-            @php $contadorModulo++; @endphp
-        @endif
-    @endforeach
-
-    <div class="section-header">3. DETALLE DE EQUIPAMIENTO POR MÓDULO</div>
-    
-    @if($equipos && $equipos->count() > 0)
-        <table class="data-table" style="margin-bottom: 15px;">
-            <thead>
-                <tr>
-                    <th width="5%" style="text-align: center;">N°</th>
-                    <th width="15%">MÓDULO</th>
-                    <th width="15%">SERIE/CÓDIGO</th>
-                    <th width="5%" style="text-align: center;">CANT.</th>
-                    <th width="25%">DESCRIPCIÓN DEL EQUIPO</th>
-                    <th width="10%" style="text-align: center;">ESTADO</th>
-                    <th width="10%">PROPIEDAD</th>
-                    <th width="15%">OBSERVACIÓN</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($equipos as $index => $eq)
-                    <tr class="uppercase">
-                        <td style="text-align: center;">{{ $index + 1 }}</td>
-                        <td>{{ strtoupper(str_replace('_', ' ', $eq->modulo)) }}</td>
-                        <td style="font-family: monospace;">{{ $eq->nro_serie ?? '---' }}</td>
-                        <td style="text-align: center;">{{ $eq->cantidad ?? '1' }}</td>
-                        <td>{{ $eq->descripcion }}</td>
-                        <td style="text-align: center;">{{ $eq->estado ?? 'N/A' }}</td>
-                        <td>{{ $eq->propio ?? '---' }}</td>
-                        <td>{{ $eq->observacion ?? '---' }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
+                {{-- COLUMNA DERECHA: TARJETAS KPI DE CABECERA --}}
+                <td style="width: 35%;">
+                    <table class="summary-cards">
+                        <tr>
+                            <td style="width: 33.33%;">
+                                <div class="stat-card stat-card-accent">
+                                    <span class="stat-value">{{ date('d/m/Y', strtotime($acta->fecha ?? now())) }}</span>
+                                    <span class="stat-label">Fecha</span>
+                                </div>
+                            </td>
+                            <td style="width: 33.33%;">
+                                <div class="stat-card">
+                                    <span class="stat-value">{{ count($consultoriosLista) }}</span>
+                                    <span class="stat-label">Consultorios</span>
+                                </div>
+                            </td>
+                            <td style="width: 33.34%;">
+                                <div class="stat-card">
+                                    <span class="stat-value" style="color: #059669;">{{ $totalEquipos }}</span>
+                                    <span class="stat-label">Equipos</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
         </table>
-    @else
-        <p style="padding-left: 10px; font-style: italic; color: #64748b; font-size: 9px;">No se registró equipamiento tecnológico en este monitoreo.</p>
+    </div>
+
+    <hr class="header-divider">
+
+    {{-- ═══ 1. INFORMACIÓN DE CONTROL Y CONDICIONES DEL ESTABLECIMIENTO ═══ --}}
+    <div class="section-card">
+        <table class="section-header-table">
+            <tr>
+                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                <td><span class="section-title-text">INFORMACIÓN DE CONTROL Y CONDICIONES ELÉCTRICAS</span></td>
+            </tr>
+        </table>
+
+        {{-- FILA 1: Implementador, Jefe de EESS, Pozo a Tierra, Panel Solar --}}
+        <table class="form-grid">
+            <tr>
+                <td style="width: 25%;">
+                    <div class="field-box">
+                        <span class="field-label">Monitor / Implementador</span>
+                        <span class="field-value">{{ $monitorNombre }}</span>
+                    </div>
+                </td>
+                <td style="width: 25%;">
+                    <div class="field-box">
+                        <span class="field-label">Jefe de Establecimiento</span>
+                        <span class="field-value">{{ $jefeNombre }}</span>
+                    </div>
+                </td>
+                <td style="width: 25%;">
+                    @php $hasPozo = ($acta->pozo_tierra ?? 'NO') === 'SI'; @endphp
+                    <div class="field-box" style="{{ $hasPozo ? 'border-color: #86efac; background: #f0fdf4;' : 'border-color: #e2e8f0;' }}">
+                        <span class="field-label" style="{{ $hasPozo ? 'color: #166534;' : '' }}">Pozo a Tierra</span>
+                        <span class="field-value" style="{{ $hasPozo ? 'color: #166534;' : '' }}">
+                            @if($hasPozo)
+                                ✓ SÍ ({{ $acta->pozo_tierra_cantidad ?? 1 }} TOTAL | {{ $acta->pozo_tierra_operativos ?? 0 }} OP)
+                            @else
+                                ✗ NO CUENTA
+                            @endif
+                        </span>
+                    </div>
+                </td>
+                <td style="width: 25%;">
+                    @php $hasSolar = ($acta->panel_solar ?? 'NO') === 'SI'; @endphp
+                    <div class="field-box" style="{{ $hasSolar ? 'border-color: #86efac; background: #f0fdf4;' : 'border-color: #e2e8f0;' }}">
+                        <span class="field-label" style="{{ $hasSolar ? 'color: #166534;' : '' }}">Panel Solar</span>
+                        <span class="field-value" style="{{ $hasSolar ? 'color: #166534;' : '' }}">
+                            @if($hasSolar)
+                                ✓ SÍ ({{ $acta->panel_solar_cantidad ?? 1 }} TOTAL | {{ $acta->panel_solar_operativos ?? 0 }} OP)
+                            @else
+                                ✗ NO CUENTA
+                            @endif
+                        </span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        {{-- EQUIPO DE ACOMPAÑAMIENTO TÉCNICO (SI APLICA) --}}
+        @if(isset($equipoMonitoreo) && $equipoMonitoreo->count() > 0)
+            <div style="margin-top: 5px;">
+                <span class="field-label" style="margin-bottom: 2px;">Equipo Técnico de Acompañamiento</span>
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20px; text-align: center;">#</th>
+                            <th style="width: 45%;">Apellidos y Nombres</th>
+                            <th style="width: 20%;">Documento (DNI)</th>
+                            <th>Cargo / Rol</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($equipoMonitoreo as $idxAcom => $acom)
+                            <tr>
+                                <td style="text-align: center; font-weight: bold; color: #64748b;">{{ $idxAcom + 1 }}</td>
+                                <td style="font-weight: bold; color: #0f172a; text-transform: uppercase;">
+                                    {{ trim(($acom->nombres ?? '') . ' ' . ($acom->apellido_paterno ?? '') . ' ' . ($acom->apellido_materno ?? '')) }}
+                                </td>
+                                <td style="font-weight: bold; color: #4338ca;">{{ $acom->dni ?? $acom->doc ?? '—' }}</td>
+                                <td style="text-transform: uppercase;">{{ $acom->cargo ?? 'ACOMPAÑANTE TÉCNICO' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
+    {{-- ═══ 2. CONECTIVIDAD Y ACCESO A INTERNET GLOBAL ═══ --}}
+    <div class="section-card">
+        <table class="section-header-table">
+            <tr>
+                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                <td><span class="section-title-text">DIAGNÓSTICO GENERAL DE CONECTIVIDAD Y REDES</span></td>
+            </tr>
+        </table>
+
+        <table class="form-grid">
+            <tr>
+                <td style="width: 25%;">
+                    <div class="kpi-card kpi-card-active">
+                        <span class="kpi-title">Operador Predominante (ISP)</span>
+                        <div class="kpi-val">{{ $analisisConectividad['mod_operador'] }}</div>
+                    </div>
+                </td>
+                <td style="width: 25%;">
+                    <div class="kpi-card">
+                        <span class="kpi-title">Tecnología de Enlace</span>
+                        <div class="kpi-val" style="color: #0284c7;">{{ $analisisConectividad['mod_tipo'] }}</div>
+                    </div>
+                </td>
+                <td style="width: 25%;">
+                    <div class="kpi-card">
+                        <span class="kpi-title">Velocidad Descarga (Pico / Prom)</span>
+                        <div class="kpi-val" style="color: #059669;">
+                            {{ $analisisConectividad['max_descarga'] }} Mbps / {{ $analisisConectividad['avg_descarga'] }} Mbps
+                        </div>
+                    </div>
+                </td>
+                <td style="width: 25%;">
+                    <div class="kpi-card">
+                        <span class="kpi-title">Velocidad Subida (Pico / Prom)</span>
+                        <div class="kpi-val" style="color: #d97706;">
+                            {{ $analisisConectividad['max_subida'] }} Mbps / {{ $analisisConectividad['avg_subida'] }} Mbps
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- ═══ 3. MATRIZ RESUMEN DE CONSULTORIOS Y SERVICIOS EVALUADOS ═══ --}}
+    <div class="section-card">
+        <table class="section-header-table">
+            <tr>
+                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                <td><span class="section-title-text">MATRIZ RESUMEN DE CONSULTORIOS Y SERVICIOS EVALUADOS</span></td>
+            </tr>
+        </table>
+
+        @if(count($consultoriosLista) > 0)
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th style="width: 18px; text-align: center;">#</th>
+                        <th style="width: 140px;">Consultorio / Servicio</th>
+                        <th style="width: 75px; text-align: center;">Tipo & Piso</th>
+                        <th style="width: 80px; text-align: center;">Electricidad</th>
+                        <th style="width: 85px; text-align: center;">Puntos de Red</th>
+                        <th style="width: 130px;">Conectividad & Vel.</th>
+                        <th>Equipos Asociados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($consultoriosLista as $iCons => $c)
+                        @php
+                            // Filtrar equipos de este consultorio
+                            $eqsModulo = $equiposCol->filter(function($e) use ($c) {
+                                return strtolower(trim($e->modulo ?? '')) === strtolower(trim($c['slug']));
+                            });
+                            
+                            $resumenEqs = [];
+                            if ($eqsModulo->count() > 0) {
+                                foreach($eqsModulo as $eqItem) {
+                                    $resumenEqs[] = ($eqItem->cantidad ?? 1) . ' ' . ucfirst(strtolower($eqItem->descripcion));
+                                }
+                            }
+                            $textoEquipos = count($resumenEqs) > 0 ? implode(', ', $resumenEqs) : 'Sin equipos';
+                        @endphp
+                        <tr>
+                            <td style="text-align: center; font-weight: bold; color: #64748b;">{{ $iCons + 1 }}</td>
+                            <td>
+                                <strong style="color: #0f172a; font-size: 7.5px;">{{ $c['titulo'] }}</strong>
+                                @if(!empty($c['servicio']) && $c['servicio'] !== 'GENERAL')
+                                    <div style="font-size: 6px; color: #4f46e5; font-weight: bold;">{{ $c['servicio'] }}</div>
+                                @endif
+                            </td>
+                            <td style="text-align: center; font-size: 7px;">
+                                <span style="font-weight: bold;">{{ $c['tipo'] }}</span>
+                                <div style="color: #64748b;">{{ $c['piso'] }}</div>
+                            </td>
+                            <td style="text-align: center;">
+                                @if($c['electricidad'] === 'SI')
+                                    <span class="badge badge-si">✓ CUENTA</span>
+                                @else
+                                    <span class="badge badge-no">✗ NO</span>
+                                @endif
+                            </td>
+                            <td style="text-align: center;">
+                                @if($c['punto_red'] === 'SI')
+                                    <span class="badge badge-si">
+                                        ✓ {{ !empty($c['cant_puntos']) ? ($c['cant_puntos'] . ' ' . ((int)$c['cant_puntos'] === 1 ? 'PTO' : 'PTOS')) : 'SÍ' }}
+                                    </span>
+                                @else
+                                    <span class="badge badge-no">✗ NO</span>
+                                @endif
+                            </td>
+                            <td>
+                                <div style="font-weight: bold; color: #0f172a; font-size: 7px;">
+                                    {{ $c['conectividad'] }}
+                                    @if($c['isp'] !== 'N/A' && !empty($c['isp']))
+                                        <span style="color: #4f46e5;">({{ $c['isp'] }})</span>
+                                    @endif
+                                </div>
+                                @if(!empty($c['descarga']))
+                                    <div style="font-size: 6px; color: #059669; font-weight: bold;">
+                                        ↓ {{ $c['descarga'] }} &bull; ↑ {{ $c['subida'] ?: '—' }}
+                                    </div>
+                                @endif
+                            </td>
+                            <td style="font-size: 7px; color: #334155;">
+                                {{ $textoEquipos }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <div style="background-color: #fafbff; border: 1.5px dashed #cbd5e1; border-radius: 5px; padding: 8px; text-align: center; color: #94a3b8; font-size: 7.5px; font-weight: bold; text-transform: uppercase;">
+                No se registraron consultorios específicos en esta acta.
+            </div>
+        @endif
+    </div>
+
+    {{-- ═══ 4. RESUMEN DE RECURSOS HUMANOS Y PROFESIONALES ASISTENCIALES ═══ --}}
+    @if($rrhhModulo && count($trabajadores) > 0)
+        <div class="section-card">
+            <table class="section-header-table">
+                <tr>
+                    <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                    <td>
+                        <span class="section-title-text">PADRÓN RESUMIDO DE RECURSOS HUMANOS</span>
+                        <span style="float: right; font-size: 7px; font-weight: bold; color: #4f46e5; background: #eef2ff; padding: 1.5px 6px; border-radius: 3px; border: 1px solid #c7d2fe;">
+                            TOTAL INTEGRANTES: {{ count($trabajadores) }}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th style="width: 18px; text-align: center;">#</th>
+                        <th style="width: 160px;">Apellidos y Nombres</th>
+                        <th style="width: 75px;">Documento</th>
+                        <th style="width: 130px;">Profesión / Especialidad</th>
+                        <th style="width: 80px;">Colegiatura / RNE</th>
+                        <th style="width: 70px; text-align: center;">SERUMS</th>
+                        <th>Contacto (Teléfono / Email)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($trabajadores as $idxT => $t)
+                        @php
+                            $nombreCompleto = trim(($t['apellido_paterno'] ?? '') . ' ' . ($t['apellido_materno'] ?? '') . ' ' . ($t['nombres'] ?? ''));
+                            $tipoDoc = strtoupper(trim($t['tipo_doc'] ?? $t['tipo_documento'] ?? 'DNI'));
+                            $numDoc = trim($t['doc'] ?? $t['numero_documento'] ?? $t['dni'] ?? '');
+                            $serumsVal = strtoupper(trim($t['es_serums'] ?? $t['serums'] ?? 'NO'));
+                            $esSerums = ($serumsVal === 'SI' || $serumsVal === '1' || ($t['es_serums'] ?? false) === true);
+                            $periodo = trim($t['periodo_serums'] ?? '');
+                        @endphp
+                        <tr>
+                            <td style="text-align: center; font-weight: bold; color: #64748b;">{{ $idxT + 1 }}</td>
+                            <td style="font-weight: bold; color: #0f172a; text-transform: uppercase;">
+                                {{ $nombreCompleto }}
+                            </td>
+                            <td style="font-weight: bold; color: #334155;">
+                                <span style="font-size: 6px; color: #64748b;">{{ $tipoDoc }}:</span>
+                                <span style="font-size: 7.5px; color: #0f172a;">{{ !empty($numDoc) ? $numDoc : '—' }}</span>
+                            </td>
+                            <td style="text-transform: uppercase; font-size: 7px; color: #1e293b;">
+                                {{ $t['profesion'] ?? 'PERSONAL DE SALUD' }}
+                            </td>
+                            <td style="font-size: 7px; font-weight: bold; color: #4338ca;">
+                                {{ !empty($t['colegiatura']) ? ($t['colegio_profesional'] ? ($t['colegio_profesional'] . ' ' . $t['colegiatura']) : $t['colegiatura']) : '—' }}
+                                @if(!empty($t['rne']))
+                                    <div style="font-size: 6px; color: #64748b; font-weight: normal;">RNE: {{ $t['rne'] }}</div>
+                                @endif
+                            </td>
+                            <td style="text-align: center;">
+                                @if($esSerums)
+                                    <span class="badge badge-si" style="font-size: 6px;">
+                                        ✓ SÍ {{ !empty($periodo) ? '(' . $periodo . ')' : '' }}
+                                    </span>
+                                @else
+                                    <span class="badge badge-no">NO</span>
+                                @endif
+                            </td>
+                            <td style="font-size: 6.5px; color: #475569;">
+                                @if(!empty($t['celular']))
+                                    <strong style="color: #0f172a;">{{ $t['celular'] }}</strong>
+                                @endif
+                                @if(!empty($t['correo']))
+                                    <div style="color: #64748b;">{{ strtolower($t['correo']) }}</div>
+                                @endif
+                                @if(empty($t['celular']) && empty($t['correo']))
+                                    —
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     @endif
 
-    <div class="no-break">
-        <div class="section-header">4. PANEL FOTOGRÁFICO</div>
+
+    {{-- ═══ 5. CONSOLIDADO DE INVENTARIO TECNOLÓGICO (EQUIPOS E IMPRESORAS) ═══ --}}
+    <div class="section-card">
+        <table class="section-header-table">
+            <tr>
+                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                <td>
+                    <span class="section-title-text">CONSOLIDADO DE EQUIPOS DE CÓMPUTO E IMPRESORAS</span>
+                    <span style="float: right; font-size: 7px; font-weight: bold; color: #059669; background: #ecfdf5; padding: 1.5px 6px; border-radius: 3px; border: 1px solid #a7f3d0;">
+                        TOTAL EQUIPOS: {{ $totalEquipos }} &bull; OP: {{ $totalOperativos }} &bull; REG: {{ $totalRegulares }} &bull; INOP: {{ $totalInoperativos }}
+                    </span>
+                </td>
+            </tr>
+        </table>
+
+        @if($totalEquipos > 0)
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th style="width: 18px; text-align: center;">#</th>
+                        <th style="width: 95px;">Módulo / Ubicación</th>
+                        <th style="width: 105px;">Descripción del Equipo</th>
+                        <th style="width: 28px; text-align: center;">Cant.</th>
+                        <th style="width: 60px; text-align: center;">Estado</th>
+                        <th style="width: 65px; text-align: center;">Propiedad</th>
+                        <th>Especificaciones Técnicas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($equiposCol as $idxE => $eq)
+                        @php
+                            $est = strtoupper(trim($eq->estado ?? 'OPERATIVO'));
+                            $estClass = 'badge-operativo';
+                            if ($est === 'REGULAR') $estClass = 'badge-regular';
+                            if ($est === 'INOPERATIVO') $estClass = 'badge-inoperativo';
+                            
+                            $modSlug = strtolower(trim($eq->modulo ?? ''));
+                            $consMatch = collect($consultoriosLista)->first(fn($item) => strtolower($item['slug'] ?? '') === $modSlug);
+                            $modNombre = $consMatch['titulo'] ?? strtoupper(str_replace(['_', '-'], ' ', preg_replace('/_\d+$/', '', $eq->modulo ?? 'GENERAL')));
+
+                            $descUpper = str_replace(['-', '_'], ' ', strtoupper(trim($eq->descripcion ?? '')));
+                            $esComputo = str_contains($descUpper, 'CPU') ||
+                                         str_contains($descUpper, 'LAPTOP') ||
+                                         str_contains($descUpper, 'ALL IN ONE') ||
+                                         str_contains($descUpper, 'AIO') ||
+                                         str_contains($descUpper, 'COMPUTADORA') ||
+                                         str_contains($descUpper, 'COMPUTADOR') ||
+                                         str_contains($descUpper, 'PC');
+
+                            $specs = $eq->especificaciones ?? null;
+                            if (is_string($specs)) {
+                                $specs = json_decode($specs, true) ?? null;
+                            }
+                        @endphp
+                        <tr>
+                            <td style="text-align: center; font-weight: bold; color: #64748b;">{{ $idxE + 1 }}</td>
+                            <td style="font-weight: bold; color: #4338ca; font-size: 7px;">{{ $modNombre }}</td>
+                            <td style="font-weight: bold; color: #0f172a;">{{ strtoupper($eq->descripcion) }}</td>
+                            <td style="text-align: center; font-weight: bold;">{{ $eq->cantidad ?? 1 }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge {{ $estClass }}">{{ $est }}</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="badge badge-propio">{{ strtoupper($eq->propio ?? 'EXCLUSIVO') }}</span>
+                            </td>
+                            <td style="vertical-align: middle; padding: 3px 5px;">
+                                @if($esComputo)
+                                    @php
+                                        $hasStructuredSpecs = !empty($specs) && is_array($specs) && (
+                                            !empty($specs['procesador']) || !empty($specs['ram']) || !empty($specs['disco']) || 
+                                            !empty($specs['so']) || !empty($specs['modelo']) || !empty($specs['gpu'])
+                                        );
+                                    @endphp
+
+                                    @if($hasStructuredSpecs)
+                                        <div style="font-size: 6.5px; line-height: 1.25;">
+                                            @if(!empty($specs['modelo']) && $specs['modelo'] !== '--')
+                                                <div><strong style="color: #4338ca;">MODELO:</strong> <span style="color: #0f172a; font-weight: bold;">{{ strtoupper($specs['modelo']) }}</span></div>
+                                            @endif
+                                            @if(!empty($specs['procesador']) && $specs['procesador'] !== '--')
+                                                <div><strong style="color: #334155;">CPU:</strong> <span style="color: #0f172a;">{{ strtoupper($specs['procesador']) }}</span></div>
+                                            @endif
+                                            @if((!empty($specs['ram']) && $specs['ram'] !== '--') || (!empty($specs['disco']) && $specs['disco'] !== '--'))
+                                                <div>
+                                                    @if(!empty($specs['ram']) && $specs['ram'] !== '--')
+                                                        <span><strong style="color: #334155;">RAM:</strong> <span style="color: #0f172a; font-weight: bold;">{{ strtoupper($specs['ram']) }}</span></span>
+                                                    @endif
+                                                    @if(!empty($specs['ram']) && !empty($specs['disco']) && $specs['ram'] !== '--' && $specs['disco'] !== '--')
+                                                        &nbsp;&bull;&nbsp;
+                                                    @endif
+                                                    @if(!empty($specs['disco']) && $specs['disco'] !== '--')
+                                                        <span><strong style="color: #334155;">DISCO:</strong> <span style="color: #0f172a; font-weight: bold;">{{ strtoupper($specs['disco']) }}</span></span>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                            @if(!empty($specs['so']) && $specs['so'] !== '--')
+                                                <div><strong style="color: #64748b;">SO:</strong> <span style="color: #334155;">{{ strtoupper($specs['so']) }}</span></div>
+                                            @endif
+                                            @if(!empty($specs['gpu']) && $specs['gpu'] !== '--' && !str_contains(strtoupper($specs['gpu']), 'DIRECT3D11') && !str_contains(strtoupper($specs['gpu']), 'INTEGRATED'))
+                                                <div><strong style="color: #64748b;">GPU:</strong> <span style="color: #334155;">{{ strtoupper($specs['gpu']) }}</span></div>
+                                            @endif
+                                        </div>
+                                    @elseif(!empty($eq->observacion) && trim($eq->observacion) !== '—' && trim($eq->observacion) !== '-')
+                                        <div style="font-size: 6.5px; font-weight: bold; color: #334155; line-height: 1.2;">
+                                            {{ strtoupper($eq->observacion) }}
+                                        </div>
+                                    @else
+                                        <span style="font-size: 6.5px; color: #94a3b8; font-style: italic;">Sin especificaciones registradas</span>
+                                    @endif
+                                @else
+                                    <span style="color: #94a3b8; display: block; text-align: center; font-size: 7px;">—</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <div style="background-color: #fafbff; border: 1.5px dashed #cbd5e1; border-radius: 5px; padding: 8px; text-align: center; color: #94a3b8; font-size: 7.5px; font-weight: bold; text-transform: uppercase;">
+                No se registraron equipos de cómputo en este monitoreo.
+            </div>
+        @endif
+    </div>
+
+    {{-- ═══ 6. PANEL FOTOGRÁFICO DE EVIDENCIAS ═══ --}}
+    @if(count($fotosConsolidadas) > 0)
+        <div class="section-card" style="page-break-inside: avoid;">
+            <table class="section-header-table">
+                <tr>
+                    <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                    <td>
+                        <span class="section-title-text">PANEL FOTOGRÁFICO DE EVIDENCIAS CONSOLIDADAS</span>
+                        <span style="float: right; font-size: 7px; font-weight: bold; color: #4f46e5;">
+                            {{ count($fotosConsolidadas) }} {{ count($fotosConsolidadas) === 1 ? 'FOTOGRAFÍA' : 'FOTOGRAFÍAS' }}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <table style="width: 100%; border-collapse: separate; border-spacing: 5px; margin-left: -5px; margin-right: -5px;">
+                @foreach(array_chunk($fotosConsolidadas, 3) as $fotoRow)
+                    <tr>
+                        @foreach($fotoRow as $fItem)
+                            <td style="width: 33.33%; vertical-align: top; text-align: center;">
+                                <div class="photo-card">
+                                    <img src="{{ $fItem['src'] }}" class="photo-img">
+                                    <div class="photo-caption">{{ $fItem['titulo'] }}</div>
+                                </div>
+                            </td>
+                        @endforeach
+                        @if(count($fotoRow) < 3)
+                            @for($k = count($fotoRow); $k < 3; $k++)
+                                <td style="width: 33.33%; border: none;"></td>
+                            @endfor
+                        @endif
+                    </tr>
+                @endforeach
+            </table>
+        </div>
+    @endif
+
+    {{-- ═══ 7. FIRMAS DE CONFORMIDAD ═══ --}}
+    <div class="section-card" style="page-break-inside: avoid; margin-top: 6px;">
+        <table class="section-header-table">
+            <tr>
+                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                <td><span class="section-title-text">FIRMAS DE CONFORMIDAD</span></td>
+            </tr>
+        </table>
+
         @php
-            $fotosCabecera = [];
-            if($acta->foto1 && file_exists(public_path('storage/' . $acta->foto1))) {
-                $fotosCabecera[] = ['url' => public_path('storage/' . $acta->foto1), 'caption' => 'FOTO 01 - REGISTRO DE MONITOREO'];
+            $listaFirmas = [];
+            
+            // 1. Monitor / Implementador
+            $listaFirmas[] = [
+                'nombre' => $monitorNombre,
+                'rol'    => 'MONITOR / IMPLEMENTADOR'
+            ];
+
+            // 2. Jefe de Establecimiento
+            $listaFirmas[] = [
+                'nombre' => $jefeNombre,
+                'rol'    => 'JEFE DE ESTABLECIMIENTO'
+            ];
+
+            // 3. Equipo de Acompañamiento Técnico (si hubiera)
+            if (isset($equipoMonitoreo) && $equipoMonitoreo->count() > 0) {
+                foreach ($equipoMonitoreo as $acom) {
+                    $nomAcom = trim(($acom->nombres ?? '') . ' ' . ($acom->apellido_paterno ?? '') . ' ' . ($acom->apellido_materno ?? ''));
+                    if (!empty($nomAcom)) {
+                        $listaFirmas[] = [
+                            'nombre' => mb_strtoupper($nomAcom, 'UTF-8'),
+                            'rol'    => mb_strtoupper($acom->cargo ?? 'ACOMPAÑANTE TÉCNICO', 'UTF-8')
+                        ];
+                    }
+                }
             }
-            if($acta->foto2 && file_exists(public_path('storage/' . $acta->foto2))) {
-                $fotosCabecera[] = ['url' => public_path('storage/' . $acta->foto2), 'caption' => 'FOTO 02 - REGISTRO DE MONITOREO'];
-            }
-            $cantidadCabecera = count($fotosCabecera);
+
+            $firmasFilas = array_chunk($listaFirmas, 2);
         @endphp
 
-        @if ($cantidadCabecera > 0)
-            @if ($cantidadCabecera == 1)
-            <div style="width: 100%; text-align: center; margin-top: 15px;">
-                <div style="display: inline-block; border: 1px solid #e2e8f0; padding: 5px; background: #fff; border-radius: 10px;">
-                    <img src="{{ $fotosCabecera[0]['url'] }}" style="width: 100%; height: 250px; object-fit: cover; border-radius: 8px;">
-                    <div class="foto-caption">{{ $fotosCabecera[0]['caption'] }}</div>
-                </div>
-            </div>
-            @else
-            <table style="width: 100%; border: none; margin-top: 10px;">
+        <table class="firmas-table">
+            @foreach($firmasFilas as $fila)
                 <tr>
-                    @foreach ($fotosCabecera as $index => $fotoData)
-                        <td style="border: none; padding: 5px; text-align: center; width: 50%;">
-                            <div style="border: 1px solid #e2e8f0; padding: 4px; background: #fff; border-radius: 10px;">
-                                <img src="{{ $fotoData['url'] }}" style="width: 100%; height: 250px; object-fit: cover; border-radius: 8px;">
-                                <div class="foto-caption">{{ $fotoData['caption'] }}</div>
+                    @foreach($fila as $f)
+                        <td style="width: 50%;">
+                            <div class="firma-box">
+                                <div class="firma-space"></div>
+                                <div class="firma-line"></div>
+                                <span class="firma-name">{{ $f['nombre'] }}</span>
+                                <span class="firma-role">{{ $f['rol'] }}</span>
                             </div>
                         </td>
                     @endforeach
+                    @if(count($fila) < 2)
+                        <td style="width: 50%; border: none;"></td>
+                    @endif
+                </tr>
+            @endforeach
+        </table>
+    </div>
+
+    {{-- ═══ FOOTER FIJO INSTITUCIONAL ═══ --}}
+    <div class="footer-fixed">
+        <div class="footer-inner">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="text-align: left; vertical-align: middle;">
+                        <span class="footer-text">
+                            Reporte Consolidado de Diagnóstico Situacional IPRESS &bull; EESS: {{ strtoupper($acta->establecimiento->nombre ?? '') }} &bull; Acta #{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }} &bull; {{ date('d/m/Y') }}
+                        </span>
+                    </td>
+                    <td style="text-align: right; width: 40px; vertical-align: middle;">
+                        {{-- Espacio reservado para el paginador impreso por script PHP --}}
+                    </td>
                 </tr>
             </table>
-            @endif
-        @else
-            <div class="no-evidence-box">NO SE ADJUNTARON FOTOGRAFÍAS EN ESTA ACTA.</div>
-        @endif
-    </div>
-
-    <div class="no-break">
-        <div class="section-header">5. FIRMAS DE CONFORMIDAD</div>
-        <div class="firmas-grid">
-            
-            <div class="firma-card">
-                <div class="firma-espacio"></div>
-                <div class="firma-bottom">
-                    <div class="linea-firma"></div>
-                    <span class="nombre-firma">{{ $monitor['nombre'] ?? 'MONITOR' }}</span>
-                    <span class="cargo-firma">IMPLEMENTADOR</span>
-                </div>
-            </div>
-
-            <div class="firma-card">
-                <div class="firma-espacio"></div>
-                <div class="firma-bottom">
-                    <div class="linea-firma"></div>
-                    <span class="nombre-firma">{{ $jefe['nombre'] ?? 'JEFE DE ESTABLECIMIENTO' }}</span>
-                    <span class="cargo-firma">JEFE DEL ESTABLECIMIENTO</span>
-                </div>
-            </div>
-
-            @foreach($equipoMonitoreo as $miembro)
-                <div class="firma-card">
-                    <div class="firma-espacio"></div>
-                    <div class="firma-bottom">
-                        <div class="linea-firma"></div>
-                        <span class="nombre-firma">{{ strtoupper(trim(($miembro->apellido_paterno ?? '') . ' ' . ($miembro->apellido_materno ?? ''). ' ' . ($miembro->nombres ?? ''))) }}</span>
-                        <span class="cargo-firma">{{ strtoupper($miembro->institucion ?? 'ACOMPAÑANTE TÉCNICO') }}</span>
-                    </div>
-                </div>
-            @endforeach
-
         </div>
     </div>
+
+    {{-- ═══ SCRIPT DOMPDF: PAGINADOR DINÁMICO (EJ: 1/3, 2/3, 3/3) ═══ --}}
+    <script type="text/php">
+        if (isset($pdf)) {
+            $font = $fontMetrics->get_font("helvetica", "bold");
+            $size = 7.5;
+            $color = array(0.58, 0.64, 0.72); // #94a3b8
+            
+            // Altura exacta en el pie de página
+            $y = $pdf->get_height() - 24;
+            
+            // Paginador en la esquina inferior derecha en formato exacto: 1/3, 2/3, 3/3
+            $textPag = "{PAGE_NUM}/{PAGE_COUNT}";
+            $anchoPag = $fontMetrics->get_text_width("88/88", $font, $size);
+            $xRight = $pdf->get_width() - 28 - $anchoPag;
+            
+            $pdf->page_text($xRight, $y, $textPag, $font, $size, $color);
+        }
+    </script>
+
 </body>
 </html>

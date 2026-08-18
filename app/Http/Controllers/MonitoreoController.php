@@ -720,11 +720,14 @@ class MonitoreoController extends Controller
         $prefijo = $acta->tipo_origen === 'ESPECIALIZADA' ? 'ACTA_CSMC_' : 'ACTA_IPRESS_';
         $numero = str_pad($acta->numero_acta ?? $acta->id, 5, '0', STR_PAD_LEFT);
 
-        // Usamos la vista real: consolidado_pdf
-        return Pdf::loadView('usuario.monitoreo.pdf.consolidado_pdf', [
+        // Usamos la vista real: consolidado_pdf con opciones DomPDF habilitadas
+        $pdf = Pdf::setOptions([
+            'isPhpEnabled'         => true,
+            'isRemoteEnabled'      => true,
+            'isHtml5ParserEnabled' => true,
+        ])->loadView('usuario.monitoreo.pdf.consolidado_pdf', [
             'acta'    => $acta,
             'modulos' => $modulos,
-            // Variables adicionales que espera la vista (basado en ConsolidadoPdfController)
             'monitor' => [
                 'nombre' => $acta->user ? mb_strtoupper("{$acta->user->apellido_paterno} {$acta->user->apellido_materno} {$acta->user->name}", 'UTF-8') : 'N/A'
             ],
@@ -733,9 +736,17 @@ class MonitoreoController extends Controller
             ],
             'equipoMonitoreo' => $acta->equipo,
             'equipos'         => \App\Models\EquipoComputo::where('cabecera_monitoreo_id', $id)->get()
-        ])
-        ->setPaper('a4', 'portrait')
-        ->stream("{$prefijo}{$numero}.pdf");
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        return response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $prefijo . $numero . '.pdf"',
+            'Cache-Control'       => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma'              => 'no-cache',
+            'Expires'             => 'Sun, 02 Jan 1990 00:00:00 GMT',
+        ]);
     }
 
     public function subirPDF(Request $request, $id)
