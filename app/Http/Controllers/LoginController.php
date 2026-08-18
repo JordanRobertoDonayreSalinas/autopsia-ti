@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
@@ -69,6 +71,58 @@ class LoginController extends Controller
         return back()->withErrors([
             'username' => 'El usuario o la contraseña son incorrectos.',
         ])->onlyInput('username');
+    }
+
+    /**
+     * Login de la API para la app Flutter (POST /api/v1/login).
+     *
+     * Antes reutilizaba login() de arriba, pensado para sesión web con
+     * cookies: en éxito solo devolvía { success, redirect } sin token ni
+     * datos del usuario. La app nativa no puede autenticar llamadas
+     * siguientes con eso — ver Informe de revisión, sección 5.
+     *
+     * Emite un token de Laravel Sanctum y el usuario completo, para que
+     * Flutter lo guarde y lo envíe como Authorization: Bearer <token> en
+     * cada llamada protegida (hoy solo POST /v1/sync la exige).
+     */
+    public function apiLogin(Request $request)
+    {
+        $credentials = $request->validate([
+            'username' => ['required', 'string'],
+            'password' => ['required'],
+        ], [
+            'username.required' => 'Por favor, ingresa tu usuario.',
+            'password.required' => 'Debes ingresar tu contraseña.',
+        ]);
+
+        $user = User::where('username', $credentials['username'])
+            ->where('status', 'active')
+            ->first();
+
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Credenciales incorrectas. Inténtalo de nuevo.',
+            ], 422);
+        }
+
+        // Un solo token vigente por dispositivo/app: se revocan los anteriores.
+        $user->tokens()->where('name', 'flutter-app')->delete();
+        $token = $user->createToken('flutter-app')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'token'   => $token,
+            'user'    => [
+                'id'               => $user->id,
+                'name'             => $user->name,
+                'apellido_paterno' => $user->apellido_paterno,
+                'apellido_materno' => $user->apellido_materno,
+                'nombre_completo'  => $user->full_name,
+                'username'         => $user->username,
+                'role'             => $user->role,
+            ],
+        ]);
     }
 
     // 3. Cerrar sesión
