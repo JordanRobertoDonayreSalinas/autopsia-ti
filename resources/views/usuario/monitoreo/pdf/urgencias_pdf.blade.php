@@ -3,76 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Módulo 18: Urgencias y Emergencias - Acta {{ $acta->numero_acta }}</title>
-    <style>
-        /* MÁRGENES: 2.5cm abajo para reservar espacio al pie de página del Controlador */
-        @page { margin: 1.2cm 1.5cm 2.5cm 1.5cm; }
-        body { font-family: 'Helvetica', Arial, sans-serif; font-size: 10px; color: #1e293b; line-height: 1.4; }
-        
-        /* ENCABEZADO */
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #dc2626; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 16px; text-transform: uppercase; color: #dc2626; font-weight: bold; }
-        .acta-info { font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-top: 5px; }
-
-        /* TÍTULOS DE SECCIÓN (Estilo Rojo) */
-        .section-title { 
-            background-color: #fef2f2; 
-            padding: 6px 10px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            border-left: 4px solid #dc2626; 
-            margin-top: 15px; 
-            margin-bottom: 5px; 
-            font-size: 10px; 
-            color: #991b1b;
-        }
-
-        /* TABLAS */
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 5px; }
-        th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; vertical-align: middle; word-wrap: break-word; }
-        th { background-color: #f8fafc; color: #475569; font-size: 8.5px; text-transform: uppercase; }
-        
-        /* COLUMNA ETIQUETA */
-        .bg-label { background-color: #f8fafc; font-weight: bold; width: 35%; text-transform: uppercase; color: #334155; font-size: 9px; }
-        .uppercase { text-transform: uppercase; }
-        .text-center { text-align: center; }
-        .font-bold { font-weight: bold; }
-
-        /* --- EVIDENCIA FOTOGRÁFICA --- */
-        .no-evidence-box {
-            border: 2px dashed #cbd5e1;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            color: #64748b;
-            font-style: italic;
-            background-color: #f8fafc;
-            margin-top: 10px;
-        }
-
-        /* --- ESTILO UNIFICADO PARA FOTOS (PREMIUM) --- */
-        .photo-img, .foto, .preview-image, .photo-box img {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-        }
-
-        /* ESTANDARIZACIÓN DE FIRMAS */
-        .firma-section { margin-top: 30px; width: 100%; }
-        .firma-container { width: 380px; margin: 0 auto; }
-        .firma-box { 
-            border: 1px solid #cbd5e1; 
-            border-radius: 15px; 
-            padding: 20px; 
-            padding-top: 100px;
-            text-align: center;
-            background-color: #f8fafc;
-        }
-        .firma-linea { border-top: 1px solid #000; margin: 10px auto 5px auto; width: 85%; }
-        .firma-nombre { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #1e293b; }
-        .firma-label { font-size: 9px; color: #475569; margin-top: 2px; text-transform: uppercase; }
-    </style>
+    @include('usuario.monitoreo.pdf.partials.premium_style')
 </head>
 <body>
 

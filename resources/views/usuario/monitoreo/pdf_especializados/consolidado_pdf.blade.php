@@ -5,12 +5,12 @@
     <title>Reporte Consolidado CSMC</title>
     <style>
         @page { margin: 1.5cm; }
-        body { font-family: sans-serif; font-size: 10px; color: #333; line-height: 1.4; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 9px; color: #1e293b; line-height: 1.4; margin: 0; }
         
         /* HEADER */
-        .header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid #0f766e; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 16px; color: #115e59; text-transform: uppercase; }
-        .header p { margin: 2px 0; font-size: 10px; color: #555; }
+        .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #1d4ed8; padding-bottom: 12px; }
+        .header h1 { margin: 0; font-size: 16px; color: #1e293b; text-transform: uppercase; font-weight: 800; }
+        .header p { margin: 4px 0; font-size: 10px; color: #475569; }
 
         /* SECCIÓN DE CONTROL */
         .control-section { margin-bottom: 30px; }
@@ -19,51 +19,56 @@
             font-weight: bold;
             color: #1e293b;
             text-transform: uppercase;
-            border-left: 5px solid #0f172a;
-            padding-left: 10px;
+            border-left: 4px solid #3b82f6;
+            background-color: #f1f5f9;
+            padding: 6px 12px;
             margin-bottom: 10px;
+            border-radius: 0 4px 4px 0;
         }
         .control-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-        .control-table th { background-color: #f1f5f9; color: #334155; font-weight: bold; text-align: left; padding: 6px; border: 1px solid #e2e8f0; width: 30%; }
-        .control-table td { border: 1px solid #e2e8f0; padding: 6px; color: #0f172a; }
+        .control-table th { background-color: #f8fafc; color: #475569; font-weight: bold; text-align: left; padding: 6px 10px; border: 1px solid #e2e8f0; width: 30%; font-size: 9px; text-transform: uppercase; }
+        .control-table td { border: 1px solid #e2e8f0; padding: 6px 10px; color: #0f172a; font-size: 9px; }
 
-        .team-header { font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 5px; text-transform: uppercase; }
+        .team-header { font-size: 10px; font-weight: bold; color: #1e293b; margin-bottom: 6px; text-transform: uppercase; }
         
         /* MÓDULOS */
-        .module-container { margin-bottom: 20px; page-break-inside: avoid; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+        .module-container { margin-bottom: 20px; page-break-inside: avoid; border: 1px solid #cbd5e1; border-radius: 6px; background-color: #ffffff; overflow: hidden; padding-bottom: 5px; }
         .module-header { 
-            background-color: #0f766e; color: white; padding: 6px 10px; 
-            font-size: 12px; font-weight: bold; text-transform: uppercase; 
-            border-radius: 3px; margin-bottom: 10px;
+            background-color: #1e293b; color: #ffffff; padding: 6px 10px; 
+            font-size: 11px; font-weight: bold; text-transform: uppercase; 
+            margin-bottom: 10px; letter-spacing: 0.5px;
         }
         .section-title {
-            font-size: 10px; font-weight: bold; color: #0f766e;
-            border-bottom: 1px solid #ccfbf1; margin-top: 8px; margin-bottom: 4px; text-transform: uppercase;
+            font-size: 9px; font-weight: bold; color: #1e293b;
+            background-color: #f8fafc; padding: 5px 10px;
+            border-bottom: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0;
+            margin-bottom: 4px; text-transform: uppercase;
         }
 
         /* TABLAS DATOS */
         table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 4px 6px; text-align: left; vertical-align: top; }
-        .data-table th { background-color: #f0fdfa; color: #0f766e; font-weight: bold; font-size: 9px; width: 60%; } /* Ajusté el ancho para que la pregunta entre bien */
+        .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 5px 8px; text-align: left; vertical-align: top; }
+        .data-table th { background-color: #f8fafc; color: #475569; font-weight: bold; font-size: 8px; width: 50%; text-transform: uppercase; }
+        .data-table td { color: #0f172a; font-size: 8px; font-weight: bold; }
         
         /* TABLA EQUIPOS */
-        .table-equipos { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .table-equipos th, .table-equipos td { border: 1px solid #e2e8f0; padding: 6px; }
-        .table-equipos th { background-color: #1e293b; color: #fff; text-align: center; font-size: 9px; text-transform: uppercase; }
-        .table-equipos td { text-align: center; font-size: 9px; vertical-align: middle; }
+        .table-equipos { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .table-equipos th, .table-equipos td { border: 1px solid #e2e8f0; padding: 6px 8px; }
+        .table-equipos th { background-color: #f8fafc; color: #475569; text-align: center; font-size: 8px; text-transform: uppercase; font-weight: bold; }
+        .table-equipos td { text-align: center; font-size: 8px; vertical-align: middle; color: #0f172a; font-weight: bold; }
         .text-left { text-align: left !important; }
         .text-center { text-align: center !important; }
-        .badge { background-color: #e2e8f0; padding: 2px 4px; border-radius: 3px; font-weight: bold; font-size: 8px; }
+        .badge { background-color: #f1f5f9; color: #334155; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 8px; border: 1px solid #cbd5e1; }
 
         /* FOTOS */
         .photo-section { margin-top: 20px; page-break-inside: avoid; }
         .photo-grid { width: 100%; text-align: center; margin-top: 10px; }
         .photo-container {
             display: inline-block; width: 45%; margin: 0 5px 10px 5px;
-            border: 4px solid #fff; box-shadow: 0 0 5px rgba(0,0,0,0.1);
-            border-radius: 8px; overflow: hidden; vertical-align: top;
+            background: #ffffff; border: 1px solid #cbd5e1; padding: 4px;
+            border-radius: 12px; overflow: hidden; vertical-align: top;
         }
-        .photo-img { width: 100%; height: 250px; object-fit: cover; border-radius: 10px; }
+        .photo-img { width: 100%; height: 250px; object-fit: cover; border-radius: 8px; }
 
         /* FIRMAS */
         .signatures-section { margin-top: 30px; page-break-inside: avoid; }
@@ -71,23 +76,23 @@
         .signatures-table td { border: none; padding: 8px; vertical-align: top; }
         
         .signature-box {
-            border: 1px solid #94a3b8;
+            border: 1px solid #cbd5e1;
             border-radius: 8px;
-            padding: 70px 10px 10px 10px;
+            padding: 70px 10px 15px 10px;
             text-align: center;
             height: 60px; 
-            background-color: #fff;
+            background-color: #f8fafc;
         }
         .signature-line {
             border-bottom: 1px solid #64748b;
             width: 85%;
-            margin: 0 auto 5px auto;
+            margin: 0 auto 8px auto;
         }
         .signature-name { 
-            font-weight: bold; font-size: 9px; color: #0f172a; text-transform: uppercase; margin-bottom: 2px;
+            font-weight: bold; font-size: 9px; color: #0f172a; text-transform: uppercase; margin-bottom: 3px;
         }
         .signature-role { 
-            font-size: 8px; color: #64748b; font-weight: bold; text-transform: uppercase; 
+            font-size: 7px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
         }
 
     </style>

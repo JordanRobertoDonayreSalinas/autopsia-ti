@@ -1,334 +1,275 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Evaluación de Consultorio: {{ $contenido['titulo_consultorio'] ?? 'Consultorio' }} - Acta #{{ $acta->numero_acta }}</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Evaluación de Consultorio: {{ $contenido['titulo_consultorio'] ?? 'Consultorio' }} - Acta {{ $acta->numero_acta }}</title>
     <style>
-        /* ═══════════════════════════════════════════════════════
-           EVALUACIÓN DE CONSULTORIO — DISEÑO COMPACTO Y ELEGANTE
-           Tipografía: DejaVu Sans (nativa TrueType de DomPDF)
-           ═══════════════════════════════════════════════════════ */
-        @page { 
-            margin: 0.7cm 1cm 1.2cm 1cm; 
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
-        body { 
-            font-family: 'DejaVu Sans', sans-serif; 
-            font-size: 8px; 
-            color: #1e293b; 
-            line-height: 1.25; 
+        @page {
+            margin: 1.2cm 1.2cm 1.4cm 1.2cm;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', 'Century Gothic', 'Calibri', 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 8px;
+            color: #1e293b;
+            line-height: 1.45;
             background-color: #ffffff;
             margin: 0;
             padding: 0;
         }
 
-        /* ── BARRA SUPERIOR DECORATIVA ── */
-        .top-accent {
-            height: 3.5px;
-            background-color: #4f46e5;
-            margin-bottom: 7px;
-        }
+        /* Utilidades Generales */
+        .text-center { text-align: center !important; }
+        .text-right { text-align: right !important; }
+        .text-left { text-align: left !important; }
+        .font-bold { font-weight: 700 !important; }
+        .font-black { font-weight: 800 !important; }
+        .uppercase { text-transform: uppercase !important; }
+        .no-break { page-break-inside: avoid; }
 
-        /* ── ENCABEZADO PRINCIPAL ── */
-        .header-block {
-            margin-bottom: 6px;
-        }
-        .header-grid {
+        /* ENCABEZADO INSTITUCIONAL */
+        .header-table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 8px;
         }
-        .header-grid td {
+        .header-table td {
             border: none;
             padding: 0;
             vertical-align: middle;
         }
-
-        .tag-pill {
-            background-color: #4f46e5;
+        .inst-title {
+            font-size: 7px;
+            font-weight: 700;
+            color: #64748b;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .main-title {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            margin: 2px 0 3px 0;
+        }
+        .submodule-badge {
+            display: inline-block;
+            background-color: #1e3a8a;
             color: #ffffff;
-            font-size: 6.5px;
-            font-weight: bold;
+            font-size: 8.5px;
+            font-weight: 700;
             padding: 2.5px 8px;
-            border-radius: 3px;
+            border-radius: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            display: inline-block;
         }
-        .tag-acta {
-            color: #64748b;
-            font-size: 7.5px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-left: 6px;
-            letter-spacing: 0.3px;
-        }
-        .header-title {
-            font-size: 13.5px;
-            font-weight: bold;
-            color: #0f172a;
-            text-transform: uppercase;
-            letter-spacing: -0.3px;
-            margin: 3px 0 1.5px 0;
-        }
-        .header-subtitle {
-            font-size: 7.5px;
+        .eess-info {
+            font-size: 8px;
+            font-weight: 700;
             color: #475569;
-            line-height: 1.2;
-        }
-        .header-subtitle strong {
-            color: #1e293b;
-        }
-
-        /* Tarjetas de resumen en encabezado */
-        .summary-cards {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 4px 0;
-        }
-        .summary-cards td {
-            border: none;
-            padding: 0;
-        }
-        .stat-card {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 5px;
-            padding: 4px 6px;
-            text-align: center;
-        }
-        .stat-card-accent {
-            background-color: #eef2ff;
-            border: 1px solid #c7d2fe;
-        }
-        .stat-value {
-            font-size: 11px;
-            font-weight: bold;
-            color: #4f46e5;
-            display: block;
-            line-height: 1.1;
-            text-transform: uppercase;
-        }
-        .stat-label {
-            font-size: 6px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            display: block;
-            margin-top: 1px;
-        }
-
-        .header-divider {
-            border: none;
-            height: 1px;
-            background-color: #e2e8f0;
-            margin: 5px 0 7px 0;
-        }
-
-        /* ── SECCIONES DEL REPORTE ── */
-        .section-card {
-            background-color: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 6px 8px;
-            margin-bottom: 6px;
-        }
-        .section-header-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 5px;
-            border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 3px;
-        }
-        .section-header-table td {
-            border: none;
-            padding: 0;
-            vertical-align: middle;
-        }
-        
-        /* Número de sección cuadrado redondeado para alineación vertical perfecta en DomPDF */
-        .section-badge {
-            background-color: #4f46e5;
-            color: #ffffff;
-            font-size: 7.5px;
-            font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 3px;
-            display: inline-block;
-            text-align: center;
-            line-height: 1;
-        }
-        .section-title-text {
-            font-size: 8.5px;
-            font-weight: bold;
-            color: #0f172a;
+            margin-top: 4px;
             text-transform: uppercase;
             letter-spacing: 0.2px;
-            margin-left: 5px;
         }
-
-        /* ── GRID DE CAMPOS FORMULARIO ── */
-        .form-grid {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 5px 0;
-            margin-left: -5px;
-            margin-right: -5px;
-        }
-        .form-grid td {
-            border: none;
-            padding: 0;
-            vertical-align: top;
-        }
-        .field-box {
+        .acta-box {
             background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 5px;
-            padding: 4px 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 12px;
+            text-align: center;
         }
-        .field-label {
-            font-size: 6px;
-            font-weight: bold;
+        .acta-box-num {
+            font-size: 13px;
+            font-weight: 800;
+            color: #1e3a8a;
+            letter-spacing: 0.5px;
+        }
+        .acta-box-lbl {
+            font-size: 7px;
+            font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
-            margin-bottom: 1.5px;
-            display: block;
+            letter-spacing: 0.8px;
         }
-        .field-value {
+
+        /* SECCIONES Y TARJETAS */
+        .card-section {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            margin-bottom: 11px;
+            background-color: #ffffff;
+            page-break-inside: avoid;
+        }
+        .card-header {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 4.5px 9px;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+        .card-header .num-pill {
+            background-color: #3b82f6;
+            color: #ffffff;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-right: 4px;
             font-size: 7.5px;
-            font-weight: bold;
+            font-weight: 800;
+        }
+        .card-body {
+            padding: 0;
+        }
+
+        /* TABLAS DE DATOS */
+        table.grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        table.grid-table td, table.grid-table th {
+            border: 1px solid #e2e8f0;
+            padding: 5px 8px;
+            font-size: 7.5px;
+            vertical-align: middle;
+        }
+        table.grid-table th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 7px;
+            letter-spacing: 0.4px;
+        }
+        .lbl-col {
+            background-color: #f8fafc;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            font-size: 7.5px;
+            letter-spacing: 0.2px;
+        }
+        .val-col {
+            font-weight: 700;
             color: #0f172a;
             text-transform: uppercase;
         }
 
-        /* ── BADGES & ESTILOS DE ESTADO ── */
+        /* BADGES DE ESTADO */
         .badge {
             display: inline-block;
-            padding: 1.5px 5px;
+            padding: 2px 7px;
             border-radius: 3px;
-            font-size: 6.5px;
-            font-weight: bold;
+            font-size: 7px;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.3px;
             text-align: center;
-            letter-spacing: 0.2px;
         }
-        .badge-operativo { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
-        .badge-regular { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-        .badge-inoperativo { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-        .badge-propio { background-color: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
+        .badge-success { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .badge-danger  { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-warning { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+        .badge-info    { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .badge-neutral { background-color: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
 
-        /* ── TABLA DE EQUIPOS ── */
-        table.equipos-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 2px;
-            margin-bottom: 4px;
-        }
-        table.equipos-table th {
-            background-color: #4f46e5;
-            color: #ffffff;
-            font-size: 7px;
-            font-weight: bold;
-            text-transform: uppercase;
-            padding: 4px 5px;
-            text-align: left;
-            border: 1px solid #4f46e5;
-            letter-spacing: 0.2px;
-        }
-        table.equipos-table td {
-            border: 1px solid #e2e8f0;
-            padding: 3.5px 5px;
+        /* OBSERVACIONES */
+        .obs-box {
+            background-color: #f8fafc;
+            padding: 8px 10px;
             font-size: 7.5px;
-            vertical-align: middle;
-            color: #334155;
-        }
-        table.equipos-table tr:nth-child(even) {
-            background-color: #fafbff;
+            color: #0f172a;
+            font-weight: 600;
+            line-height: 1.45;
         }
 
-        /* ── CAJA DXDIAG (SPECS TÉCNICAS) ── */
-        .dxdiag-card {
-            margin-top: 4px;
-            background-color: #fafbff;
-            border: 1px solid #c7d2fe;
-            border-left: 3px solid #4f46e5;
-            border-radius: 5px;
-            padding: 5px 7px;
+        /* EVIDENCIA FOTOGRÁFICA */
+        .photo-wrapper {
+            padding: 9px;
+            text-align: center;
+            background-color: #f8fafc;
         }
-        .dxdiag-title {
+        .photo-img {
+            max-width: 95%;
+            max-height: 220px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            padding: 2px;
+            background-color: #ffffff;
+        }
+        .photo-meta {
+            margin-top: 5px;
             font-size: 7px;
-            font-weight: bold;
-            color: #4338ca;
+            font-weight: 700;
+            color: #1e3a8a;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-bottom: 3px;
+            letter-spacing: 0.3px;
         }
-        table.dxdiag-table {
+        .no-photo-box {
+            padding: 14px;
+            text-align: center;
+            color: #94a3b8;
+            font-style: italic;
+            font-size: 7.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* SECCIÓN DE FIRMAS */
+        .signatures-container {
+            width: 100%;
+            margin-top: 14px;
+            page-break-inside: avoid;
+        }
+        .signatures-table {
             width: 100%;
             border-collapse: collapse;
         }
-        table.dxdiag-table td {
-            border: 1px solid #e0e7ff;
-            background: #ffffff;
-            padding: 3px 5px;
+        .signatures-table td {
+            width: 50%;
+            padding: 0 10px;
+            border: none;
             vertical-align: top;
         }
-        .dx-label {
-            font-size: 5.5px;
-            font-weight: bold;
-            color: #64748b;
-            display: block;
-            text-transform: uppercase;
-            letter-spacing: 0.2px;
-            margin-bottom: 1px;
-        }
-        .dx-val {
-            font-size: 7px;
-            font-weight: bold;
-            color: #0f172a;
-            text-transform: uppercase;
-        }
-
-        /* ── TARJETAS CONECTIVIDAD ── */
-        .conn-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 5px;
-            padding: 4px 6px;
+        .sig-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
             background-color: #ffffff;
             text-align: center;
+            padding-bottom: 7px;
         }
-        .conn-card-active {
-            border: 1.5px solid #4f46e5;
-            background-color: #eef2ff;
+        .sig-space {
+            height: 44px;
         }
-        .conn-title {
+        .sig-line {
+            width: 80%;
+            border-top: 1px solid #475569;
+            margin: 0 auto 5px auto;
+        }
+        .sig-name {
             font-size: 7.5px;
-            font-weight: bold;
+            font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
+            letter-spacing: 0.2px;
         }
-        .conn-sub {
-            font-size: 6px;
-            font-weight: bold;
-            color: #4f46e5;
+        .sig-role {
+            font-size: 6.5px;
+            font-weight: 700;
+            color: #64748b;
             text-transform: uppercase;
             margin-top: 1px;
-        }
-
-        /* ── EVIDENCIA FOTOGRÁFICA ── */
-        .evidence-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            background-color: #fafbff;
-            padding: 5px;
-            text-align: center;
-            margin-top: 4px;
-        }
-        .evidence-img {
-            max-width: 100%;
-            max-height: 125px;
-            border-radius: 4px;
-            border: 1px solid #cbd5e1;
+            letter-spacing: 0.3px;
         }
         .evidence-caption {
             font-size: 7px;
@@ -339,306 +280,172 @@
             letter-spacing: 0.3px;
         }
 
-        /* ── OBSERVACIONES CARD ── */
-        .obs-box {
-            background-color: #fafbff;
-            border: 1px solid #e2e8f0;
-            border-left: 3px solid #4f46e5;
-            border-radius: 3px;
-            padding: 5px 8px;
-            font-size: 7.5px;
-            color: #334155;
-            line-height: 1.25;
-        }
-
-        /* ── FOOTER FIJO ── */
-        .footer-fixed {
+        /* PIE DE PÁGINA */
+        #footer {
             position: fixed;
-            bottom: -0.75cm;
+            bottom: -0.9cm;
             left: 0;
             right: 0;
-        }
-        .footer-inner {
+            height: 20px;
+            text-align: center;
             border-top: 1px solid #e2e8f0;
             padding-top: 3px;
-            width: 100%;
-        }
-        .footer-text {
             font-size: 6.5px;
             color: #94a3b8;
             text-transform: uppercase;
+            font-weight: 700;
             letter-spacing: 0.3px;
         }
     </style>
 </head>
 <body>
 
-    {{-- BARRA DECORATIVA SUPERIOR --}}
-    <div class="top-accent"></div>
+    {{-- PIE DE PÁGINA FIJO --}}
+    <div id="footer">
+        Sistema de Evaluación & Monitoreo TI &bull; EESS: {{ strtoupper($acta->establecimiento->nombre ?? '') }} &bull; Acta #{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }} &bull; Generado: {{ date('d/m/Y H:i:s') }}
+    </div>
 
     @php 
-        $secNum = 1; 
         $contenido = $detalle->contenido ?? [];
-        if (is_string($contenido)) {
-            $contenido = json_decode($contenido, true) ?? [];
-        }
-        $equipos = $equipos ?? \App\Models\EquipoComputo::where('cabecera_monitoreo_id', $acta->id)
+        $elec = strtoupper($contenido['cuenta_electricidad'] ?? 'SI');
+        $red  = strtoupper($contenido['cuenta_punto_red'] ?? 'SI');
+    @endphp
+
+    {{-- ENCABEZADO INSTITUCIONAL --}}
+    <table class="header-table">
+        <tr>
+            <td style="width: 72%;">
+                <div class="inst-title">MINISTERIO DE SALUD &bull; DIRECCI&Oacute;N DE REDES INTEGRADAS DE SALUD</div>
+                <div class="main-title">EVALUACI&Oacute;N DE DIAGN&Oacute;STICO SITUACIONAL</div>
+                <div>
+                    <span class="submodule-badge">{{ $contenido['titulo_consultorio'] ?? strtoupper(str_replace('_', ' ', $detalle->modulo_nombre ?? 'CONSULTORIO')) }}</span>
+                </div>
+                <div class="eess-info">
+                    <strong>EESS:</strong> {{ $acta->establecimiento->codigo ?? 'S/C' }} - {{ strtoupper($acta->establecimiento->nombre) }} &nbsp;|&nbsp; 
+                    <strong>PROVINCIA:</strong> {{ strtoupper($acta->establecimiento->provincia ?? 'GENERAL') }}
+                </div>
+            </td>
+            <td style="width: 28%;" class="text-right">
+                <div class="acta-box">
+                    <div class="acta-box-lbl">Diagn&oacute;stico Situacional</div>
+                    <div class="acta-box-num">N&deg; {{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}</div>
+                    <div style="font-size: 7px; font-weight: 700; color: #475569; margin-top: 2px;">
+                        FECHA: {{ isset($contenido['fecha']) ? date('d/m/Y', strtotime($contenido['fecha'])) : ($acta->fecha ? date('d/m/Y', strtotime($acta->fecha)) : date('d/m/Y')) }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- 1. DATOS GENERALES DEL CONSULTORIO --}}
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">1</span> DATOS GENERALES Y CONDICIONES B&Aacute;SICAS
+        </div>
+        <div class="card-body">
+            <table class="grid-table">
+                <tr>
+                    <td class="lbl-col" style="width: 22%;">FECHA EVALUADA:</td>
+                    <td class="val-col" style="width: 28%;">{{ isset($contenido['fecha']) ? date('d/m/Y', strtotime($contenido['fecha'])) : date('d/m/Y') }}</td>
+                    <td class="lbl-col" style="width: 22%;">TURNO EVALUADO:</td>
+                    <td class="val-col" style="width: 28%;">
+                        <span class="badge badge-info">{{ $contenido['turno'] ?? 'MAÑANA' }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="lbl-col">TIPO DE CONSULTORIO:</td>
+                    <td class="val-col">{{ $contenido['tipo_consultorio'] ?? 'FISICO' }}</td>
+                    <td class="lbl-col">PISO / UBICACI&Oacute;N:</td>
+                    <td class="val-col">{{ is_numeric($contenido['piso'] ?? '') ? ('PISO ' . $contenido['piso']) : ($contenido['piso'] ?? 'PISO 1') }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl-col">FLUJO EL&Eacute;CTRICO:</td>
+                    <td class="val-col">
+                        @if($elec === 'SI')
+                            <span class="badge badge-success">S&Iacute; CUENTA CON ELECTRICIDAD</span>
+                        @else
+                            <span class="badge badge-danger">NO CUENTA CON ELECTRICIDAD</span>
+                        @endif
+                    </td>
+                    <td class="lbl-col">PUNTO DE RED:</td>
+                    <td class="val-col">
+                        @if($red === 'SI')
+                            <span class="badge badge-success">S&Iacute; CUENTA (HABILITADO)</span>
+                        @else
+                            <span class="badge badge-danger">NO CUENTA CON PUNTO RED</span>
+                        @endif
+                    </td>
+                </tr>
+                @if(!empty($contenido['servicio_asociado']))
+                <tr>
+                    <td class="lbl-col">SERVICIO ASOCIADO:</td>
+                    <td class="val-col" colspan="3">
+                        <span class="badge badge-neutral" style="font-size: 7.5px;">{{ strtoupper($contenido['servicio_asociado']) }}</span>
+                    </td>
+                </tr>
+                @endif
+            </table>
+        </div>
+    </div>
+
+    {{-- 2. EQUIPOS DE CÓMPUTO E IMPRESORAS --}}
+    @php
+        $equipos = \App\Models\EquipoComputo::where('cabecera_monitoreo_id', $acta->id)
             ->where('modulo', $detalle->modulo_nombre ?? '')
             ->get();
     @endphp
 
-    {{-- ═══ ENCABEZADO PRINCIPAL ═══ --}}
-    <div class="header-block">
-        <table class="header-grid">
-            <tr>
-                {{-- COLUMNA IZQUIERDA --}}
-                <td style="width: 68%;">
-                    <div>
-                        <span class="tag-pill">Módulo de Evaluación</span>
-                        <span class="tag-acta">Acta N° <strong>#{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}</strong></span>
-                    </div>
-                    <div class="header-title">{{ $contenido['titulo_consultorio'] ?? 'EVALUACIÓN DE CONSULTORIO' }}</div>
-                    <div class="header-subtitle">
-                        <strong>IPRESS:</strong> {{ $acta->establecimiento->codigo ?? 'S/C' }} — {{ strtoupper($acta->establecimiento->nombre ?? 'NO REGISTRADO') }}
-                        &nbsp;&bull;&nbsp;
-                        <strong>Red:</strong> {{ strtoupper($acta->establecimiento->red ?? 'General') }}
-                        @if(!empty($acta->establecimiento->microred))
-                            &nbsp;&bull;&nbsp; <strong>Microred:</strong> {{ strtoupper($acta->establecimiento->microred) }}
-                        @endif
-                        @if(!empty($acta->establecimiento->provincia))
-                            &nbsp;&bull;&nbsp; <strong>Provincia:</strong> {{ strtoupper($acta->establecimiento->provincia) }}
-                        @endif
-                    </div>
-                </td>
-
-                {{-- COLUMNA DERECHA: TARJETAS METRICAS --}}
-                <td style="width: 32%;">
-                    <table class="summary-cards">
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">2</span> INVENTARIO DE EQUIPOS DE C&Oacute;MPUTO Y PERIF&Eacute;RICOS
+        </div>
+        <div class="card-body">
+            @if(count($equipos) > 0)
+                <table class="grid-table">
+                    <thead>
                         <tr>
-                            <td style="width: 50%;">
-                                <div class="stat-card stat-card-accent">
-                                    <span class="stat-value">{{ isset($contenido['fecha']) ? date('d/m/Y', strtotime($contenido['fecha'])) : date('d/m/Y') }}</span>
-                                    <span class="stat-label">Fecha Monitoreo</span>
-                                </div>
-                            </td>
-                            <td style="width: 50%;">
-                                <div class="stat-card">
-                                    <span class="stat-value" style="color: #334155;">{{ $contenido['turno'] ?? 'MAÑANA' }}</span>
-                                    <span class="stat-label">Turno Evaluado</span>
-                                </div>
-                            </td>
+                            <th class="text-center" style="width: 4%;">N&deg;</th>
+                            <th style="width: 28%;">DESCRIPCI&Oacute;N DEL EQUIPO</th>
+                            <th class="text-center" style="width: 6%;">CANT.</th>
+                            <th class="text-center" style="width: 14%;">ESTADO</th>
+                            <th class="text-center" style="width: 14%;">PROPIEDAD</th>
+                            <th style="width: 16%;">N&deg; SERIE / C&Oacute;D. PAT.</th>
+                            <th style="width: 18%;">OBSERVACIONES</th>
                         </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    <hr class="header-divider">
-
-    {{-- ═══ 1. DATOS GENERALES DEL CONSULTORIO ═══ --}}
-    <div class="section-card">
-        <table class="section-header-table">
-            <tr>
-                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
-                <td><span class="section-title-text">DATOS GENERALES DEL CONSULTORIO / MÓDULO</span></td>
-            </tr>
-        </table>
-
-        {{-- FILA 1: Denominación y Servicio --}}
-        <table class="form-grid" style="margin-bottom: 4px;">
-            <tr>
-                <td style="width: {{ !empty($contenido['servicio_asociado']) ? '50%' : '100%' }};">
-                    <div class="field-box" style="border-color: #c7d2fe; background: #eef2ff;">
-                        <span class="field-label" style="color: #4f46e5;">Denominación del Consultorio / Módulo</span>
-                        <span class="field-value" style="color: #312e81; font-size: 8px;">
-                            {{ $contenido['titulo_consultorio'] ?? 'CONSULTORIO' }}
-                        </span>
-                    </div>
-                </td>
-                @if(!empty($contenido['servicio_asociado']))
-                <td style="width: 50%;">
-                    <div class="field-box" style="border-color: #c7d2fe; background: #eef2ff;">
-                        <span class="field-label" style="color: #4f46e5;">Servicio del Consultorio</span>
-                        <span class="field-value" style="color: #312e81; font-size: 8px;">
-                            {{ strtoupper($contenido['servicio_asociado']) }}
-                        </span>
-                    </div>
-                </td>
-                @endif
-            </tr>
-        </table>
-
-        {{-- FILA 2: Tipo, Piso, Electricidad y Puntos de Red --}}
-        <table class="form-grid">
-            <tr>
-                <td style="width: 25%;">
-                    <div class="field-box">
-                        <span class="field-label">Tipo de Consultorio</span>
-                        <span class="field-value">
-                            {{ $contenido['tipo_consultorio'] ?? 'FÍSICO' }}
-                        </span>
-                    </div>
-                </td>
-                <td style="width: 25%;">
-                    <div class="field-box">
-                        <span class="field-label">Ubicación / Piso</span>
-                        <span class="field-value">
-                            {{ is_numeric($contenido['piso'] ?? '') ? ('PISO ' . $contenido['piso']) : ($contenido['piso'] ?? 'PISO 1') }}
-                        </span>
-                    </div>
-                </td>
-                <td style="width: 25%;">
-                    @php $elec = strtoupper($contenido['cuenta_electricidad'] ?? 'SI'); @endphp
-                    <div class="field-box" style="{{ $elec === 'SI' ? 'border-color: #86efac; background: #f0fdf4;' : 'border-color: #fca5a5; background: #fef2f2;' }}">
-                        <span class="field-label" style="{{ $elec === 'SI' ? 'color: #166534;' : 'color: #991b1b;' }}">Electricidad</span>
-                        <span class="field-value" style="{{ $elec === 'SI' ? 'color: #166534;' : 'color: #991b1b;' }}">
-                            {{ $elec === 'SI' ? '✓ CUENTA (SÍ)' : '✗ NO CUENTA' }}
-                        </span>
-                    </div>
-                </td>
-                <td style="width: 25%;">
-                    @php 
-                        $pred = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); 
-                        $cantPuntos = $contenido['cantidad_puntos_red'] ?? $contenido['puntos_red_cantidad'] ?? null;
-                    @endphp
-                    <div class="field-box" style="{{ $pred === 'SI' ? 'border-color: #86efac; background: #f0fdf4;' : 'border-color: #fca5a5; background: #fef2f2;' }}">
-                        <span class="field-label" style="{{ $pred === 'SI' ? 'color: #166534;' : 'color: #991b1b;' }}">Puntos de Red</span>
-                        <span class="field-value" style="{{ $pred === 'SI' ? 'color: #166534;' : 'color: #991b1b;' }}">
-                            @if($pred === 'SI')
-                                ✓ SÍ ({{ !empty($cantPuntos) ? ($cantPuntos . ' ' . ((int)$cantPuntos === 1 ? 'PUNTO' : 'PUNTOS')) : 'HABILITADO' }})
-                            @else
-                                ✗ NO HABILITADO
-                            @endif
-                        </span>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    {{-- ═══ 2. EQUIPOS DE CÓMPUTO E IMPRESORA ═══ --}}
-    <div class="section-card">
-        <table class="section-header-table">
-            <tr>
-                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
-                <td><span class="section-title-text">EQUIPOS DE CÓMPUTO E IMPRESORA</span></td>
-            </tr>
-        </table>
-
-        @if(count($equipos) > 0)
-            <table class="equipos-table">
-                <thead>
-                    <tr>
-                        <th style="width: 18px; text-align: center;">#</th>
-                        <th style="width: 135px;">Descripción</th>
-                        <th style="width: 32px; text-align: center;">Cant.</th>
-                        <th style="width: 70px; text-align: center;">Estado</th>
-                        <th style="width: 70px; text-align: center;">Propiedad</th>
-                        <th style="width: 95px;">N° Serie / C.Pat</th>
-                        <th>Observación</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($equipos as $idx => $eq)
-                        @php
-                            $est = strtoupper(trim($eq->estado ?? 'OPERATIVO'));
-                            $estClass = 'badge-operativo';
-                            if ($est === 'REGULAR') $estClass = 'badge-regular';
-                            if ($est === 'INOPERATIVO') $estClass = 'badge-inoperativo';
-                        @endphp
-                        <tr>
-                            <td style="text-align: center; font-weight: bold; color: #64748b;">{{ $idx + 1 }}</td>
-                            <td style="font-weight: bold; color: #0f172a; text-transform: uppercase;">
-                                {{ $eq->descripcion }}
-                            </td>
-                            <td style="text-align: center; font-weight: bold; color: #1e293b;">
-                                {{ $eq->cantidad ?? 1 }}
-                            </td>
-                            <td style="text-align: center;">
-                                <span class="badge {{ $estClass }}">{{ $est }}</span>
-                            </td>
-                            <td style="text-align: center;">
-                                <span class="badge badge-propio">{{ strtoupper($eq->propio ?? 'EXCLUSIVO') }}</span>
-                            </td>
-                            <td style="font-weight: bold; color: #4338ca; font-size: 7px;">
-                                {{ !empty($eq->nro_serie) ? strtoupper($eq->nro_serie) : 'S/N' }}
-                            </td>
-                            <td style="color: #475569; font-size: 7px;">
-                                {{ !empty($eq->observacion) ? strtoupper($eq->observacion) : '—' }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-
-            {{-- ESPECIFICACIONES TÉCNICAS DXDIAG --}}
-            @php
-                $dxdiagEquipo = null;
-                foreach ($equipos as $eqItem) {
-                    $descUpper = str_replace('-', ' ', strtoupper(trim($eqItem->descripcion ?? '')));
-                    $esComputo = str_contains($descUpper, 'CPU') ||
-                                 str_contains($descUpper, 'LAPTOP') ||
-                                 str_contains($descUpper, 'ALL IN ONE') ||
-                                 str_contains($descUpper, 'AIO') ||
-                                 str_contains($descUpper, 'COMPUTADORA') ||
-                                 str_contains($descUpper, 'COMPUTADOR') ||
-                                 str_contains($descUpper, 'PC');
-                    if ($esComputo && !empty($eqItem->especificaciones)) {
-                        $specs = is_array($eqItem->especificaciones) ? $eqItem->especificaciones : json_decode($eqItem->especificaciones, true);
-                        if (!empty($specs) && is_array($specs)) {
-                            $dxdiagEquipo = $specs;
-                            break;
-                        }
-                    }
-                }
-            @endphp
-
-            @if(!empty($dxdiagEquipo))
-                <div class="dxdiag-card">
-                    <div class="dxdiag-title">
-                        ⚡ ESPECIFICACIONES TÉCNICAS DEL EQUIPO PRINCIPAL (DIAGNÓSTICO DXDIAG)
-                    </div>
-                    <table class="dxdiag-table">
-                        <tr>
-                            <td style="width: 33.33%;">
-                                <span class="dx-label">Modelo / Equipo:</span>
-                                <span class="dx-val">{{ $dxdiagEquipo['modelo'] ?? 'NO IDENTIFICADO' }}</span>
-                            </td>
-                            <td style="width: 33.33%;">
-                                <span class="dx-label">Procesador:</span>
-                                <span class="dx-val">{{ $dxdiagEquipo['procesador'] ?? 'NO IDENTIFICADO' }}</span>
-                            </td>
-                            <td style="width: 33.33%;">
-                                <span class="dx-label">Memoria RAM:</span>
-                                <span class="dx-val">{{ $dxdiagEquipo['ram'] ?? '--' }}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <span class="dx-label">Almacenamiento:</span>
-                                <span class="dx-val">{{ $dxdiagEquipo['disco'] ?? '--' }}</span>
-                            </td>
-                            <td>
-                                <span class="dx-label">Tarjeta Gráfica (GPU):</span>
-                                <span class="dx-val">{{ $dxdiagEquipo['gpu'] ?? '--' }}</span>
-                            </td>
-                            <td>
-                                <span class="dx-label">Sistema Operativo:</span>
-                                <span class="dx-val">{{ $dxdiagEquipo['so'] ?? '--' }}</span>
-                            </td>
-                        </tr>
-                    </table>
+                    </thead>
+                    <tbody>
+                        @foreach($equipos as $idx => $eq)
+                            @php
+                                $estado = strtoupper($eq->estado ?? 'OPERATIVO');
+                                $badgeClass = 'badge-success';
+                                if($estado === 'REGULAR') $badgeClass = 'badge-warning';
+                                if($estado === 'INOPERATIVO') $badgeClass = 'badge-danger';
+                            @endphp
+                            <tr>
+                                <td class="text-center font-bold">{{ $idx + 1 }}</td>
+                                <td class="font-bold uppercase">{{ $eq->descripcion }}</td>
+                                <td class="text-center font-bold">{{ $eq->cantidad ?? 1 }}</td>
+                                <td class="text-center">
+                                    <span class="badge {{ $badgeClass }}">{{ $estado }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge badge-info">{{ strtoupper($eq->propio ?? 'EXCLUSIVO') }}</span>
+                                </td>
+                                <td class="font-bold uppercase" style="color: #1e3a8a;">{{ $eq->nro_serie ?: 'S/N' }}</td>
+                                <td class="uppercase" style="color: #64748b; font-size: 7px;">{{ $eq->observacion ?: '-' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @else
+                <div class="no-photo-box">
+                    No se registraron equipos de c&oacute;mputo en este consultorio.
                 </div>
             @endif
-        @else
-            <div style="background-color: #fafbff; border: 1.5px dashed #cbd5e1; border-radius: 5px; padding: 8px; text-align: center; color: #94a3b8; font-size: 7.5px; font-weight: bold; text-transform: uppercase;">
-                No se registraron equipos de cómputo en este consultorio.
-            </div>
-        @endif
+        </div>
     </div>
 
-    {{-- ═══ 3. TIPO DE CONECTIVIDAD ═══ --}}
+    {{-- 3. CONECTIVIDAD Y SERVICIOS TI --}}
     @php
         $hasComputoPdf = false;
         if (isset($equipos) && count($equipos) > 0) {
@@ -658,160 +465,122 @@
                 }
             }
         }
-        $tipoConn = strtoupper(trim($contenido['tipo_conectividad'] ?? ''));
+        $tipoConn = strtoupper($contenido['tipo_conectividad'] ?? 'CABLEADO');
+        $lector   = strtoupper($contenido['lector_dnie'] ?? 'OPERATIVO');
     @endphp
 
-    @if($hasComputoPdf || !empty($tipoConn))
-    <div class="section-card">
-        <table class="section-header-table">
-            <tr>
-                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
-                <td><span class="section-title-text">TIPO DE CONECTIVIDAD Y ACCESO A INTERNET</span></td>
-            </tr>
-        </table>
-
-        {{-- TARJETAS DE SELECCIÓN --}}
-        <table class="form-grid" style="margin-bottom: 4px;">
-            <tr>
-                <td style="width: 33.33%;">
-                    <div class="conn-card {{ $tipoConn === 'WIFI' ? 'conn-card-active' : '' }}">
-                        <div class="conn-title" style="{{ $tipoConn === 'WIFI' ? 'color: #4338ca;' : '' }}">WIFI</div>
-                        <div class="conn-sub">Inalámbrico</div>
-                    </div>
-                </td>
-                <td style="width: 33.33%;">
-                    <div class="conn-card {{ $tipoConn === 'CABLEADO' ? 'conn-card-active' : '' }}">
-                        <div class="conn-title" style="{{ $tipoConn === 'CABLEADO' ? 'color: #4338ca;' : '' }}">CABLEADO</div>
-                        <div class="conn-sub" style="{{ $tipoConn === 'CABLEADO' ? 'color: #4338ca;' : 'color: #64748b;' }}">Ethernet</div>
-                    </div>
-                </td>
-                <td style="width: 33.34%;">
-                    <div class="conn-card {{ $tipoConn === 'SIN CONECTIVIDAD' ? 'conn-card-active' : '' }}">
-                        <div class="conn-title" style="{{ $tipoConn === 'SIN CONECTIVIDAD' ? 'color: #dc2626;' : '' }}">SIN CONECTIVIDAD</div>
-                        <div class="conn-sub" style="color: #dc2626;">Sin Internet</div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        {{-- DETALLES DE CONECTIVIDAD --}}
-        <table class="form-grid">
-            <tr>
-                @if($tipoConn === 'WIFI')
-                    <td style="width: 25%;">
-                        <div class="field-box">
-                            <span class="field-label">Fuente de WiFi</span>
-                            <span class="field-value" style="color: #4338ca;">
-                                {{ !empty($contenido['wifi_fuente']) ? strtoupper($contenido['wifi_fuente']) : 'ESTABLECIMIENTO' }}
-                            </span>
-                        </div>
+    @if($hasComputoPdf)
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">3</span> CONECTIVIDAD Y LECTORES DIGITALES
+        </div>
+        <div class="card-body">
+            <table class="grid-table">
+                <tr>
+                    <td class="lbl-col" style="width: 22%;">TIPO DE CONECTIVIDAD:</td>
+                    <td class="val-col" style="width: 28%;">
+                        @if($tipoConn === 'CABLEADO')
+                            <span class="badge badge-info">CABLEADO (ETHERNET)</span>
+                        @elseif($tipoConn === 'WIFI')
+                            <span class="badge badge-info">WIFI (INAL&Aacute;MBRICO)</span>
+                        @else
+                            <span class="badge badge-danger">{{ $tipoConn }}</span>
+                        @endif
                     </td>
-                @endif
-                <td style="width: {{ $tipoConn === 'WIFI' ? '25%' : '34%' }};">
-                    <div class="field-box">
-                        <span class="field-label">Operador (ISP)</span>
-                        <span class="field-value">
-                            {{ !empty($contenido['operador_servicio']) ? strtoupper($contenido['operador_servicio']) : ($tipoConn === 'SIN CONECTIVIDAD' ? 'N/A' : 'NO ESPECIFICADO') }}
-                        </span>
-                    </div>
-                </td>
-                <td style="width: {{ $tipoConn === 'WIFI' ? '25%' : '33%' }};">
-                    <div class="field-box">
-                        <span class="field-label">Velocidad Descarga</span>
-                        <span class="field-value" style="color: #059669;">
-                            @if(!empty($contenido['velocidad_descarga']))
-                                {{ $contenido['velocidad_descarga'] }} {{ $contenido['velocidad_descarga_unidad'] ?? 'Mbps' }}
-                            @else
-                                —
-                            @endif
-                        </span>
-                    </div>
-                </td>
-                <td style="width: {{ $tipoConn === 'WIFI' ? '25%' : '33%' }};">
-                    <div class="field-box">
-                        <span class="field-label">Velocidad Subida</span>
-                        <span class="field-value" style="color: #0284c7;">
-                            @if(!empty($contenido['velocidad_subida']))
-                                {{ $contenido['velocidad_subida'] }} {{ $contenido['velocidad_subida_unidad'] ?? 'Mbps' }}
-                            @else
-                                —
-                            @endif
-                        </span>
-                    </div>
-                </td>
-            </tr>
-        </table>
+                    <td class="lbl-col" style="width: 22%;">OPERADOR DE INTERNET:</td>
+                    <td class="val-col" style="width: 28%;">
+                        {{ strtoupper($contenido['operador_servicio'] ?? 'NO REGISTRADO') }}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="lbl-col">LECTOR DE DNIe:</td>
+                    <td class="val-col">
+                        @if($lector === 'OPERATIVO')
+                            <span class="badge badge-success">OPERATIVO</span>
+                        @elseif($lector === 'REGULAR')
+                            <span class="badge badge-warning">REGULAR</span>
+                        @elseif($lector === 'INOPERATIVO')
+                            <span class="badge badge-danger">INOPERATIVO</span>
+                        @else
+                            <span class="badge badge-neutral">{{ $lector }}</span>
+                        @endif
+                    </td>
+                    <td class="lbl-col">VELOCIDAD MEDIDA:</td>
+                    <td class="val-col">
+                        @if(!empty($contenido['velocidad_descarga']) || !empty($contenido['velocidad_subida']))
+                            <span style="color: #1e3a8a; font-weight: 700;">
+                                Descarga: {{ $contenido['velocidad_descarga'] ?? '--' }} Mbps &nbsp;|&nbsp; Subida: {{ $contenido['velocidad_subida'] ?? '--' }} Mbps
+                            </span>
+                        @else
+                            <span style="color: #94a3b8;">-- Mbps</span>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
     @endif
 
-    {{-- ═══ 4. OBSERVACIONES Y EVIDENCIAS ═══ --}}
-    <div class="section-card">
-        <table class="section-header-table">
-            <tr>
-                <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
-                <td><span class="section-title-text">OBSERVACIONES Y EVIDENCIAS FOTOGRÁFICAS</span></td>
-            </tr>
-        </table>
-
-        {{-- OBSERVACIONES --}}
-        <div style="margin-bottom: 5px;">
-            <span class="field-label" style="margin-bottom: 2px;">Observaciones / Incidencias Detectadas</span>
-            <div class="obs-box">
-                @if(!empty($contenido['observaciones']))
-                    {{ $contenido['observaciones'] }}
-                @else
-                    <span style="color: #94a3b8; font-style: italic;">Sin observaciones o incidencias registradas en este consultorio.</span>
-                @endif
-            </div>
+    {{-- 4. OBSERVACIONES Y HALLAZGOS TÉCNICOS --}}
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">{{ $hasComputoPdf ? 4 : 3 }}</span> OBSERVACIONES Y HALLAZGOS T&Eacute;CNICOS
         </div>
+        <div class="obs-box">
+            {{ !empty($contenido['observaciones']) ? strtoupper($contenido['observaciones']) : 'SIN OBSERVACIONES O INCIDENCIAS REPORTADAS EN ESTE CONSULTORIO.' }}
+        </div>
+    </div>
 
-        {{-- EVIDENCIA FOTOGRÁFICA --}}
-        @php
-            $evidenciaPath = $detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '';
-            $fotoBase64 = null;
-            if (!empty($evidenciaPath)) {
-                $p = storage_path('app/public/' . $evidenciaPath);
-                if (file_exists($p)) {
-                    $ext = strtolower(pathinfo($p, PATHINFO_EXTENSION));
-                    $mime = ($ext === 'png') ? 'image/png' : 'image/jpeg';
-                    $fotoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($p));
-                }
-            }
-        @endphp
-
-        <div style="margin-top: 4px;">
-            <span class="field-label" style="margin-bottom: 2px;">Fotografía / Evidencia Adjunta</span>
-            @if(!empty($fotoBase64))
-                <div class="evidence-card">
-                    <img src="{{ $fotoBase64 }}" class="evidence-img">
-                    <div class="evidence-caption">
-                        FOTO 1
-                    </div>
+    {{-- 5. REGISTRO FOTOGRÁFICO --}}
+    @php
+        $evidenciaPath = $detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '';
+    @endphp
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">{{ $hasComputoPdf ? 5 : 4 }}</span> REGISTRO FOTOGR&Aacute;FICO / EVIDENCIA ADJUNTA
+        </div>
+        <div class="photo-wrapper">
+            @if(!empty($evidenciaPath) && file_exists(storage_path('app/public/' . $evidenciaPath)))
+                <img src="{{ storage_path('app/public/' . $evidenciaPath) }}" class="photo-img">
+                <div class="photo-meta">
+                    EVIDENCIA REGISTRADA: {{ strtoupper(basename($evidenciaPath)) }}
                 </div>
             @else
-                <div style="background-color: #fafbff; border: 1.5px dashed #cbd5e1; border-radius: 5px; padding: 7px; text-align: center; color: #94a3b8; font-size: 7.5px; font-weight: bold; text-transform: uppercase;">
-                    Sin evidencia fotográfica adjunta para este consultorio.
+                <div class="no-photo-box">
+                    No se adjunt&oacute; evidencia fotogr&aacute;fica para este consultorio.
                 </div>
             @endif
         </div>
     </div>
 
-    {{-- ═══ FOOTER FIJO INSTITUCIONAL ═══ --}}
-    <div class="footer-fixed">
-        <div class="footer-inner">
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="text-align: left; vertical-align: middle;">
-                        <span class="footer-text">
-                            Sistema de Monitoreo y Evaluación &bull; EESS: {{ strtoupper($acta->establecimiento->nombre ?? '') }} &bull; Consultorio: {{ strtoupper($contenido['titulo_consultorio'] ?? 'CONSULTORIO') }} &bull; Acta #{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }} &bull; {{ date('d/m/Y') }}
-                        </span>
-                    </td>
-                    <td style="text-align: right; width: 40px; vertical-align: middle;">
-                        {{-- Espacio reservado para el paginador impreso por script PHP --}}
-                    </td>
-                </tr>
-            </table>
-        </div>
+    {{-- 6. FIRMAS DE CONFORMIDAD --}}
+    <div class="signatures-container">
+        <table class="signatures-table">
+            <tr>
+                <td>
+                    <div class="sig-card">
+                        <div class="sig-space"></div>
+                        <div class="sig-line"></div>
+                        <div class="sig-name">{{ strtoupper($acta->responsable ?? 'RESPONSABLE DEL ESTABLECIMIENTO / JEFE') }}</div>
+                        <div class="sig-role">JEFE / RESPONSABLE DEL EESS</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sig-card">
+                        <div class="sig-space"></div>
+                        <div class="sig-line"></div>
+                        <div class="sig-name">
+                            @if($acta->user)
+                                {{ strtoupper($acta->user->name . ' ' . $acta->user->apellido_paterno . ' ' . $acta->user->apellido_materno) }}
+                            @else
+                                EQUIPO T&Eacute;CNICO DE MONITOREO TI
+                            @endif
+                        </div>
+                        <div class="sig-role">MONITOR / IMPLEMENTADOR TI</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     {{-- ═══ SCRIPT DOMPDF: PAGINADOR DINÁMICO (EJ: 1/2, 2/2) ═══ --}}
