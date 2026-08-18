@@ -3,36 +3,53 @@
 @section('title', 'Módulo / Consultorio: ' . ($tituloConsultorio ?? 'Evaluación'))
 
 @section('content')
-    <div class="py-12 bg-slate-50 min-h-screen">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-10 bg-slate-50/80 min-h-screen">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            {{-- ENCABEZADO SUPERIOR --}}
-            <div class="mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div>
-                    <div class="flex items-center gap-3 mb-1">
-                        <span class="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black rounded-lg uppercase tracking-widest">
-                            Módulo de Evaluación
-                        </span>
-                        <span class="text-slate-400 font-bold text-[10px] uppercase">
-                            ID Acta: #{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}
-                        </span>
+            {{-- ENCABEZADO SUPERIOR MODERNO --}}
+            <div class="mb-8 bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-full blur-2xl pointer-events-none"></div>
+
+                <div class="flex items-start sm:items-center gap-5 relative z-10">
+                    <div class="h-16 w-16 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200 flex-shrink-0">
+                        <i data-lucide="stethoscope" class="w-8 h-8"></i>
                     </div>
-                    <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight">
-                        {{ $tituloConsultorio ?? 'CONSULTORIO / MÓDULO' }}
-                    </h2>
-                    <p class="text-slate-500 font-bold uppercase text-xs mt-1 flex flex-wrap items-center gap-4">
-                        <span><i data-lucide="hospital" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i> {{ $acta->establecimiento->nombre }}</span>
-                        <span><i data-lucide="user" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i> Implementador: {{ $acta->implementador ?? ($acta->user ? "{$acta->user->apellido_paterno} {$acta->user->name}" : 'NO ASIGNADO') }}</span>
-                    </p>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2.5 mb-1.5">
+                            <span class="px-3 py-1 bg-indigo-50 border border-indigo-200/70 text-indigo-700 text-[10px] font-black rounded-lg uppercase tracking-wider">
+                                Módulo Dinámico
+                            </span>
+                            <span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-[10px] font-extrabold rounded-lg uppercase tracking-wider">
+                                ID Acta: #{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}
+                            </span>
+                        </div>
+                        <h2 class="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight">
+                            {{ $tituloConsultorio ?? 'CONSULTORIO / MÓDULO' }}
+                        </h2>
+                        <div class="text-slate-500 font-bold uppercase text-xs mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="building-2" class="w-4 h-4 text-indigo-500"></i>
+                                {{ $acta->establecimiento->nombre }}
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="user-check" class="w-4 h-4 text-emerald-500"></i>
+                                Implementador: {{ $acta->implementador ?? ($acta->user ? "{$acta->user->apellido_paterno} {$acta->user->name}" : 'NO ASIGNADO') }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <a href="{{ route('usuario.monitoreo.modulos', $acta->id) }}"
-                    class="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-200 rounded-2xl text-slate-600 font-black text-xs hover:bg-slate-50 transition-all uppercase shadow-sm">
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Volver al Panel
-                </a>
+
+                <div class="relative z-10 flex-shrink-0">
+                    <a href="{{ route('usuario.monitoreo.modulos', $acta->id) }}"
+                        class="inline-flex items-center gap-2 px-5 py-3 bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-extrabold text-xs rounded-2xl transition-all uppercase tracking-wider border border-slate-200 shadow-sm">
+                        <i data-lucide="arrow-left" class="w-4 h-4 text-slate-500"></i>
+                        <span>Volver a Módulos</span>
+                    </a>
+                </div>
             </div>
 
             <form action="{{ route('usuario.monitoreo.consultorio.store', [$acta->id, $slug]) }}" method="POST"
-                enctype="multipart/form-data" class="space-y-6" id="form-monitoreo-final">
+                enctype="multipart/form-data" class="space-y-8" id="form-monitoreo-final">
                 @csrf
 
                 @php
@@ -40,69 +57,87 @@
                 @endphp
 
                 {{-- 1.- DATOS GENERALES --}}
-                <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
-                    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-                        <span class="section-number bg-indigo-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-black text-sm">1</span>
-                        <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">DATOS GENERALES DEL CONSULTORIO / MÓDULO</h3>
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Nombre o Denominación del Consultorio / Módulo
-                        </label>
-                        <input type="text" name="contenido[titulo_consultorio]" 
-                            value="{{ $contenido['titulo_consultorio'] ?? ($tituloConsultorio ?? 'CONSULTORIO') }}" required 
-                            placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA 01, TRIAJE..." 
-                            class="w-full bg-indigo-50/70 border-2 border-indigo-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-black text-indigo-900 text-base uppercase outline-none transition-all shadow-sm">
-                    </div>
-
-                    {{-- SERVICIO DEL CONSULTORIO --}}
-                    <div class="mb-6">
-                        <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                            <i data-lucide="building" class="w-3.5 h-3.5"></i> Servicio del Consultorio
-                        </label>
-                        <input type="text" name="contenido[servicio_asociado]" 
-                            value="{{ $contenido['servicio_asociado'] ?? '' }}" 
-                            placeholder="INGRESE EL SERVICIO DEL CONSULTORIO..." 
-                            class="w-full bg-slate-50 border-2 border-slate-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-center">
-                        <div>
-                            <label class="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Fecha de Monitoreo</label>
-                            <input type="date" name="contenido[fecha]" value="{{ $contenido['fecha'] ?? date('Y-m-d') }}"
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold outline-none focus:border-indigo-500 transition-all">
+                <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
+                    <div class="flex items-center justify-between gap-3 mb-6 border-b border-slate-100 pb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
+                                1
+                            </div>
+                            <div>
+                                <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
+                                    DATOS GENERALES DEL CONSULTORIO / MÓDULO
+                                </h3>
+                                <p class="text-xs text-slate-400 font-semibold">Identificación, turno y especificaciones del ambiente evaluado</p>
+                            </div>
                         </div>
-                        <div>
+                    </div>
+
+                    {{-- DENOMINACIÓN Y SERVICIO --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-indigo-50/40 p-5 rounded-2xl border border-indigo-100">
+                            <label class="block text-indigo-900 text-[11px] font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i data-lucide="tag" class="w-3.5 h-3.5 text-indigo-600"></i> Nombre o Denominación del Consultorio / Módulo <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="text" name="contenido[titulo_consultorio]" 
+                                value="{{ $contenido['titulo_consultorio'] ?? ($tituloConsultorio ?? 'CONSULTORIO') }}" required 
+                                placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA 01, TRIAJE..." 
+                                class="w-full bg-white border-2 border-indigo-200/80 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-3 font-black text-indigo-950 text-sm uppercase outline-none transition-all shadow-sm">
+                        </div>
+
+                        <div class="bg-slate-50/60 p-5 rounded-2xl border border-slate-200/80">
+                            <label class="block text-slate-700 text-[11px] font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i data-lucide="activity" class="w-3.5 h-3.5 text-slate-500"></i> Servicio Asociado al Consultorio
+                            </label>
+                            <input type="text" name="contenido[servicio_asociado]" 
+                                value="{{ $contenido['servicio_asociado'] ?? '' }}" 
+                                placeholder="INGRESE EL SERVICIO DEL CONSULTORIO..." 
+                                class="w-full bg-white border-2 border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
+                        </div>
+                    </div>
+
+                    {{-- 4 CAMPOS BÁSICOS --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+                        <div class="bg-slate-50/60 p-4 rounded-2xl border border-slate-200/60">
+                            <label class="block text-slate-600 text-[10px] font-black uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> Fecha de Monitoreo <span class="text-rose-500">*</span>
+                            </label>
+                            <input type="date" name="contenido[fecha]" value="{{ $contenido['fecha'] ?? date('Y-m-d') }}" required
+                                class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 font-bold text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+                        </div>
+                        <div class="bg-slate-50/60 p-4 rounded-2xl border border-slate-200/60">
                             <x-turno :selected="$contenido['turno'] ?? ''" />
                         </div>
-                        <div>
-                            <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2">Tipo de Consultorio</label>
-                            <select name="contenido[tipo_consultorio]" class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm uppercase outline-none text-indigo-700 cursor-pointer focus:border-indigo-500 transition-all">
-                                <option value="FISICO" {{ ($contenido['tipo_consultorio'] ?? '') == 'FISICO' || ($contenido['tipo_consultorio'] ?? '') == 'FÍSICO' ? 'selected' : '' }}>FISICO</option>
+                        <div class="bg-slate-50/60 p-4 rounded-2xl border border-slate-200/60">
+                            <label class="block text-slate-600 text-[10px] font-black uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-slate-400"></i> Tipo de Consultorio
+                            </label>
+                            <select name="contenido[tipo_consultorio]" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-xs uppercase outline-none text-slate-800 cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+                                <option value="FISICO" {{ ($contenido['tipo_consultorio'] ?? '') == 'FISICO' || ($contenido['tipo_consultorio'] ?? '') == 'FÍSICO' ? 'selected' : '' }}>FÍSICO</option>
                                 <option value="FUNCIONAL" {{ ($contenido['tipo_consultorio'] ?? '') == 'FUNCIONAL' ? 'selected' : '' }}>FUNCIONAL</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2">¿Qué piso es? (Número)</label>
+                        <div class="bg-slate-50/60 p-4 rounded-2xl border border-slate-200/60">
+                            <label class="block text-slate-600 text-[10px] font-black uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i> Nivel / Piso
+                            </label>
                             <input type="number" name="contenido[piso]" min="1" max="99" 
                                 value="{{ preg_replace('/[^0-9]/', '', $contenido['piso'] ?? '1') ?: '1' }}" 
                                 placeholder="Ej: 1"
-                                class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm outline-none text-indigo-700 focus:border-indigo-500 transition-all">
+                                class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-xs outline-none text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
                         </div>
                     </div>
 
-                    {{-- INSTALACIONES Y SERVICIOS BÁSICOS DEL CONSULTORIO --}}
-                    <div class="mt-6 pt-6 border-t border-slate-100">
-                        <label class="block text-indigo-900 text-[11px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <i data-lucide="building-2" class="w-4 h-4 text-indigo-600"></i> Habilitación e Instalaciones del Consultorio
+                    {{-- CONDICIONES BÁSICAS DE RED Y ENERGÍA --}}
+                    <div class="mt-7 pt-6 border-t border-slate-100">
+                        <label class="block text-slate-800 text-xs font-black uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="power" class="w-4 h-4 text-indigo-600"></i> Condiciones e Instalaciones Básicas del Ambiente
                         </label>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             {{-- PREGUNTA 1: ELECTRICIDAD --}}
-                            <div class="bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 hover:border-indigo-200 transition-all">
-                                <div class="flex items-center gap-2 mb-3">
-                                    <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                            <div class="bg-slate-50/70 border border-slate-200 rounded-2xl p-5">
+                                <div class="flex items-center gap-2.5 mb-3">
+                                    <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
                                         <i data-lucide="zap" class="w-4 h-4"></i>
                                     </div>
                                     <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
@@ -111,21 +146,21 @@
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     @php $electricidad = strtoupper($contenido['cuenta_electricidad'] ?? 'SI'); @endphp
-                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_electricidad]" value="SI" {{ $electricidad === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');">
-                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> SÍ</span>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_electricidad]" value="SI" {{ $electricidad === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'shadow-sm');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> SÍ (CUENTA)</span>
                                     </label>
-                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_electricidad]" value="NO" {{ $electricidad === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');">
-                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-600"></i> NO</span>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_electricidad]" value="NO" {{ $electricidad === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i> NO CUENTA</span>
                                     </label>
                                 </div>
                             </div>
 
                             {{-- PREGUNTA 2: PUNTO DE RED --}}
-                            <div class="bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 hover:border-indigo-200 transition-all">
-                                <div class="flex items-center gap-2 mb-3">
-                                    <div class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center">
+                            <div class="bg-slate-50/70 border border-slate-200 rounded-2xl p-5">
+                                <div class="flex items-center gap-2.5 mb-3">
+                                    <div class="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center flex-shrink-0">
                                         <i data-lucide="network" class="w-4 h-4"></i>
                                     </div>
                                     <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
@@ -134,13 +169,13 @@
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     @php $puntoRed = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); @endphp
-                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');">
-                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> SÍ</span>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'shadow-sm');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> SÍ (HABILITADO)</span>
                                     </label>
-                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');">
-                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-600"></i> NO</span>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i> NO CUENTA</span>
                                     </label>
                                 </div>
                             </div>
@@ -149,16 +184,23 @@
                 </div>
 
                 {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
-                <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
-                    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-                        <span class="section-number bg-indigo-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-black text-sm">2</span>
-                        <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">EQUIPOS DE CÓMPUTO E IMPRESORA</h3>
+                <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
+                    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-5">
+                        <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
+                            2
+                        </div>
+                        <div>
+                            <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
+                                EQUIPOS DE CÓMPUTO E IMPRESORA
+                            </h3>
+                            <p class="text-xs text-slate-400 font-semibold">Registro de hardware, cantidad, estado operativo y número de serie</p>
+                        </div>
                     </div>
 
                     <x-tabla-equipos prefix="rrhh" :equipos="$equipos ?? []" />
                 </div>
 
-                {{-- 3.- TIPO DE CONECTIVIDAD (RESTAURADO COMPLETO) --}}
+                {{-- 3.- TIPO DE CONECTIVIDAD --}}
                 @php
                     $hasComputo = false;
                     if (isset($equipos) && count($equipos) > 0) {
@@ -183,35 +225,59 @@
                     <x-tipo-conectividad num="3" :contenido="$contenido" />
                 </div>
 
-                {{-- 6.- OBSERVACIONES Y EVIDENCIAS --}}
-                <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
-                    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-                        <span class="section-number bg-indigo-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-black text-sm">6</span>
-                        <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">OBSERVACIONES Y EVIDENCIAS</h3>
+                {{-- 4.- OBSERVACIONES Y EVIDENCIAS --}}
+                <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
+                    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-5">
+                        <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
+                            4
+                        </div>
+                        <div>
+                            <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
+                                OBSERVACIONES Y EVIDENCIAS FOTOGRÁFICAS
+                            </h3>
+                            <p class="text-xs text-slate-400 font-semibold">Anotaciones de incidencias y registro visual del consultorio</p>
+                        </div>
                     </div>
 
                     <div class="space-y-6">
                         <div>
-                            <label class="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Observaciones Generales</label>
-                            <textarea name="contenido[observaciones]" rows="3" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-slate-800 font-bold uppercase outline-none focus:border-indigo-500" placeholder="INGRESE LAS OBSERVACIONES O INCIDENCIAS DETECTADAS EN ESTE CONSULTORIO...">{{ $contenido['observaciones'] ?? '' }}</textarea>
+                            <label class="block text-slate-700 text-xs font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i> Observaciones Generales
+                            </label>
+                            <textarea name="contenido[observaciones]" rows="3" 
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-slate-800 font-bold uppercase text-xs outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100 transition-all" 
+                                placeholder="INGRESE LAS OBSERVACIONES O INCIDENCIAS DETECTADAS EN ESTE CONSULTORIO...">{{ $contenido['observaciones'] ?? '' }}</textarea>
                         </div>
 
                         <div>
-                            <label class="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Subir Fotografía / Evidencia (Opcional)</label>
-                            <input type="file" name="evidencia" id="input_evidencia_foto" accept="image/*" onchange="previewEvidenciaImage(this)"
-                                   class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-slate-600 font-bold text-xs cursor-pointer hover:bg-slate-100 transition-colors">
+                            <label class="block text-slate-700 text-xs font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i data-lucide="camera" class="w-4 h-4 text-slate-400"></i> Fotografía / Evidencia Adjunta (Opcional)
+                            </label>
+                            
+                            <div class="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-2xl p-6 text-center bg-slate-50/50 hover:bg-indigo-50/20 transition-all cursor-pointer relative">
+                                <input type="file" name="evidencia" id="input_evidencia_foto" accept="image/*" onchange="previewEvidenciaImage(this)"
+                                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                                
+                                <div class="flex flex-col items-center justify-center gap-2 pointer-events-none">
+                                    <div class="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                        <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                    </div>
+                                    <p class="text-xs font-black text-slate-700 uppercase">Haga clic o arrastre aquí una imagen para adjuntar</p>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">Formatos compatibles: JPG, PNG, WEBP</p>
+                                </div>
+                            </div>
                             
                             {{-- CONTENEDOR DE PREVISUALIZACIÓN DE IMAGEN --}}
                             @php
                                 $evidenciaPath = $detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '';
                             @endphp
                             <div id="container_preview_evidencia" class="mt-4 {{ empty($evidenciaPath) ? 'hidden' : '' }}">
-                                <div class="relative inline-block bg-slate-100 p-2 rounded-2xl border-2 border-indigo-200 shadow-md group">
+                                <div class="relative inline-block bg-slate-100 p-2.5 rounded-2xl border-2 border-indigo-200 shadow-md">
                                     <img id="img_preview_evidencia" 
                                          src="{{ !empty($evidenciaPath) ? asset('storage/' . $evidenciaPath) : '' }}" 
                                          alt="Previsualización Evidencia" 
-                                         class="max-h-64 max-w-full rounded-xl object-contain shadow-inner">
-                                    <div class="mt-2 text-center text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center justify-center gap-1">
+                                         class="max-h-64 max-w-full rounded-xl object-contain shadow-inner bg-white">
+                                    <div class="mt-2 text-center text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center justify-center gap-1.5">
                                         <i data-lucide="image" class="w-3.5 h-3.5"></i>
                                         <span id="text_preview_evidencia_name">{{ !empty($evidenciaPath) ? basename($evidenciaPath) : 'Evidencia Adjunta' }}</span>
                                     </div>
@@ -221,9 +287,9 @@
                     </div>
                 </div>
 
-                {{-- BOTÓN GUARDAR --}}
-                <div class="flex justify-end gap-4 pt-4">
-                    <button type="submit" id="btn-submit-action" class="flex items-center gap-3 px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-lg hover:shadow-indigo-200 text-sm uppercase tracking-widest">
+                {{-- BOTÓN GUARDAR MODERNO --}}
+                <div class="flex items-center justify-end gap-4 pt-4">
+                    <button type="submit" id="btn-submit-action" class="inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-800 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 text-xs uppercase tracking-widest active:scale-95">
                         <span id="icon-save-loader">
                             <i data-lucide="save" class="w-5 h-5"></i>
                         </span>
@@ -377,7 +443,6 @@
                 if (prop && !prop.value.trim()) {
                     faltantes.push(`EQUIPOS DE CÓMPUTO: Propiedad en fila #${i + 1}`);
                 }
-                // Excepciones permitidas por el usuario: N° Serie u Observación por fila son Opcionales
             });
 
             // 3. TIPO DE CONECTIVIDAD
@@ -409,11 +474,6 @@
                     }
                 }
             }
-
-            // Excepciones explícitas permitidas por requerimiento del usuario:
-            // - N° Serie / C.Pat y Observación en Equipos de Cómputo (opcionales)
-            // - Observaciones Generales en la Sección 6 (opcionales)
-            // - Fotografía / Evidencia en la Sección 6 (opcionales)
 
             if (faltantes.length > 0) {
                 e.preventDefault();

@@ -9,67 +9,74 @@
         body { 
             font-family: 'Helvetica', 'Arial', sans-serif; 
             font-size: 9px; 
-            color: #334155; 
-            line-height: 1.3; 
+            color: #1e293b; 
+            line-height: 1.4; 
             margin: 0;
         }
 
         /* Encabezado Principal */
         .header { 
             text-align: center; 
-            margin-bottom: 15px; 
-            border-bottom: 2px solid #0f172a;
-            padding-bottom: 8px;
+            margin-bottom: 20px; 
+            border-bottom: 3px solid #1d4ed8;
+            padding-bottom: 12px;
         }
         .header h1 { 
             margin: 0; 
-            font-size: 14px; 
-            color: #0f172a; 
+            font-size: 16px; 
+            color: #1e293b; 
             text-transform: uppercase; 
+            font-weight: 800;
         }
         .header-sub {
             font-size: 10px;
-            margin-top: 4px;
-            color: #1e293b;
+            margin-top: 6px;
+            color: #475569;
         }
 
         /* Títulos de Sección Principales */
         .section-header { 
-            background-color: #e2e8f0; 
-            padding: 5px 10px; 
+            background-color: #f1f5f9; 
+            padding: 6px 12px; 
             font-weight: bold; 
-            font-size: 10px;
+            font-size: 11px;
             color: #0f172a;
-            margin: 15px 0 8px 0; 
+            margin: 20px 0 10px 0; 
             text-transform: uppercase;
+            border-left: 4px solid #3b82f6;
+            border-radius: 0 4px 4px 0;
         }
 
         /* Contenedor de cada Módulo */
         .modulo-container {
             border: 1px solid #cbd5e1;
-            margin-bottom: 12px;
-            border-radius: 2px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            background-color: #ffffff;
         }
         .modulo-title {
-            background-color: #f1f5f9;
-            padding: 4px 8px;
+            background-color: #1e293b;
+            padding: 6px 10px;
             font-weight: bold;
             font-size: 10px;
-            color: #0f172a;
-            border-bottom: 1px solid #cbd5e1;
+            color: #ffffff;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .sub-section {
             background-color: #f8fafc;
-            font-size: 8px;
+            font-size: 9px;
             font-weight: bold;
-            color: #475569;
-            padding: 3px 8px;
+            color: #1e293b;
+            padding: 5px 10px;
             border-bottom: 1px solid #e2e8f0;
             border-top: 1px solid #e2e8f0;
+            text-transform: uppercase;
         }
 
-        /* Tablas de Datos (Compactas) */
+        /* Tablas de Datos (Compactas y Modernas) */
         table.data-table { 
             width: 100%; 
             border-collapse: collapse; 
@@ -77,12 +84,12 @@
         }
         table.data-table th, table.data-table td { 
             border: 1px solid #e2e8f0; 
-            padding: 4px 6px; 
+            padding: 5px 8px; 
             word-wrap: break-word;
             vertical-align: middle;
         }
         table.data-table th {
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
             text-align: left;
             font-size: 8px;
             color: #475569;
@@ -93,14 +100,15 @@
             font-weight: bold; 
             color: #475569;
             font-size: 8px;
+            padding-left: 10px;
         }
-        .uppercase { text-transform: uppercase; font-size: 8px; }
+        .uppercase { text-transform: uppercase; font-size: 8px; color: #0f172a; font-weight: bold; }
 
         /* --- EVIDENCIA FOTOGRÁFICA --- */
         .no-evidence-box {
             border: 2px dashed #cbd5e1;
-            border-radius: 15px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 25px;
             text-align: center;
             color: #64748b;
             font-style: italic;
@@ -113,23 +121,28 @@
             width: 100%;
             height: 250px;
             object-fit: cover;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            padding: 4px;
+            background: #ffffff;
         }
         
         .foto-caption {
-            font-size: 7px;
+            font-size: 8px;
             font-weight: bold;
             color: #1e293b;
-            margin-top: 4px;
+            margin-top: 6px;
             text-transform: uppercase;
             text-align: center;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 4px;
         }
 
         /* Firmas - DISEÑO ACTUALIZADO SEGÚN IMAGEN */
         .firmas-grid {
             width: 100%;
-            margin-top: 15px;
+            margin-top: 20px;
             text-align: center;
             page-break-inside: avoid;
         }
@@ -139,35 +152,41 @@
             vertical-align: top; 
             margin: 5px 1%;
             background-color: #ffffff;
-            border: 1px solid #cbd5e1; /* Borde gris/celeste claro del marco */
-            border-radius: 6px; /* Esquinas redondeadas como en la imagen */
+            border: 1px solid #cbd5e1; 
+            border-radius: 8px; 
             box-sizing: border-box;
         }
         .firma-espacio {
-            height: 50px; /* Espacio en blanco para firmar encima de la línea */
+            height: 60px; 
             width: 100%;
         }
         .firma-bottom {
-            padding: 0 10px 12px 10px; /* Espaciado interno inferior */
+            padding: 0 10px 15px 10px; 
+            background-color: #f8fafc;
+            border-top: 1px dashed #e2e8f0;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
         }
         .linea-firma { 
-            border-top: 1px solid #94a3b8; /* Línea recta sólida, no punteada */
-            margin: 0 auto 6px auto; 
-            width: 95%; /* La línea no toca los bordes de la caja */
+            border-top: 1px solid #64748b; 
+            margin: -1px auto 8px auto; 
+            width: 90%; 
         }
         .nombre-firma { 
-            font-size: 8px; 
+            font-size: 9px; 
             font-weight: bold; 
-            color: #0f172a; /* Azul muy oscuro/negro */
+            color: #0f172a; 
             display: block;
             text-transform: uppercase;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
+            margin-top: 5px;
         }
         .cargo-firma { 
             font-size: 7px; 
-            color: #64748b; /* Gris azulado más claro */
+            color: #64748b; 
             display: block;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* Footer */
@@ -179,10 +198,10 @@
             height: 40px;
             text-align: center;
             border-top: 1px solid #e2e8f0;
-            padding-top: 5px;
+            padding-top: 8px;
         }
-        .footer-text { font-size: 8px; color: #94a3b8; }
-        .page-number:before { content: "Página " counter(page); }
+        .footer-text { font-size: 8px; color: #94a3b8; letter-spacing: 0.5px; }
+        .page-number:before { content: "Página " counter(page); font-weight: bold; }
         .no-break { page-break-inside: avoid; }
     </style>
 </head>
