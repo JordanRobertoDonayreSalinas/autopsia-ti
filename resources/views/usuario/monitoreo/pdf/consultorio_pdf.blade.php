@@ -337,6 +337,19 @@
             </tr>
         </table>
         @endif
+
+        @if(!empty($contenido['sistema_actual']))
+        <table class="form-grid" style="margin-top: 8px;">
+            <tr>
+                <td style="width: 100%;">
+                    <div class="field-box" style="border-color: #6366f1; background: #eef2ff;">
+                        <span class="field-label" style="color: #4f46e5;">Sistema que Utiliza Actualmente</span>
+                        <span class="field-value" style="color: #312e81; font-weight: 900;">{{ strtoupper($contenido['sistema_actual']) }}</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        @endif
     </div>
 
     {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}

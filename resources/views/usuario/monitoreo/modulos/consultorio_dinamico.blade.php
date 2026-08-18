@@ -56,15 +56,44 @@
                             class="w-full bg-indigo-50/70 border-2 border-indigo-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-black text-indigo-900 text-base uppercase outline-none transition-all shadow-sm">
                     </div>
 
-                    {{-- SERVICIO DEL CONSULTORIO --}}
-                    <div class="mb-6">
-                        <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                            <i data-lucide="building" class="w-3.5 h-3.5"></i> Servicio del Consultorio
-                        </label>
-                        <input type="text" name="contenido[servicio_asociado]" 
-                            value="{{ $contenido['servicio_asociado'] ?? '' }}" 
-                            placeholder="INGRESE EL SERVICIO DEL CONSULTORIO..." 
-                            class="w-full bg-slate-50 border-2 border-slate-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
+                    {{-- SERVICIO DEL CONSULTORIO Y SISTEMA QUE UTILIZA --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                <i data-lucide="building" class="w-3.5 h-3.5"></i> Servicio del Consultorio
+                            </label>
+                            @php
+                                $servicioActual = $contenido['servicio_asociado'] ?? '';
+                            @endphp
+                            <select name="contenido[servicio_asociado]"
+                                class="w-full bg-slate-50 border-2 border-slate-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm cursor-pointer">
+                                <option value="">-- SELECCIONE EL SERVICIO --</option>
+                                @if($servicioActual !== '' && !$serviciosUps->contains($servicioActual))
+                                    <option value="{{ $servicioActual }}" selected>{{ $servicioActual }} (valor anterior)</option>
+                                @endif
+                                @foreach($serviciosUps as $servicio)
+                                    <option value="{{ $servicio }}" {{ $servicioActual === $servicio ? 'selected' : '' }}>{{ $servicio }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                <i data-lucide="monitor" class="w-3.5 h-3.5"></i> Sistema que Utiliza Actualmente
+                            </label>
+                            @php
+                                $sistemaActual = strtoupper($contenido['sistema_actual'] ?? '');
+                                $sistemasDisponibles = ['TUA', 'SIHCE', 'SISMED', 'HISMINSA', 'SIS GALENPLUS'];
+                            @endphp
+                            <select name="contenido[sistema_actual]" id="sistema_actual_select"
+                                class="w-full bg-slate-50 border-2 border-slate-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm cursor-pointer">
+                                <option value="">-- SELECCIONE EL SISTEMA --</option>
+                                @foreach($sistemasDisponibles as $sistema)
+                                    <option value="{{ $sistema }}" {{ $sistemaActual === $sistema ? 'selected' : '' }}>{{ $sistema }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-slate-400 text-[10px] font-bold uppercase mt-1.5">Se sincroniza automáticamente con el croquis.</p>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-center">
@@ -434,6 +463,38 @@
                     }
                 });
 
+                return false;
+            }
+
+            // Aviso (no bloqueante) si el piso declarado es inusualmente alto: la
+            // mayoría de establecimientos no supera los 4-5 pisos, y un número mal
+            // tipeado aquí (ej. "17" en vez de "1") hace que el croquis genere de
+            // golpe una decena de pisos vacíos y la sala termine ubicada en un piso
+            // que nadie más revisa. No se bloquea porque sí existen establecimientos
+            // con más pisos: solo se pide confirmar antes de continuar.
+            const pisoVal = parseInt(pisoInput ? pisoInput.value : '1', 10);
+            if (pisoVal > 5 && this.dataset.pisoConfirmado !== '1') {
+                e.preventDefault();
+                const form = this;
+                Swal.fire({
+                    icon: 'warning',
+                    title: `¿Seguro que es el piso ${pisoVal}?`,
+                    html: '<p class="text-xs text-slate-500 font-semibold">La mayoría de establecimientos no supera los 4 o 5 pisos. Si el número es correcto, puede continuar; si fue un error de tipeo, corríjalo.</p>',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, es correcto',
+                    cancelButtonText: 'Corregir el número',
+                    confirmButtonColor: '#4F46E5',
+                    cancelButtonColor: '#94a3b8',
+                    customClass: { popup: 'rounded-[2.5rem] p-6' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.dataset.pisoConfirmado = '1';
+                        if (form.requestSubmit) form.requestSubmit();
+                        else form.submit();
+                    } else if (pisoInput) {
+                        pisoInput.focus();
+                    }
+                });
                 return false;
             }
 

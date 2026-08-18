@@ -15,6 +15,13 @@ class Infraestructura2DPdfController extends Controller
      */
     public function generar($id)
     {
+        // Un croquis con varios pisos y muchos elementos puede ser pesado de
+        // renderizar en PDF; se sube el límite solo para esta petición. Si el
+        // hosting no lo permite (algunos cPanel lo bloquean), ini_set()
+        // simplemente no tiene efecto — no rompe nada, solo no ayuda.
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+
         // 1. Cargar el acta con el establecimiento
         $acta = CabeceraMonitoreo::with('establecimiento')->findOrFail($id);
 
@@ -134,9 +141,9 @@ class Infraestructura2DPdfController extends Controller
         ];
 
         $EQUIPO_LABEL = [
-            'pc' => 'CPU', 'laptop' => 'Laptop', 'tablet' => 'Tablet', 'monitor' => 'Monitor',
+            'all_in_one' => 'All in One', 'pc' => 'CPU', 'laptop' => 'Laptop', 'tablet' => 'Tablet', 'monitor' => 'Monitor',
             'teclado' => 'Teclado', 'mouse' => 'Mouse', 'impresora' => 'Impresora',
-            'ticketera' => 'Ticketera', 'escaner' => 'Lector DNIe', 'ups' => 'UPS / Estabilizador',
+            'ticketera' => 'Ticketera', 'escaner' => 'Escáner', 'lector_dnie' => 'Lector DNIe', 'ups' => 'UPS / Estabilizador',
             'router' => 'Router', 'ap' => 'Access Point', 'switch' => 'Switch',
             'punto_red' => 'Punto de red', 'pozo' => 'Pozo a tierra', 'equipo' => 'Equipo',
         ];

@@ -278,8 +278,8 @@
                             <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider">Establecimiento</th>
                             <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider text-center">Provincia/Distrito</th>
                             <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider">Implementador</th>
-                            <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider">Submódulos Firmados</th>
-                            <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider">Módulos Firmados</th>
+                            <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider">Consultorios Hallados</th>
+                            <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider">Servicios Hallados</th>
                             <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider">Acta Consolidada</th>
                             <th class="px-3 py-3 text-[10px] font-bold text-white uppercase tracking-wider text-right">Acciones</th>
                         </tr>
@@ -288,6 +288,14 @@
                         @forelse($monitoreos as $monitoreo)
                             @php
                                 $misDetalles = $monitoreo->detalles ?? collect();
+
+                                // Consultorios Hallados: todo lo agregado con "Nuevo Consultorio"
+                                // (cada uno queda con su ficha como "Evaluación Registrada"), sin
+                                // contar los módulos fijos ni el registro de configuración.
+                                $totalConsultoriosHallados = $misDetalles
+                                    ->whereNotIn('modulo_nombre', ['infraestructura_2d', 'rrhh', 'config_modulos'])
+                                    ->count();
+
                                 $configMod = $misDetalles->where('modulo_nombre', 'config_modulos')->first();
                                 
                                 $activosKeys = $configMod ? (is_array($configMod->contenido) ? $configMod->contenido : json_decode($configMod->contenido, true)) : [
@@ -379,23 +387,12 @@
                                     </div>
                                 </td>
                                 
-                                {{-- COLUMNA SUBMÓDULOS SALUD MENTAL --}}
-                                <td class="px-3 py-3 min-w-[110px]">
-                                    @if($saludMentalHabilitado && isset($totalSMHabilitados) && $totalSMHabilitados > 0)
-                                        @php
-                                            $porcentajeSM = $totalSMHabilitados > 0 ? ($firmadosSMHabilitados / $totalSMHabilitados) * 100 : 0;
-                                        @endphp
-                                        <div class="flex flex-col">
-                                            <div class="flex items-center justify-between mb-0.5">
-                                                <span class="text-[10px] font-bold text-slate-500">{{ $firmadosSMHabilitados }}/{{ $totalSMHabilitados }}</span>
-                                                <span class="text-[9px] font-black {{ $porcentajeSM == 100 ? 'text-emerald-500' : 'text-amber-500' }}">
-                                                    {{ round($porcentajeSM) }}%
-                                                </span>
-                                            </div>
-                                            <div class="progress-bar-container">
-                                                <div class="progress-bar-fill {{ $porcentajeSM == 100 ? 'bg-emerald-500' : 'bg-amber-400' }}" style="width: {{ $porcentajeSM }}%"></div>
-                                            </div>
-                                        </div>
+                                {{-- COLUMNA CONSULTORIOS HALLADOS --}}
+                                <td class="px-3 py-3 min-w-[110px] text-center">
+                                    @if($totalConsultoriosHallados > 0)
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 font-black text-[10px] rounded-lg uppercase tracking-widest">
+                                            <i data-lucide="stethoscope" class="w-3 h-3"></i> {{ $totalConsultoriosHallados }}
+                                        </span>
                                     @else
                                         <span class="text-xs text-slate-400">-</span>
                                     @endif
