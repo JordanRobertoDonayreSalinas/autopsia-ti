@@ -120,7 +120,9 @@ class LoginController extends Controller
                 'apellido_materno' => $user->apellido_materno,
                 'nombre_completo'  => $user->full_name,
                 'username'         => $user->username,
+                'email'            => $user->email,
                 'role'             => $user->role,
+                'updated_at'       => optional($user->updated_at)->toIso8601String(),
             ],
         ]);
     }

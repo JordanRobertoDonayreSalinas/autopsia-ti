@@ -7,12 +7,36 @@ use App\Models\Establecimiento;
 use App\Models\MonitoreoEquipo;
 use App\Models\MonitoreoModulos;
 use App\Models\EquipoComputo;
+use App\Models\Reunion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class OfflineSyncController extends Controller
 {
+    /**
+     * Espejo exacto de MonitoreoController::esEspecializada() — el
+     * 'tipo_origen' determina la serie de numeración correlativa
+     * (numero_acta), así que se calcula siempre en el servidor a partir del
+     * establecimiento real, nunca confiando en lo que mande el cliente
+     * offline (antes se aceptaba un tercer valor 'ESTANDAR' que ni siquiera
+     * existe en el resto del sistema y generaba su propia serie separada).
+     */
+    private function esEspecializada(Establecimiento $establecimiento): bool
+    {
+        $codigosCSMC = ['25933', '28653', '27197', '34021', '25977', '33478', '27199', '30478'];
+        $nombresCSMC = [
+            'CSMC TUPAC AMARU', 'CSMC COLOR ESPERANZA', 'CSMC DECÍDETE A SER FELIZ',
+            'CSMC SANTISIMA VIRGEN DE YAUCA', 'CSMC VITALIZA', 'CSMC CRISTO MORENO DE LUREN',
+            'CSMC NUEVO HORIZONTE', 'CSMC MENTE SANA',
+        ];
+
+        return in_array($establecimiento->codigo, $codigosCSMC, true) ||
+            in_array(strtoupper(trim($establecimiento->nombre)), $nombresCSMC, true);
+    }
+
     /**
      * Devuelve la versión actual del sistema (v1.2.0) y la marca de tiempo del catálogo para Flutter/Apps.
      */
@@ -106,24 +130,59 @@ class OfflineSyncController extends Controller
             try {
                 DB::beginTransaction();
 
-                // 1. Obtener correlativo del acta de monitoreo (numeración independiente por tipo_origen, igual que MonitoreoController)
-                $tipoOrigen = $actaOff['tipo_origen'] ?? 'ESTANDAR';
+                // 1. Obtener correlativo del acta de monitoreo (numeración independiente por tipo_origen, igual que MonitoreoController::store)
+                $establecimientoActa = Establecimiento::findOrFail($estId);
+                $tipoOrigen = $this->esEspecializada($establecimientoActa) ? 'ESPECIALIZADA' : 'NO ESPECIALIZADA';
                 $nuevoNumero = CabeceraMonitoreo::where('tipo_origen', $tipoOrigen)->lockForUpdate()->max('numero_acta') + 1;
+
+                $responsable = mb_strtoupper(trim($actaOff['responsable'] ?? 'NO ESPECIFICADO'), 'UTF-8');
+                $categoria = !empty($actaOff['categoria']) ? mb_strtoupper(trim($actaOff['categoria']), 'UTF-8') : $establecimientoActa->categoria;
+
+                // Espejo del side-effect de MonitoreoController::store(): el jefe/categoría
+                // capturados en campo actualizan también el maestro del establecimiento.
+                $establecimientoActa->update(['responsable' => $responsable, 'categoria' => $categoria]);
 
                 // 2. Crear Cabecera de Monitoreo
                 // NOTA: las claves deben coincidir exactamente con el $fillable de CabeceraMonitoreo.
                 // 'fecha_evaluacion', 'estado' y 'origen' no existen como columnas: Eloquent las
                 // descartaba en silencio por protección de asignación masiva. 'responsable' e
-                // 'implementador' son NOT NULL sin default: deben venir del payload.
+                // 'implementador' son NOT NULL sin default: deben venir del payload. Antes también
+                // se perdían en silencio 'categoria_congelada', pozo_tierra/panel_solar y las fotos:
+                // el formulario offline sí las capturaba pero nunca viajaban en este create().
+                $pozoTierra = $actaOff['pozo_tierra'] ?? 'NO';
+                $panelSolar = $actaOff['panel_solar'] ?? 'NO';
                 $actaReal = CabeceraMonitoreo::create([
                     'establecimiento_id' => $estId,
                     'user_id'            => $usuarioId,
                     'numero_acta'        => $nuevoNumero,
                     'tipo_origen'        => $tipoOrigen,
                     'fecha'              => $actaOff['fecha'] ?? date('Y-m-d'),
-                    'responsable'        => $actaOff['responsable'] ?? 'NO ESPECIFICADO',
-                    'implementador'      => $actaOff['implementador'] ?? ($actaOff['responsable'] ?? 'NO ESPECIFICADO'),
+                    'responsable'        => $responsable,
+                    'implementador'      => mb_strtoupper(trim($actaOff['implementador'] ?? $responsable), 'UTF-8'),
+                    'categoria_congelada'      => $categoria,
+                    'pozo_tierra'              => $pozoTierra,
+                    'pozo_tierra_cantidad'     => $pozoTierra === 'SI' ? ($actaOff['pozo_tierra_cantidad'] ?? null) : null,
+                    'pozo_tierra_operativos'   => $pozoTierra === 'SI' ? ($actaOff['pozo_tierra_operativos'] ?? null) : null,
+                    'pozo_tierra_inoperativos' => $pozoTierra === 'SI' ? ($actaOff['pozo_tierra_inoperativos'] ?? null) : null,
+                    'panel_solar'              => $panelSolar,
+                    'panel_solar_cantidad'     => $panelSolar === 'SI' ? ($actaOff['panel_solar_cantidad'] ?? null) : null,
+                    'panel_solar_operativos'   => $panelSolar === 'SI' ? ($actaOff['panel_solar_operativos'] ?? null) : null,
+                    'panel_solar_inoperativos' => $panelSolar === 'SI' ? ($actaOff['panel_solar_inoperativos'] ?? null) : null,
                 ]);
+
+                // Fotos de evidencia (base64, igual que el resto del sync offline).
+                $fotoUpdates = [];
+                foreach (['foto1' => 'foto_1_base64', 'foto2' => 'foto_2_base64'] as $campo => $claveB64) {
+                    if (!empty($actaOff[$claveB64])) {
+                        $bytes = base64_decode($actaOff[$claveB64]);
+                        $nombreArchivo = 'evidencias/' . Str::random(20) . '.jpg';
+                        Storage::disk('public')->put($nombreArchivo, $bytes);
+                        $fotoUpdates[$campo] = $nombreArchivo;
+                    }
+                }
+                if (!empty($fotoUpdates)) {
+                    $actaReal->update($fotoUpdates);
+                }
 
                 // 3. Personal del establecimiento presente en la visita
                 $equipoMonitoreo = $actaOff['equipo_monitoreo'] ?? [];
@@ -216,6 +275,89 @@ class OfflineSyncController extends Controller
             'message'       => count($errores) === 0
                 ? '¡Se sincronizaron exitosamente ' . count($sincronizadas) . ' actas creadas en modo offline!'
                 : count($sincronizadas) . ' acta(s) sincronizada(s), ' . count($errores) . ' con error.',
+        ]);
+    }
+
+    /**
+     * Sincronización en lote de actas de reunión capturadas offline.
+     *
+     * Mismo patrón que sincronizarLoteOffline: cada reunión en su propia
+     * sub-transacción, y solo se marca sincronizado en el dispositivo lo
+     * que el servidor confirma con su offline_id -> id real.
+     *
+     * Las fotos viajan como base64 (foto_1_base64/foto_2_base64) en vez de
+     * multipart, porque este endpoint procesa un lote JSON de N reuniones en
+     * una sola petición — igual que el resto de /v1/sync.
+     */
+    public function sincronizarReunionesOffline(Request $request)
+    {
+        $reunionesOffline = $request->input('reuniones', []);
+
+        $sincronizadas = [];
+        $errores = [];
+
+        foreach ($reunionesOffline as $rOff) {
+            $offlineId = $rOff['offline_id'] ?? null;
+
+            if (empty($rOff['titulo_reunion']) || empty($rOff['fecha_reunion'])) {
+                $errores[] = ['offline_id' => $offlineId, 'message' => 'Faltan campos obligatorios (título/fecha)'];
+                continue;
+            }
+
+            try {
+                DB::beginTransaction();
+
+                $participantes = $rOff['participantes'] ?? [];
+                foreach ($participantes as &$p) {
+                    if (isset($p['apellidos'])) $p['apellidos'] = mb_strtoupper($p['apellidos'], 'UTF-8');
+                    if (isset($p['nombres'])) $p['nombres'] = mb_strtoupper($p['nombres'], 'UTF-8');
+                    if (isset($p['cargo'])) $p['cargo'] = mb_strtoupper($p['cargo'], 'UTF-8');
+                    if (isset($p['institucion'])) $p['institucion'] = mb_strtoupper($p['institucion'], 'UTF-8');
+                }
+                unset($p);
+
+                $reunion = Reunion::create([
+                    'titulo_reunion' => mb_strtoupper($rOff['titulo_reunion'], 'UTF-8'),
+                    'fecha_reunion' => $rOff['fecha_reunion'],
+                    'hora_reunion' => $rOff['hora_reunion'] ?? '00:00',
+                    'hora_finalizada_reunion' => $rOff['hora_finalizada_reunion'] ?? null,
+                    'nombre_institucion' => mb_strtoupper($rOff['nombre_institucion'] ?? '', 'UTF-8'),
+                    'descripcion_general' => $rOff['descripcion_general'] ?? '',
+                    'acuerdos' => $rOff['acuerdos'] ?? [],
+                    'comentarios_observaciones' => $rOff['comentarios_observaciones'] ?? [],
+                    'participantes' => $participantes,
+                    'anulado' => false,
+                ]);
+
+                $updates = [];
+                foreach (['foto_1', 'foto_2'] as $campo) {
+                    $b64 = $rOff[$campo . '_base64'] ?? null;
+                    if (!empty($b64)) {
+                        $bytes = base64_decode($b64);
+                        $nombreArchivo = 'reuniones/' . Str::random(20) . '.jpg';
+                        Storage::disk('public')->put($nombreArchivo, $bytes);
+                        $updates[$campo] = 'storage/' . $nombreArchivo;
+                    }
+                }
+                if (!empty($updates)) {
+                    $reunion->update($updates);
+                }
+
+                DB::commit();
+
+                $sincronizadas[] = ['offline_id' => $offlineId, 'id' => $reunion->id];
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                Log::error("Error sincronizando reunión offline ({$offlineId}): " . $e->getMessage());
+                $errores[] = ['offline_id' => $offlineId, 'message' => $e->getMessage()];
+            }
+        }
+
+        return response()->json([
+            'success' => count($errores) === 0,
+            'sincronizados' => count($sincronizadas),
+            'reuniones' => $sincronizadas,
+            'errores' => $errores,
         ]);
     }
 }

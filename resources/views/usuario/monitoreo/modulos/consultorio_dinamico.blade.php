@@ -180,12 +180,13 @@
                                 </div>
 
                                 {{-- CAMPO DINÁMICO: CANTIDAD DE PUNTOS DE RED CUANDO ES SÍ --}}
+                                @php $cantPuntosRed = $contenido['cantidad_puntos_red'] ?? 1; @endphp
                                 <div id="container_cantidad_puntos_red" class="mt-4 pt-3 border-t border-slate-200/70 {{ $puntoRed === 'SI' ? '' : 'hidden' }}">
                                     <label class="block text-[10px] font-black text-indigo-900 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                                         <i data-lucide="hash" class="w-3.5 h-3.5 text-indigo-600"></i> Cantidad de Puntos de Red (Mínimo: 1) <span class="text-rose-500">*</span>
                                     </label>
                                     <input type="number" min="1" max="99" step="1" name="contenido[cantidad_puntos_red]" id="input_cantidad_puntos_red"
-                                        value="{{ max(1, (int)$cantPuntosRed) }}" 
+                                        value="{{ max(1, (int)$cantPuntosRed) }}"
                                         placeholder="Ej: 1"
                                         onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E'||event.key==='.') event.preventDefault();"
                                         oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value && parseInt(this.value) < 1) this.value = '1';"
