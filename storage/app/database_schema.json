@@ -1,0 +1,1012 @@
+{
+    "generated_at": "2026-08-17T20:12:44-05:00",
+    "database": "autopsia_ti_bd",
+    "tables": {
+        "establecimientos": [
+            {
+                "name": "id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": true,
+                "auto_increment": true
+            },
+            {
+                "name": "codigo",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "nombre",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "institucion",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "direccion",
+                "type": "text",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "departamento",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "provincia",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "distrito",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "centro_poblado",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "telefono",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "correo",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "categoria",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "estado",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "condicion",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "upss",
+                "type": "longtext",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "ups",
+                "type": "longtext",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "red",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "microred",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "clas",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "odsis",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "responsable",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "tipo_documento",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "numero_documento",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "colegio_profesional",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "colegiatura",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "rne",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "updated_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "latitud",
+                "type": "decimal",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "longitud",
+                "type": "decimal",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "altitud",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "fecha_creacion_resolucion",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "fecha_registro",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "numero_resolucion_creacion",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "horario_atencion",
+                "type": "text",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "numero_ambientes",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "numero_camas",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            }
+        ],
+        "mon_cabecera_monitoreo": [
+            {
+                "name": "id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": true,
+                "auto_increment": true
+            },
+            {
+                "name": "user_id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "establecimiento_id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "tipo_origen",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "numero_acta",
+                "type": "int",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "categoria_congelada",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "responsable_congelado",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "fecha",
+                "type": "date",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "responsable",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "pozo_tierra",
+                "type": "varchar",
+                "nullable": false,
+                "default": "'NO'",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "pozo_tierra_cantidad",
+                "type": "int",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "pozo_tierra_operativos",
+                "type": "int",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "pozo_tierra_inoperativos",
+                "type": "int",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "panel_solar",
+                "type": "varchar",
+                "nullable": false,
+                "default": "'NO'",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "panel_solar_cantidad",
+                "type": "int",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "panel_solar_operativos",
+                "type": "int",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "panel_solar_inoperativos",
+                "type": "int",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "foto1",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "foto2",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "implementador",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "firmado",
+                "type": "tinyint",
+                "nullable": false,
+                "default": "0",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "anulado",
+                "type": "tinyint",
+                "nullable": false,
+                "default": "0",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "firmado_pdf",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "updated_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            }
+        ],
+        "mon_equipo_monitoreo": [
+            {
+                "name": "id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": true,
+                "auto_increment": true
+            },
+            {
+                "name": "cabecera_monitoreo_id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "tipo_doc",
+                "type": "varchar",
+                "nullable": false,
+                "default": "'DNI'",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "doc",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "apellido_paterno",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "apellido_materno",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "nombres",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "cargo",
+                "type": "varchar",
+                "nullable": false,
+                "default": "'Implementador'",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "institucion",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "updated_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            }
+        ],
+        "mon_monitoreo_modulos": [
+            {
+                "name": "id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": true,
+                "auto_increment": true
+            },
+            {
+                "name": "cabecera_monitoreo_id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "modulo_nombre",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "contenido",
+                "type": "longtext",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "pdf_firmado_path",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "updated_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            }
+        ],
+        "mon_equipos_computo": [
+            {
+                "name": "id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": true,
+                "auto_increment": true
+            },
+            {
+                "name": "cabecera_monitoreo_id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "modulo",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "descripcion",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "cantidad",
+                "type": "int",
+                "nullable": false,
+                "default": "1",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "estado",
+                "type": "varchar",
+                "nullable": false,
+                "default": "'Operativo'",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "nro_serie",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "propio",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "observacion",
+                "type": "text",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "updated_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            }
+        ],
+        "mon_profesionales": [
+            {
+                "name": "id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": true,
+                "auto_increment": true
+            },
+            {
+                "name": "tipo_doc",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "doc",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "apellido_paterno",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "apellido_materno",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "nombres",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "email",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "telefono",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "cargo",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "firma_path",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "tipo_firma",
+                "type": "varchar",
+                "nullable": false,
+                "default": "'MANUAL'",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "ultima_actualizacion_firma",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "updated_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            }
+        ],
+        "reuniones": [
+            {
+                "name": "id",
+                "type": "bigint",
+                "nullable": false,
+                "default": null,
+                "primary": true,
+                "auto_increment": true
+            },
+            {
+                "name": "titulo_reunion",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "fecha_reunion",
+                "type": "date",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "hora_reunion",
+                "type": "time",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "hora_finalizada_reunion",
+                "type": "time",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "nombre_institucion",
+                "type": "varchar",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "descripcion_general",
+                "type": "text",
+                "nullable": false,
+                "default": null,
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "acuerdos",
+                "type": "longtext",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "comentarios_observaciones",
+                "type": "longtext",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "foto_1",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "foto_2",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "participantes",
+                "type": "longtext",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "archivo_pdf",
+                "type": "varchar",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "firmado",
+                "type": "tinyint",
+                "nullable": false,
+                "default": "0",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "anulado",
+                "type": "tinyint",
+                "nullable": false,
+                "default": "0",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "updated_at",
+                "type": "timestamp",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "asistencia_desde",
+                "type": "datetime",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            },
+            {
+                "name": "asistencia_hasta",
+                "type": "datetime",
+                "nullable": true,
+                "default": "NULL",
+                "primary": false,
+                "auto_increment": false
+            }
+        ]
+    }
+}

@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Traits\UppercaseAttributes;
+use Laravel\Sanctum\HasApiTokens;
 
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, UppercaseAttributes;
+    use HasApiTokens, HasFactory, Notifiable, UppercaseAttributes;
 
     protected $fillable = [
         'name',

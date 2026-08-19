@@ -146,7 +146,31 @@ class RecursosHumanosController extends Controller
                 $nombres = mb_strtoupper(trim($t['nombres'] ?? ''));
                 $servicio = mb_strtoupper(trim($t['servicio'] ?? 'MEDICINA'));
                 $profesion = mb_strtoupper(trim($t['profesion'] ?? ''));
-                $colegiatura = trim($t['colegiatura'] ?? '');
+                $colegioProfesional = mb_strtoupper(trim($t['colegio_profesional'] ?? ''));
+                $rawColegiatura = trim($t['colegiatura'] ?? '');
+                $colegiaturaDigits = preg_replace('/\D/', '', $rawColegiatura);
+                $colegiatura = !empty($colegiaturaDigits) ? str_pad(substr($colegiaturaDigits, 0, 6), 6, '0', STR_PAD_LEFT) : '';
+
+                // Fallback para colegio_profesional si está vacío
+                if (empty($colegioProfesional)) {
+                    if (preg_match('/^([A-Za-z\.]+)\s*\d+/', $rawColegiatura, $matches)) {
+                        $colegioProfesional = mb_strtoupper(trim($matches[1]));
+                    } else {
+                        $mapaPrefijos = [
+                            'MÉDICO CIRUJANO'                    => 'CMP',
+                            'CIRUJANO DENTISTA / ODONTÓLOGO(A)' => 'COP',
+                            'LIC. EN ENFERMERÍA'                 => 'CEP',
+                            'LIC. EN OBSTETRICIA'                => 'COP',
+                            'LIC. EN PSICOLOGÍA'                 => 'C.Ps.P',
+                            'LIC. EN NUTRICIÓN'                  => 'CNP',
+                            'QUÍMICO FARMACÉUTICO(A)'           => 'CQFP',
+                            'LIC. TECNOLOGÍA MÉDICA'             => 'CTMP',
+                            'BIÓLOGO(A)'                         => 'CBP'
+                        ];
+                        $colegioProfesional = $mapaPrefijos[$profesion] ?? '';
+                    }
+                }
+
                 $correo = strtolower(trim($t['correo'] ?? ''));
                 $celular = trim($t['celular'] ?? '');
                 $rne = trim($t['rne'] ?? '');
@@ -154,20 +178,21 @@ class RecursosHumanosController extends Controller
                 $periodoSerums = $esSerums === 'SI' ? trim($t['periodo_serums'] ?? '') : '';
 
                 $trabajadorData = [
-                    'id'               => $t['id'] ?? ('tr_' . time() . '_' . $index),
-                    'servicio'         => $servicio,
-                    'tipo_doc'         => $tipoDoc,
-                    'doc'              => $doc,
-                    'apellido_paterno' => $paterno,
-                    'apellido_materno' => $materno,
-                    'nombres'          => $nombres,
-                    'profesion'        => $profesion,
-                    'colegiatura'      => $colegiatura,
-                    'correo'           => $correo,
-                    'celular'          => $celular,
-                    'rne'              => $rne,
-                    'es_serums'        => $esSerums,
-                    'periodo_serums'   => $periodoSerums,
+                    'id'                  => $t['id'] ?? ('tr_' . time() . '_' . $index),
+                    'servicio'            => $servicio,
+                    'tipo_doc'            => $tipoDoc,
+                    'doc'                 => $doc,
+                    'apellido_paterno'    => $paterno,
+                    'apellido_materno'    => $materno,
+                    'nombres'             => $nombres,
+                    'profesion'           => $profesion,
+                    'colegio_profesional' => $colegioProfesional,
+                    'colegiatura'         => $colegiatura,
+                    'correo'              => $correo,
+                    'celular'             => $celular,
+                    'rne'                 => $rne,
+                    'es_serums'           => $esSerums,
+                    'periodo_serums'      => $periodoSerums,
                 ];
 
                 $trabajadoresNormalizados[] = $trabajadorData;
@@ -260,11 +285,25 @@ class RecursosHumanosController extends Controller
             ->where('modulo_nombre', 'rrhh')
             ->first();
 
-        $contenido = $detalle->contenido ?? [];
+        $contenido = $detalle ? $detalle->contenido : [];
+        if (is_string($contenido)) {
+            $contenido = json_decode($contenido, true) ?? [];
+        }
         $trabajadores = $contenido['trabajadores'] ?? [];
 
-        $pdf = Pdf::loadView('usuario.monitoreo.pdf.rrhh_pdf', compact('acta', 'detalle', 'contenido', 'trabajadores'));
+        $pdf = Pdf::setOptions([
+            'isPhpEnabled'         => true,
+            'isRemoteEnabled'      => true,
+            'isHtml5ParserEnabled' => true,
+        ])->loadView('usuario.monitoreo.pdf.rrhh_pdf', compact('acta', 'detalle', 'contenido', 'trabajadores'));
         $pdf->setPaper('a4', 'landscape');
-        return $pdf->stream("Reporte_RRHH_Acta_{$acta->numero_acta}.pdf");
+
+        return response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Reporte_RRHH_Acta_' . $acta->numero_acta . '.pdf"',
+            'Cache-Control'       => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma'              => 'no-cache',
+            'Expires'             => 'Sun, 02 Jan 1990 00:00:00 GMT',
+        ]);
     }
 }

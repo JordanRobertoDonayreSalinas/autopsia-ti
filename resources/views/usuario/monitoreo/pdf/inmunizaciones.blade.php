@@ -3,53 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Módulo 09: Inmunizaciones - Acta {{ $acta->numero_acta }}</title>
-    <style>
-        /* AJUSTAMOS EL MARGEN INFERIOR A 2CM PARA QUE QUEPA EL PIE DE PÁGINA */
-        @page { margin: 1.2cm 1.5cm 2cm 1.5cm; }
-        body { font-family: 'Helvetica', sans-serif; font-size: 10px; color: #1e293b; line-height: 1.4; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 16px; text-transform: uppercase; color: #4f46e5; font-weight: bold; }
-        .section-title { background-color: #f1f5f9; padding: 6px 10px; font-weight: bold; text-transform: uppercase; border-left: 4px solid #4f46e5; margin-top: 15px; margin-bottom: 5px; font-size: 10px; }
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 5px; }
-        th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; vertical-align: middle; word-wrap: break-word; }
-        th { background-color: #f8fafc; color: #475569; font-size: 8.5px; text-transform: uppercase; }
-        .bg-label { background-color: #f8fafc; font-weight: bold; width: 30%; text-transform: uppercase; }
-        .uppercase { text-transform: uppercase; }
-        .text-center { text-align: center; }
-        
-        /* --- EVIDENCIA FOTOGRÁFICA --- */
-        .no-evidence-box {
-            border: 2px dashed #cbd5e1;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            color: #64748b;
-            font-style: italic;
-            background-color: #f8fafc;
-            margin-top: 10px;
-        }
-
-        /* --- ESTILO UNIFICADO PARA FOTOS (PREMIUM) --- */
-        .photo-img, .foto, .preview-image, .photo-box img {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .vacunas-list { padding: 8px; }
-        .vacunas-item { display: inline-block; padding: 3px 8px; background-color: #e0e7ff; border-radius: 4px; margin: 2px; font-size: 9px; }
-
-        /* Estilos para recuadros de firma */
-        .firma-section { margin-top: 15px; }
-        .firma-container { width: 50%; display: table; table-layout: fixed; margin: 0 25%; }
-        .firma-box { display: table-cell; width: 50%; text-align: center; padding: 0 28px; vertical-align: top; border: 1px solid #e2e8f0;  border-radius: 14px;}
-        .firma-linea { border-bottom: 1px solid #000; height: 150px; margin-bottom: 8px; }
-        .firma-label { font-size: 10px; margin: 5px 0; }
-        .firma-nombre { font-weight: bold; text-transform: uppercase; font-size: 12px; }
-        .firma-fecha { font-size: 8px; margin-top: 3px; }
-    </style>
+    @include('usuario.monitoreo.pdf.partials.premium_style')
 </head>
 <body>
     {{-- BLOQUE DE CONFIGURACIÓN GLOBAL --}}

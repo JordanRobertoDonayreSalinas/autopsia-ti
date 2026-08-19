@@ -1,270 +1,623 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Croquis - Acta {{ $acta->numero_acta }}</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Reporte de Infraestructura y Croquis 2D - Acta #{{ $acta->numero_acta }}</title>
     <style>
-        @page { margin: 40px 42px 70px 42px; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
-        body { font-family: sans-serif; font-size: 10px; color: #1e293b; }
-
-        .header { text-align: center; margin-bottom: 14px; }
-        .header h1 { font-size: 15px; margin: 0 0 3px 0; letter-spacing: .5px; }
-        .header p { margin: 0; font-size: 10px; color: #64748b; }
-
-        .section-title {
-            font-size: 10px; font-weight: bold; text-transform: uppercase;
-            letter-spacing: .8px; color: #1e293b;
-            margin: 16px 0 6px 0; padding-bottom: 4px;
-            border-bottom: 2px solid #4f46e5;
+        @page {
+            margin: 1.2cm 1.2cm 1.4cm 1.2cm;
         }
-        .section-note { font-size: 8px; color: #94a3b8; margin: 0 0 6px 0; }
-
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #e2e8f0; padding: 5px 6px; text-align: left; vertical-align: top; }
-        th {
-            background-color: #f1f5f9; font-size: 8px; text-transform: uppercase;
-            letter-spacing: .5px; color: #475569;
+        * {
+            box-sizing: border-box;
         }
-        td { font-size: 9px; }
-        tr.par td { background-color: #fafcff; }
-        .num { text-align: center; }
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', 'Century Gothic', 'Calibri', 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 8px;
+            color: #1e293b;
+            line-height: 1.45;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
 
-        /* Datos del establecimiento */
-        .datos th { width: 15%; }
-        .datos td { width: 35%; }
+        /* Utilidades Generales */
+        .text-center { text-align: center !important; }
+        .text-right { text-align: right !important; }
+        .text-left { text-align: left !important; }
+        .font-bold { font-weight: 700 !important; }
+        .font-black { font-weight: 800 !important; }
+        .uppercase { text-transform: uppercase !important; }
+        .no-break { page-break-inside: avoid; }
 
-        /* Resumen */
-        .resumen td { text-align: center; border: 1px solid #e2e8f0; }
-        .resumen .cifra { font-size: 15px; font-weight: bold; color: #4f46e5; }
-        .resumen .rotulo { font-size: 7px; text-transform: uppercase; color: #64748b; letter-spacing: .5px; }
+        /* ENCABEZADO INSTITUCIONAL */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #0f2b5c;
+            padding-bottom: 8px;
+        }
+        .header-table td {
+            border: none;
+            padding: 0;
+            vertical-align: middle;
+        }
+        .inst-title {
+            font-size: 7px;
+            font-weight: 700;
+            color: #64748b;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .main-title {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: #0f2b5c;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            margin: 2px 0 3px 0;
+        }
+        .submodule-badge {
+            display: inline-block;
+            background-color: #0f2b5c;
+            color: #ffffff;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2.5px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .eess-info {
+            font-size: 8px;
+            font-weight: 700;
+            color: #475569;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+        .acta-box {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 12px;
+            text-align: center;
+        }
+        .acta-box-num {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f2b5c;
+            letter-spacing: 0.5px;
+        }
+        .acta-box-lbl {
+            font-size: 7px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
 
-        /* Estado del equipo */
-        .estado { font-size: 8px; font-weight: bold; text-transform: uppercase; }
-        .op { color: #15803d; }
-        .re { color: #b45309; }
-        .in { color: #b91c1c; }
+        /* SECCIONES Y TARJETAS */
+        .card-section {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            margin-bottom: 11px;
+            background-color: #ffffff;
+            page-break-inside: avoid;
+        }
+        .card-header {
+            background-color: #0f2b5c;
+            color: #ffffff;
+            padding: 4.5px 9px;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+        .card-header .num-pill {
+            background-color: #2563eb;
+            color: #ffffff;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-right: 4px;
+            font-size: 7.5px;
+            font-weight: 800;
+        }
+        .card-body {
+            padding: 0;
+        }
 
-        .croquis-container { text-align: center; margin-top: 8px; }
-        .croquis-image { max-width: 100%; border: 1px solid #cbd5e1; }
-        .vacio { color: #94a3b8; font-style: italic; font-size: 9px; padding: 8px 0; }
-        .subtotal td { background-color: #f8fafc; font-weight: bold; font-size: 8px; }
+        /* RESUMEN MÉTRICAS */
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 11px;
+        }
+        .metrics-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 4px;
+            text-align: center;
+            background-color: #f8fafc;
+            width: 16.66%;
+        }
+        .metric-val {
+            font-size: 12px;
+            font-weight: 800;
+            color: #0f2b5c;
+            line-height: 1;
+        }
+        .metric-lbl {
+            font-size: 6.5px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-top: 3px;
+            letter-spacing: 0.3px;
+        }
+
+        /* TABLAS DE DATOS */
+        table.grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        table.grid-table td, table.grid-table th {
+            border: 1px solid #e2e8f0;
+            padding: 4.5px 7px;
+            font-size: 7.5px;
+            vertical-align: middle;
+        }
+        table.grid-table th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 7px;
+            letter-spacing: 0.4px;
+        }
+        .lbl-col {
+            background-color: #f8fafc;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            font-size: 7.5px;
+        }
+        .val-col {
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+        }
+
+        /* TABLA ELEGANTE DE LISTADO */
+        table.list-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        table.list-table th {
+            background-color: #0f2b5c;
+            color: #ffffff;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 7px;
+            letter-spacing: 0.3px;
+            padding: 4.5px 6px;
+            border: 1px solid #0f2b5c;
+            text-align: left;
+        }
+        table.list-table td {
+            border: 1px solid #e2e8f0;
+            padding: 4.5px 6px;
+            font-size: 7.5px;
+            vertical-align: middle;
+        }
+        table.list-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        table.list-table tr.subtotal td {
+            background-color: #eff6ff;
+            font-weight: 800;
+            color: #1e3a8a;
+            border-top: 1.5px solid #bfdbfe;
+        }
+
+        /* BADGES */
+        .badge {
+            display: inline-block;
+            padding: 1.5px 6px;
+            border-radius: 3px;
+            font-size: 6.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .badge-op { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .badge-re { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+        .badge-in { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-info { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .badge-neutral { background-color: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+
+        /* CROQUIS CONTAINER */
+        .croquis-wrapper {
+            padding: 10px;
+            text-align: center;
+            background-color: #f8fafc;
+        }
+        .croquis-img {
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            padding: 4px;
+            background-color: #ffffff;
+        }
+        .vacio-box {
+            padding: 14px;
+            text-align: center;
+            color: #94a3b8;
+            font-style: italic;
+            font-size: 7.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* SECCIÓN DE FIRMAS */
+        .signatures-container {
+            width: 100%;
+            margin-top: 14px;
+            page-break-inside: avoid;
+        }
+        .signatures-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .signatures-table td {
+            width: 50%;
+            padding: 0 10px;
+            border: none;
+            vertical-align: top;
+        }
+        .sig-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background-color: #ffffff;
+            text-align: center;
+            padding-bottom: 7px;
+        }
+        .sig-space {
+            height: 44px;
+        }
+        .sig-line {
+            width: 80%;
+            border-top: 1px solid #475569;
+            margin: 0 auto 5px auto;
+        }
+        .sig-name {
+            font-size: 7.5px;
+            font-weight: 800;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+        .sig-role {
+            font-size: 6.5px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-top: 1px;
+            letter-spacing: 0.3px;
+        }
     </style>
 </head>
-
 <body>
-    <div class="header">
-        <h1>Reporte de Infraestructura y Croquis</h1>
-        <p>Acta {{ $acta->numero_acta }} &middot; {{ $acta->establecimiento->nombre }}</p>
+
+    {{-- ENCABEZADO INSTITUCIONAL --}}
+    <table class="header-table">
+        <tr>
+            <td style="width: 72%;">
+                <div class="inst-title">MINISTERIO DE SALUD &bull; DIRECCI&Oacute;N DE REDES INTEGRADAS DE SALUD</div>
+                <div class="main-title">REPORTE DE INFRAESTRUCTURA Y CROQUIS 2D</div>
+                <div>
+                    <span class="submodule-badge">M&Oacute;DULO FIJO &bull; INFRAESTRUCTURA 2D</span>
+                </div>
+                <div class="eess-info">
+                    <strong>EESS:</strong> {{ $acta->establecimiento->codigo ?? 'S/C' }} - {{ strtoupper($acta->establecimiento->nombre) }} &nbsp;|&nbsp; 
+                    <strong>PROVINCIA:</strong> {{ strtoupper($acta->establecimiento->provincia ?? 'GENERAL') }}
+                </div>
+            </td>
+            <td style="width: 28%;" class="text-right">
+                <div class="acta-box">
+                    <div class="acta-box-lbl">DIAGNOSTICO SITUACIONAL</div>
+                    <div class="acta-box-num">N&deg; {{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}</div>
+                    <div style="font-size: 7px; font-weight: 700; color: #475569; margin-top: 2px;">
+                        FECHA: {{ $acta->fecha ? date('d/m/Y', strtotime($acta->fecha)) : date('d/m/Y') }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- DATOS DEL ESTABLECIMIENTO --}}
+    <div class="card-section">
+        <div class="card-header">
+            DATOS DEL ESTABLECIMIENTO Y RED DE SALUD
+        </div>
+        <div class="card-body">
+            <table class="grid-table">
+                <tr>
+                    <td class="lbl-col" style="width: 20%;">C&Oacute;DIGO EESS:</td>
+                    <td class="val-col" style="width: 30%;">{{ $acta->establecimiento->codigo ?? 'S/C' }}</td>
+                    <td class="lbl-col" style="width: 20%;">RED DE SALUD:</td>
+                    <td class="val-col" style="width: 30%;">{{ strtoupper($acta->establecimiento->red ?? 'GENERAL') }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl-col">PROVINCIA:</td>
+                    <td class="val-col">{{ strtoupper($acta->establecimiento->provincia ?? 'GENERAL') }}</td>
+                    <td class="lbl-col">DISTRITO:</td>
+                    <td class="val-col">{{ strtoupper($acta->establecimiento->distrito ?? 'GENERAL') }}</td>
+                </tr>
+            </table>
+        </div>
     </div>
 
-    {{-- ─── Datos del establecimiento ─── --}}
-    <div class="section-title">Datos del establecimiento</div>
-    <table class="datos">
-        <tr>
-            <th>Código</th><td>{{ $acta->establecimiento->codigo }}</td>
-            <th>Red</th><td>{{ $acta->establecimiento->red }}</td>
-        </tr>
-        <tr>
-            <th>Provincia</th><td>{{ $acta->establecimiento->provincia }}</td>
-            <th>Distrito</th><td>{{ $acta->establecimiento->distrito }}</td>
-        </tr>
-    </table>
-
-    {{-- ─── Resumen ─── --}}
-    <table class="resumen" style="margin-top: 10px;">
+    {{-- RESUMEN MÉTRICAS --}}
+    <table class="metrics-table">
         <tr>
             <td>
-                <div class="cifra">{{ $resumen['ambientes'] }}</div>
-                <div class="rotulo">Ambientes</div>
+                <div class="metric-val">{{ $resumen['ambientes'] ?? 0 }}</div>
+                <div class="metric-lbl">Ambientes</div>
             </td>
             <td>
-                <div class="cifra">{{ $resumen['unidades'] }}</div>
-                <div class="rotulo">Equipos</div>
+                <div class="metric-val">{{ $resumen['unidades'] ?? 0 }}</div>
+                <div class="metric-lbl">Total Equipos</div>
             </td>
             <td>
-                <div class="cifra" style="color:#15803d;">{{ $resumen['OPERATIVO'] }}</div>
-                <div class="rotulo">Operativos</div>
+                <div class="metric-val" style="color: #047857;">{{ $resumen['OPERATIVO'] ?? 0 }}</div>
+                <div class="metric-lbl" style="color: #047857;">Operativos</div>
             </td>
             <td>
-                <div class="cifra" style="color:#b45309;">{{ $resumen['REGULAR'] }}</div>
-                <div class="rotulo">Regulares</div>
+                <div class="metric-val" style="color: #b45309;">{{ $resumen['REGULAR'] ?? 0 }}</div>
+                <div class="metric-lbl" style="color: #b45309;">Regulares</div>
             </td>
             <td>
-                <div class="cifra" style="color:#b91c1c;">{{ $resumen['INOPERATIVO'] }}</div>
-                <div class="rotulo">Inoperativos</div>
+                <div class="metric-val" style="color: #b91c1c;">{{ $resumen['INOPERATIVO'] ?? 0 }}</div>
+                <div class="metric-lbl" style="color: #b91c1c;">Inoperativos</div>
             </td>
             <td>
-                <div class="cifra">{{ $resumen['pisos'] }}</div>
-                <div class="rotulo">Pisos</div>
+                <div class="metric-val">{{ $resumen['pisos'] ?? 1 }}</div>
+                <div class="metric-lbl">Pisos / Niveles</div>
             </td>
         </tr>
     </table>
 
-    {{-- ─── Croquis ─── --}}
-    <div class="section-title">Croquis del establecimiento</div>
-    <div class="croquis-container">
-        @php
-            $imagen_path = $contenido['imagen_path'] ?? null;
-            $base64 = null;
-            if ($imagen_path) {
-                $path = storage_path('app/public/' . $imagen_path);
-                if (file_exists($path)) {
-                    $type = pathinfo($path, PATHINFO_EXTENSION);
-                    $base64 = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($path));
-                }
+    {{-- CROQUIS 2D --}}
+    @php
+        $imagen_path = $contenido['imagen_path'] ?? null;
+        $base64 = null;
+        if ($imagen_path) {
+            $path = storage_path('app/public/' . $imagen_path);
+            if (file_exists($path)) {
+                $type = pathinfo($path, PATHINFO_EXTENSION);
+                $base64 = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($path));
             }
-        @endphp
+        }
+    @endphp
 
-        @if($base64)
-            <img src="{{ $base64 }}" class="croquis-image">
-        @else
-            <p class="vacio">No hay imagen de croquis disponible.</p>
-        @endif
+    <div class="card-section">
+        <div class="card-header">
+            PLANO Y CROQUIS 2D DEL ESTABLECIMIENTO
+        </div>
+        <div class="croquis-wrapper">
+            @if($base64)
+                <img src="{{ $base64 }}" class="croquis-img">
+            @else
+                <div class="vacio-box">
+                    No se ha exportado una imagen de croquis 2D para este establecimiento.
+                </div>
+            @endif
+        </div>
     </div>
 
-    {{-- ─── Cuadro 1: ambientes ─── --}}
-    <div class="section-title">1. Ambientes y servicios</div>
-    <p class="section-note">Espacios registrados en el croquis, con los servicios con que cuenta cada uno.</p>
-    @if(count($ambientes))
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:4%;" class="num">N°</th>
-                    <th style="width:31%;">Ambiente</th>
-                    <th style="width:20%;">Tipo</th>
-                    <th style="width:7%;" class="num">Piso</th>
-                    <th style="width:8%;" class="num">Wifi</th>
-                    <th style="width:8%;" class="num">Energía</th>
-                    <th style="width:10%;" class="num">Ptos. red</th>
-                    <th style="width:12%;" class="num">Equipos</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($ambientes as $i => $amb)
-                    <tr class="{{ $i % 2 ? 'par' : '' }}">
-                        <td class="num">{{ $i + 1 }}</td>
-                        <td>{{ $amb['nombre'] }}</td>
-                        <td>{{ $amb['tipo'] }}</td>
-                        <td class="num">{{ $amb['piso'] }}</td>
-                        <td class="num">{{ $amb['wifi'] ? 'Sí' : '—' }}</td>
-                        <td class="num">{{ $amb['luz'] ? 'Sí' : '—' }}</td>
-                        <td class="num">{{ $amb['red'] ?: '—' }}</td>
-                        <td class="num">{{ $amb['unidades'] ?: '—' }}</td>
+    {{-- CUADRO 1: AMBIENTES --}}
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">1</span> AMBIENTES Y SERVICIOS REGISTRADOS
+        </div>
+        <div class="card-body">
+            @if(count($ambientes ?? []))
+                <table class="list-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;" class="text-center">N&deg;</th>
+                            <th style="width: 31%;">Ambiente</th>
+                            <th style="width: 19%;">Tipo</th>
+                            <th style="width: 7%;" class="text-center">Piso</th>
+                            <th style="width: 9%;" class="text-center">Wifi</th>
+                            <th style="width: 9%;" class="text-center">Energ&iacute;a</th>
+                            <th style="width: 10%;" class="text-center">Puntos Red</th>
+                            <th style="width: 11%;" class="text-center">Equipos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($ambientes as $i => $amb)
+                            <tr>
+                                <td class="text-center font-bold">{{ $i + 1 }}</td>
+                                <td class="font-bold uppercase">{{ $amb['nombre'] }}</td>
+                                <td class="uppercase">{{ $amb['tipo'] }}</td>
+                                <td class="text-center">{{ $amb['piso'] }}</td>
+                                <td class="text-center">
+                                    @if($amb['wifi'])
+                                        <span class="badge badge-op">S&Iacute;</span>
+                                    @else
+                                        <span class="badge badge-neutral">&mdash;</span>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    @if($amb['luz'])
+                                        <span class="badge badge-op">S&Iacute;</span>
+                                    @else
+                                        <span class="badge badge-neutral">&mdash;</span>
+                                    @endif
+                                </td>
+                                <td class="text-center font-bold">{{ $amb['red'] ?: '&mdash;' }}</td>
+                                <td class="text-center font-bold" style="color: #0f2b5c;">{{ $amb['unidades'] ?: '&mdash;' }}</td>
+                            </tr>
+                        @endforeach
+                        <tr class="subtotal">
+                            <td colspan="7">TOTAL DE AMBIENTES EVALUADOS: {{ count($ambientes) }}</td>
+                            <td class="text-center">{{ array_sum(array_column($ambientes, 'unidades')) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            @else
+                <div class="vacio-box">
+                    No se registraron ambientes en el croquis 2D.
+                </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- CUADRO 2: EQUIPAMIENTO --}}
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">2</span> EQUIPAMIENTO INFORM&Aacute;TICO Y SU UBICACI&Oacute;N
+        </div>
+        <div class="card-body">
+            @if(count($equipos ?? []))
+                <table class="list-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;" class="text-center">N&deg;</th>
+                            <th style="width: 25%;">Equipo</th>
+                            <th style="width: 7%;" class="text-center">Cant.</th>
+                            <th style="width: 15%;" class="text-center">Estado</th>
+                            <th style="width: 41%;">Ubicaci&oacute;n (Ambiente Asignado)</th>
+                            <th style="width: 8%;" class="text-center">Piso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($equipos as $i => $eq)
+                            @php
+                                $clase = $eq['estado'] === 'OPERATIVO' ? 'badge-op' : ($eq['estado'] === 'REGULAR' ? 'badge-re' : ($eq['estado'] === 'INOPERATIVO' ? 'badge-in' : 'badge-neutral'));
+                            @endphp
+                            <tr>
+                                <td class="text-center font-bold">{{ $i + 1 }}</td>
+                                <td class="font-bold uppercase">{{ $eq['equipo'] }}</td>
+                                <td class="text-center font-bold">{{ $eq['cantidad'] }}</td>
+                                <td class="text-center">
+                                    <span class="badge {{ $clase }}">{{ $eq['estado'] }}</span>
+                                </td>
+                                <td class="uppercase">{{ $eq['ubicacion'] }}</td>
+                                <td class="text-center font-bold">{{ $eq['piso'] }}</td>
+                            </tr>
+                        @endforeach
+                        <tr class="subtotal">
+                            <td colspan="2">TOTAL DE EQUIPOS EN CROQUIS:</td>
+                            <td class="text-center">{{ $resumen['unidades'] ?? 0 }}</td>
+                            <td colspan="3" style="font-size: 7px;">
+                                Operativos: {{ $resumen['OPERATIVO'] ?? 0 }} &bull;
+                                Regulares: {{ $resumen['REGULAR'] ?? 0 }} &bull;
+                                Inoperativos: {{ $resumen['INOPERATIVO'] ?? 0 }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            @else
+                <div class="vacio-box">
+                    No se registraron equipos inform&aacute;ticos en el croquis 2D.
+                </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- CUADRO 3: SISTEMAS DE INFORMACIÓN --}}
+    @if(count($sistemas ?? []))
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">3</span> SISTEMAS DE INFORMACI&Oacute;N Y UBICACI&Oacute;N
+        </div>
+        <div class="card-body">
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th style="width: 4%;" class="text-center">N&deg;</th>
+                        <th style="width: 35%;">Sistema de Informaci&oacute;n</th>
+                        <th style="width: 53%;">Ambiente Donde Se Utiliza</th>
+                        <th style="width: 8%;" class="text-center">Piso</th>
                     </tr>
-                @endforeach
-                <tr class="subtotal">
-                    <td colspan="7">Total de ambientes: {{ count($ambientes) }}</td>
-                    {{-- Suma de la columna: los equipos que están dentro de un ambiente --}}
-                    <td class="num">{{ array_sum(array_column($ambientes, 'unidades')) }}</td>
-                </tr>
-            </tbody>
-        </table>
-    @else
-        <p class="vacio">No se registraron ambientes en el croquis.</p>
+                </thead>
+                <tbody>
+                    @foreach($sistemas as $i => $sis)
+                        <tr>
+                            <td class="text-center font-bold">{{ $i + 1 }}</td>
+                            <td class="font-bold uppercase">{{ $sis['sistema'] }}</td>
+                            <td class="uppercase">{{ $sis['ubicacion'] }}</td>
+                            <td class="text-center font-bold">{{ $sis['piso'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
     @endif
 
-    {{-- ─── Cuadro 2: equipamiento y ubicación ─── --}}
-    <div class="section-title">2. Equipamiento informático y su ubicación</div>
-    <p class="section-note">Equipos registrados en el croquis, indicando el ambiente en el que se encuentran.</p>
-    @if(count($equipos))
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:4%;" class="num">N°</th>
-                    <th style="width:23%;">Equipo</th>
-                    <th style="width:8%;" class="num">Cant.</th>
-                    <th style="width:16%;">Estado</th>
-                    <th style="width:35%;">Ubicación (ambiente)</th>
-                    <th style="width:7%;" class="num">Piso</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($equipos as $i => $eq)
-                    @php
-                        $clase = $eq['estado'] === 'OPERATIVO' ? 'op' : ($eq['estado'] === 'REGULAR' ? 're' : ($eq['estado'] === 'INOPERATIVO' ? 'in' : ''));
-                    @endphp
-                    <tr class="{{ $i % 2 ? 'par' : '' }}">
-                        <td class="num">{{ $i + 1 }}</td>
-                        <td>{{ $eq['equipo'] }}</td>
-                        <td class="num">{{ $eq['cantidad'] }}</td>
-                        <td><span class="estado {{ $clase }}">{{ $eq['estado'] }}</span></td>
-                        <td>{{ $eq['ubicacion'] }}</td>
-                        <td class="num">{{ $eq['piso'] }}</td>
+    {{-- CUADRO 4: ACCESOS Y VÍAS --}}
+    @if(count($accesos ?? []))
+    <div class="card-section">
+        <div class="card-header">
+            <span class="num-pill">{{ count($sistemas ?? []) ? '4' : '3' }}</span> ACCESOS Y V&Iacute;AS DE CIRCULACI&Oacute;N
+        </div>
+        <div class="card-body">
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th style="width: 4%;" class="text-center">N&deg;</th>
+                        <th style="width: 43%;">Elemento de Acceso</th>
+                        <th style="width: 45%;">Denominaci&oacute;n / Ubicaci&oacute;n</th>
+                        <th style="width: 8%;" class="text-center">Piso</th>
                     </tr>
-                @endforeach
-                <tr class="subtotal">
-                    <td colspan="2">Total de equipos</td>
-                    <td class="num">{{ $resumen['unidades'] }}</td>
-                    <td colspan="3">
-                        Operativos: {{ $resumen['OPERATIVO'] }} &middot;
-                        Regulares: {{ $resumen['REGULAR'] }} &middot;
-                        Inoperativos: {{ $resumen['INOPERATIVO'] }}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        @php $sinUbicar = collect($equipos)->where('ubicacion', 'Sin ubicación asignada')->sum('cantidad'); @endphp
-        @if($sinUbicar)
-            <p class="section-note" style="margin-top:4px;">
-                {{ $sinUbicar }} equipo(s) figuran en el croquis fuera de un ambiente, por eso no tienen ubicación asignada.
-            </p>
-        @endif
-    @else
-        <p class="vacio">No se registraron equipos informáticos en el croquis.</p>
+                </thead>
+                <tbody>
+                    @foreach($accesos as $i => $ac)
+                        <tr>
+                            <td class="text-center font-bold">{{ $i + 1 }}</td>
+                            <td class="font-bold uppercase">{{ $ac['elemento'] }}</td>
+                            <td class="uppercase">{{ $ac['nombre'] }}</td>
+                            <td class="text-center font-bold">{{ $ac['piso'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
     @endif
 
-    {{-- ─── Cuadro 3: sistemas de información ─── --}}
-    @if(count($sistemas))
-        <div class="section-title">3. Sistemas de información</div>
-        <p class="section-note">Sistemas representados en el croquis y el ambiente donde se utilizan.</p>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:4%;" class="num">N°</th>
-                    <th style="width:34%;">Sistema</th>
-                    <th style="width:55%;">Ubicación (ambiente)</th>
-                    <th style="width:7%;" class="num">Piso</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($sistemas as $i => $sis)
-                    <tr class="{{ $i % 2 ? 'par' : '' }}">
-                        <td class="num">{{ $i + 1 }}</td>
-                        <td>{{ $sis['sistema'] }}</td>
-                        <td>{{ $sis['ubicacion'] }}</td>
-                        <td class="num">{{ $sis['piso'] }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
+    {{-- FIRMAS DE CONFORMIDAD --}}
+    <div class="signatures-container">
+        <table class="signatures-table">
+            <tr>
+                <td>
+                    <div class="sig-card">
+                        <div class="sig-space"></div>
+                        <div class="sig-line"></div>
+                        <div class="sig-name">{{ strtoupper($acta->responsable ?? 'RESPONSABLE DEL ESTABLECIMIENTO / JEFE') }}</div>
+                        <div class="sig-role">JEFE / RESPONSABLE DEL EESS</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sig-card">
+                        <div class="sig-space"></div>
+                        <div class="sig-line"></div>
+                        <div class="sig-name">{{ strtoupper($monitor['nombre'] ?? 'MONITOR TI') }}</div>
+                        <div class="sig-role">MONITOR / IMPLEMENTADOR TI</div>
+                    </div>
+                </td>
+            </tr>
         </table>
-    @endif
+    </div>
 
-    {{-- ─── Cuadro 4: accesos y vías ─── --}}
-    @if(count($accesos))
-        <div class="section-title">{{ count($sistemas) ? '4' : '3' }}. Accesos y vías</div>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:4%;" class="num">N°</th>
-                    <th style="width:44%;">Elemento</th>
-                    <th style="width:45%;">Denominación</th>
-                    <th style="width:7%;" class="num">Piso</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($accesos as $i => $ac)
-                    <tr class="{{ $i % 2 ? 'par' : '' }}">
-                        <td class="num">{{ $i + 1 }}</td>
-                        <td>{{ $ac['elemento'] }}</td>
-                        <td>{{ $ac['nombre'] }}</td>
-                        <td class="num">{{ $ac['piso'] }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
 </body>
-
 </html>

@@ -136,7 +136,7 @@
                 </div>
 
                 <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
-                    <a href="{{ route('usuario.monitoreo.rrhh.pdf', $acta->id) }}" target="_blank" 
+                    <a href="{{ route('usuario.monitoreo.rrhh.pdf', $acta->id) }}?v={{ time() }}" target="_blank" 
                        class="flex-1 h-10 bg-white text-violet-600 border border-violet-200 rounded-xl flex items-center justify-center gap-2 hover:bg-violet-600 hover:text-white transition-all shadow-sm font-black text-[10px] uppercase">
                         <i data-lucide="file-text" class="w-4 h-4"></i> Generar Reporte RR.HH
                     </a>
@@ -201,7 +201,7 @@
                             <i data-lucide="edit-3" class="w-5 h-5"></i>
                         </a>
 
-                        <a href="{{ route('usuario.monitoreo.consultorio.pdf', [$acta->id, $cSlug]) }}" target="_blank" 
+                        <a href="{{ route('usuario.monitoreo.consultorio.pdf', [$acta->id, $cSlug]) }}?v={{ time() }}" target="_blank" 
                            class="h-10 w-10 bg-white text-slate-600 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="Previsualizar Reporte PDF">
                             <i data-lucide="file-text" class="w-5 h-5"></i>
                         </a>

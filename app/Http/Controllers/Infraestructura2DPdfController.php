@@ -26,19 +26,12 @@ class Infraestructura2DPdfController extends Controller
         $acta = CabeceraMonitoreo::with('establecimiento')->findOrFail($id);
 
         // 2. Cargar el detalle guardado para el módulo infraestructura_2d.
-        //    El reporte se arma con lo guardado: si el croquis todavía no se ha
-        //    guardado no hay nada que imprimir, y conviene decirlo con claridad
-        //    en vez de dejar el 404 seco de firstOrFail().
         $modulo = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
             ->where('modulo_nombre', 'infraestructura_2d')
             ->first();
 
-        if (!$modulo) {
-            abort(404, 'Todavía no se ha guardado el croquis de este establecimiento. Guárdelo desde el editor y vuelva a exportar el PDF.');
-        }
-
         // 3. Contenido del croquis (elementos y conexiones)
-        $contenido = $modulo->contenido ?? [];
+        $contenido = $modulo ? ($modulo->contenido ?? []) : [];
         $elementos = $contenido['elementos'] ?? [];
         $conexiones = $contenido['conexiones'] ?? [];
 

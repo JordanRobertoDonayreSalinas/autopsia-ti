@@ -287,9 +287,10 @@ class MedicinaFamiliarESPController extends Controller
                         'descripcion' => $eq['descripcion'],
                         'cantidad'    => (int)$eq['cantidad'],
                         'estado'      => $eq['estado'],
-                        'nro_serie'   => $eq['nro_serie'],
-                        'propio'      => $eq['propio'],
-                        'observacion' => $eq['observacion'],
+                        'nro_serie'   => $eq['nro_serie'] ?? null,
+                        'propio'      => $eq['propio'] ?? 'EXCLUSIVO',
+                        'observacion' => $eq['observacion'] ?? null,
+                        'especificaciones' => $eq['especificaciones'] ?? null,
                     ]);
                 }
             }
