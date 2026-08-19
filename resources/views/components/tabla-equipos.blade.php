@@ -708,7 +708,7 @@
 
     window.procesarDatosHardware = function(hw, modulo) {
         // Limpiar la tabla de equipos antes de re-poblarla con bienes patrimoniales/físicos
-        const tbody = document.getElementById(`tabla_equipos_body_${modulo}`);
+        const tbody = document.getElementById(`body_equipos_${modulo}`);
         if (tbody) {
             tbody.innerHTML = '';
         }

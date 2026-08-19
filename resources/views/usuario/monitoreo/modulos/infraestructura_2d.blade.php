@@ -363,12 +363,18 @@
 
                 /* Nombre corto de cada equipo, para cuando la descripción no cabe bajo el icono */
                 const HW_LABEL = {
-                    pc: 'CPU', laptop: 'LAPTOP', tablet: 'TABLET', monitor: 'MONITOR',
+                    all_in_one: 'ALL IN ONE', pc: 'CPU', laptop: 'LAPTOP', tablet: 'TABLET', monitor: 'MONITOR',
                     teclado: 'TECLADO', mouse: 'MOUSE', impresora: 'IMPRESORA',
-                    ticketera: 'TICKETERA', escaner: 'LECTOR', ups: 'UPS',
+                    ticketera: 'TICKETERA', escaner: 'ESCANER', lector_dnie: 'LECTOR DNIe', ups: 'UPS',
                     router: 'ROUTER', ap: 'ACCESS POINT', switch: 'SWITCH',
                     pozo: 'POZO TIERRA', punto_red: 'PUNTO RED', equipo: 'EQUIPO',
                     panel_solar: 'PANEL SOLAR',
+                };
+
+                /* Nombre legible de cada sistema de salud dibujable en el croquis */
+                const SIST_LABEL = {
+                    tua: 'TUA', sihce: 'SIHCE', sismed: 'SISMED',
+                    hisminsa: 'HISMINSA', sisgalenplus: 'SIS GALENPLUS',
                 };
 
                 /* Estado del equipo en el inventario: tiñe el equipo para verlo de un vistazo */
@@ -385,13 +391,15 @@
                     /* Catálogo del panel de Equipamiento TI */
                     equiposComputo: [
                         { tipo: 'pc', label: 'CPU', icon: 'cpu' },
+                        { tipo: 'all_in_one', label: 'All in One', icon: 'monitor' },
                         { tipo: 'laptop', label: 'Laptop', icon: 'laptop' },
                         { tipo: 'monitor', label: 'Monitor', icon: 'monitor' },
                         { tipo: 'teclado', label: 'Teclado', icon: 'keyboard' },
                         { tipo: 'mouse', label: 'Mouse', icon: 'mouse' },
                         { tipo: 'impresora', label: 'Impresora', icon: 'printer' },
                         { tipo: 'ticketera', label: 'Ticketera', icon: 'receipt' },
-                        { tipo: 'escaner', label: 'Lector DNIe', icon: 'scan-line' },
+                        { tipo: 'escaner', label: 'Escáner', icon: 'scan-line' },
+                        { tipo: 'lector_dnie', label: 'Lector DNIe', icon: 'contact' },
                         { tipo: 'tablet', label: 'Tablet', icon: 'tablet' },
                     ],
                     equiposRed: [
@@ -408,8 +416,17 @@
                         const eq = todos.find(e => e.tipo === this.hwType);
                         return eq ? eq.label : 'Equipo';
                     },
-                    layers: { furniture: true, network: true, power: true, calles: false },
+                    /* "calles" arranca activo: al entrar al croquis (nuevo o existente)
+                       se ve de una vez el mapa real con los nombres de las calles
+                       alrededor del establecimiento (el punto rojo), sin tener que
+                       marcar el checkbox a mano cada vez. Si el acta no tiene
+                       coordenadas guardadas, drawStreetBase() simplemente no dibuja
+                       nada, así que dejarlo en true no rompe nada. */
+                    layers: { furniture: true, network: true, power: true, calles: true },
                     tileCache: {},
+                    /* Nombres reales de calles cercanas (OpenStreetMap), para
+                       dibujarlos sobre el mapa base — ver _cargarCallesCercanas() */
+                    _callesCercanas: [],
                     tileOpacity: 0.5,
                     tileZoom: 21.5,
                     mapOffsetX: @json($contenido['mapOffsetX'] ?? 0),
@@ -461,7 +478,16 @@
                     /* ─ Pisos (multi-floor) ─ */
                     currentPiso: 1,
                     totalPisos: @json($contenido['totalPisos'] ?? 1),
+                    /* Tope defensivo: sin límite, un clic de más en "Añadir piso" (o un
+                       número de piso mal tipeado en la ficha de un consultorio) podía
+                       inflar el croquis a decenas de plantas por accidente. */
+                    MAX_PISOS: 30,
                     showGhostFloor: true,
+                    /* Diferencia entre el reloj del servidor y el de este navegador
+                       (ms). Se corrige con cada sondeo de colaboración (_syncState) y
+                       se usa en _now() para que la fusión "quién cambió más reciente"
+                       no dependa del reloj de cada PC — ver _now() más abajo. */
+                    _clockOffset: 0,
                     /* ─ Sidebar pointer-drag state ─ */
                     _sbDrag: null,           // { type, subtype, startX, startY, isDragging }
                     isDraggingMap: false,
@@ -473,6 +499,7 @@
                     /* ─ Colaboración en Tiempo Real ─ */
                     colaboradores: [],            // [{ user_id, user_name, color, cursor_x, cursor_y, elements, connections }]
                     _syncInterval: null,
+                    _moduloSyncInterval: null,
                     _cursorSendThrottle: null,
                     _pendingCursorX: 0,
                     _pendingCursorY: 0,
@@ -490,7 +517,7 @@
                     _toastTimer: null,           // Timer para auto-ocultar el toast
 
                     /* ─ Datos de módulos (sincronización) ─ */
-                    modulosData: @json($modulosData ?? []),  // [{ slug, label, equipos[], utiliza_sihce, tipo_conectividad }]
+                    modulosData: @json($modulosData ?? []),  // [{ slug, label, equipos[], utiliza_sihce, sistema_actual, tipo_conectividad }]
 
                     /* ─ Pozo a tierra: dato del acta completa, no de un consultorio en particular ─ */
                     pozoTierra: @json($acta->pozo_tierra ?? 'NO'),
@@ -550,6 +577,33 @@
 
                             /* Colaboración: iniciar polling */
                             this._startColabSync();
+
+                            /* Auto-sincronización con los módulos: primero al abrir, luego
+                               cada 20s, para que cambios en la ficha (p. ej. el piso de un
+                               consultorio) aparezcan solos, sin tener que pulsar "Sincronizar". */
+                            this._autoSyncModulos();
+                            if (this._moduloSyncInterval) clearInterval(this._moduloSyncInterval);
+                            this._moduloSyncInterval = setInterval(() => this._autoSyncModulos(), 20000);
+
+                            /* Nombres reales de las calles, para dibujarlos sobre el
+                               mapa de fondo una vez que haya coordenadas. */
+                            this._cargarCallesCercanas();
+
+                            /* Con la pestaña en segundo plano no hay nadie mirando: se
+                               detiene el sondeo de colaboración (900ms) y el de módulos
+                               (20s) para no gastar peticiones de balde, y se retoman
+                               —con una sincronización inmediata— al volver a la pestaña. */
+                            document.addEventListener('visibilitychange', () => {
+                                if (document.hidden) {
+                                    clearInterval(this._syncInterval);
+                                    clearInterval(this._moduloSyncInterval);
+                                } else {
+                                    this._startColabSync();
+                                    this._autoSyncModulos();
+                                    clearInterval(this._moduloSyncInterval);
+                                    this._moduloSyncInterval = setInterval(() => this._autoSyncModulos(), 20000);
+                                }
+                            });
 
                             /* Auto-ajuste inicial para encuadrar el diseño */
                             setTimeout(() => this.autoFit(), 120);
@@ -704,7 +758,7 @@
                         if (!this.history.length) return;
                         this.future.push(JSON.stringify({ elements: this.elements, connections: this.connections }));
                         const prev = JSON.parse(this.history.pop());
-                        const now = Date.now();
+                        const now = this._now();
 
                         /* Detectar elementos borrados por el undo y notificarlos */
                         this.elements.forEach(cEl => {
@@ -732,7 +786,7 @@
                         if (!this.future.length) return;
                         this.history.push(JSON.stringify({ elements: this.elements, connections: this.connections }));
                         const next = JSON.parse(this.future.pop());
-                        const now = Date.now();
+                        const now = this._now();
 
                         /* Detectar elementos borrados por el redo y notificarlos */
                         this.elements.forEach(cEl => {
@@ -786,6 +840,14 @@
                         return arr;
                     },
                     addPiso() {
+                        if (this.totalPisos >= this.MAX_PISOS) {
+                            Swal.fire({
+                                title: 'Límite de pisos alcanzado',
+                                text: `Este croquis ya tiene ${this.totalPisos} pisos. Si de verdad necesitas más, contacta a soporte.`,
+                                icon: 'warning', confirmButtonColor: '#4f46e5'
+                            });
+                            return;
+                        }
                         this._snapshot();
                         this.totalPisos++;
                         this.currentPiso = this.totalPisos;
@@ -843,9 +905,9 @@
                         if (!el) return;
                         this._snapshot();
                         el.piso = n;
-                        el._ts = Date.now();
+                        el._ts = this._now();
                         /* Los equipos del ambiente cambian de piso con él */
-                        this._childrenOf(el.id).forEach(ch => { ch.piso = n; ch._ts = Date.now(); });
+                        this._childrenOf(el.id).forEach(ch => { ch.piso = n; ch._ts = this._now(); });
                         this.draw();
                     },
                     /* Count elements per piso */
@@ -890,7 +952,7 @@
                             x: rx, y: ry, w, h,
                             rot: 0,
                             attrs: { ...this.attrs },
-                            _ts: Date.now(),     /* marca de tiempo para merge en colaboración */
+                            _ts: this._now(),     /* marca de tiempo para merge en colaboración */
                         };
                         this.elements.push(newEl);
                         this.selectedId = newEl.id;
@@ -1002,7 +1064,7 @@
                             ch.x = cx + (dx * cos - dy * sin) - ch.w / 2;
                             ch.y = cy + (dx * sin + dy * cos) - ch.h / 2;
                             ch.rot = ((ch.rot || 0) + delta) % 360;
-                            ch._ts = Date.now();
+                            ch._ts = this._now();
                         });
                     },
 
@@ -1125,8 +1187,11 @@
                         ctx.scale(this.canvasZoom, this.canvasZoom);
                         ctx.globalAlpha = this.canvasOpacity;
 
-                        /* Capa de mapa base (tiles OSM) */
-                        if (this.layers.calles && this.geoLat !== null) this.drawStreetBase(lw, lh);
+                        /* Capa de mapa base (tiles OSM) + nombres reales de calles */
+                        if (this.layers.calles && this.geoLat !== null) {
+                            this.drawStreetBase(lw, lh);
+                            this.drawCallesCercanas();
+                        }
 
                         /* ── Retícula en dos niveles: la menor se retira al alejarse,
                               de modo que el plano nunca se ve emborronado ── */
@@ -1966,6 +2031,13 @@
                                 c.beginPath(); c.moveTo(-3, -7); c.lineTo(3, -7); c.stroke();
                                 c.beginPath(); c.arc(0, 5, 1.8, 0, Math.PI * 2); c.fill();
                             },
+                            all_in_one: (c) => {
+                                /* Pantalla y base en una sola pieza (a diferencia del 'pc',
+                                   que es una torre/CPU separada del monitor). */
+                                c.beginPath(); c.roundRect(-11, -10, 22, 16, 2); c.stroke();
+                                c.beginPath(); c.moveTo(0, 6); c.lineTo(0, 9); c.stroke();
+                                c.beginPath(); c.moveTo(-6, 10.5); c.lineTo(6, 10.5); c.stroke();
+                            },
                             laptop: (c) => {
                                 c.beginPath(); c.roundRect(-9, -8, 18, 12, 1.5); c.stroke();
                                 c.beginPath();
@@ -2007,6 +2079,15 @@
                                 c.beginPath(); c.roundRect(-11, -6, 22, 12, 2); c.stroke();
                                 c.beginPath(); c.moveTo(-7, 0); c.lineTo(7, 0); c.stroke();
                                 c.beginPath(); c.roundRect(-4, -3.5, 8, 3, 1); c.fill();
+                            },
+                            lector_dnie: (c) => {
+                                /* Tarjeta de identidad (DNIe) con su chip, distinto del
+                                   escáner de documentos. */
+                                c.beginPath(); c.roundRect(-11, -8, 22, 16, 2.5); c.stroke();
+                                c.beginPath(); c.roundRect(-7.5, -4.5, 6, 5, 1); c.stroke();
+                                c.beginPath(); c.moveTo(1.5, -3); c.lineTo(7.5, -3); c.stroke();
+                                c.beginPath(); c.moveTo(1.5, 1); c.lineTo(7.5, 1); c.stroke();
+                                c.beginPath(); c.moveTo(-7.5, 5); c.lineTo(7.5, 5); c.stroke();
                             },
                             ups: (c) => {
                                 c.beginPath(); c.roundRect(-9, -10, 18, 20, 2); c.stroke();
@@ -2834,7 +2915,7 @@
                             return;
                         }
                         if (isDragging && dragTarget) {
-                            dragTarget._ts = Date.now(); /* actualizar timestamp al mover */
+                            dragTarget._ts = this._now(); /* actualizar timestamp al mover */
                             this._snapshot();
                         }
                         isDragging = false; dragTarget = null;
@@ -2847,7 +2928,7 @@
                             this._snapshot();
                             el.w = Math.max(20, el.w + dw);
                             el.h = Math.max(20, el.h + dh);
-                            el._ts = Date.now();
+                            el._ts = this._now();
                             this.draw();
                         }
                     },
@@ -2857,7 +2938,7 @@
                         if (el) {
                             this._snapshot();
                             this._applyRotation(el, (el.rot || 0) + deg);
-                            el._ts = Date.now();
+                            el._ts = this._now();
                             this.draw();
                         }
                     },
@@ -2867,7 +2948,7 @@
                         if (el) {
                             this._snapshot();
                             this._applyRotation(el, +deg);
-                            el._ts = Date.now();
+                            el._ts = this._now();
                             this.draw();
                         }
                     },
@@ -2877,7 +2958,7 @@
                         if (el) {
                             this._snapshot();
                             el[prop] = Math.max(20, +val);
-                            el._ts = Date.now();
+                            el._ts = this._now();
                             this.draw();
                         }
                     },
@@ -2888,7 +2969,7 @@
                             if (!el.attrs) el.attrs = {};
                             this._snapshot();
                             el.attrs[prop] = !el.attrs[prop];
-                            el._ts = Date.now();
+                            el._ts = this._now();
                             this.draw();
                         }
                     },
@@ -2899,7 +2980,7 @@
                             if (!el.attrs) el.attrs = {};
                             this._snapshot();
                             el.attrs[prop] = Math.max(0, (el.attrs[prop] || 0) + delta);
-                            el._ts = Date.now();
+                            el._ts = this._now();
                             this.draw();
                         }
                     },
@@ -3457,18 +3538,48 @@
                         this.mapOffsetY = 0;
                         this.draw();
                     },
+                    /* El ancla del mapa (mapAnchorX/Y) se fija una sola vez, la primera
+                       vez que se dibuja el croquis, y desde ahí queda guardada para
+                       siempre — es lo que evita que el fondo "baile" al cambiar de
+                       dispositivo o entrar en pantalla completa. Pero si más adelante
+                       se corrigen las coordenadas GPS del establecimiento, o el mapa
+                       quedó mal calibrado desde el principio, no había forma de
+                       empezar de nuevo la calibración sin editar la base de datos a
+                       mano. Este botón la reinicia: el ancla vuelve al centro del
+                       lienzo actual y el micro-ajuste se pone en cero. */
+                    recentrarMapa() {
+                        Swal.fire({
+                            title: '¿Recalibrar el mapa desde cero?',
+                            text: 'El fondo del mapa (calles, teselas) volverá a centrarse en el lienzo actual. Útil si se corrigieron las coordenadas del establecimiento o si el mapa quedó mal ubicado. No afecta las salas ni los equipos ya dibujados.',
+                            icon: 'question', showCancelButton: true,
+                            confirmButtonText: 'Recalibrar', cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#059669', cancelButtonColor: '#94a3b8',
+                        }).then((result) => {
+                            if (!result.isConfirmed) return;
+                            this.mapAnchorX = null;
+                            this.mapAnchorY = null;
+                            this.mapOffsetX = 0;
+                            this.mapOffsetY = 0;
+                            this.draw();
+                        });
+                    },
 
-                    /* ─── Fetch AJAX de modulos ─── */
-                    async fetchAndSyncModulos() {
+                    /* ─── Reiniciar croquis ───
+                       Ya no hace falta un botón para "agregar/actualizar": eso ocurre
+                       solo con la auto-sincronización (_autoSyncModulos). Este botón
+                       queda únicamente para el caso destructivo: borrar todo el croquis
+                       actual y regenerarlo desde cero con los datos vigentes de los
+                       módulos. Por eso sigue pidiendo una confirmación explícita. */
+                    async reiniciarCroquis() {
                         const btn = document.getElementById('btn-sync');
                         try {
                             if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
-                            
+
                             const res = await fetch(`{{ route('usuario.monitoreo.infraestructura-2d.sync-data', $acta->id) }}`, {
                                 cache: 'no-cache'
                             });
                             if (!res.ok) throw new Error('Error al sincronizar');
-                            
+
                             const data = await res.json();
                             this.modulosData = data.modulos || [];
 
@@ -3505,36 +3616,168 @@
                             const sinEq = activos.filter(m => (m.equipos || []).length === 0).length;
 
                             const result = await Swal.fire({
-                                title: '⚡ Sincronizar desde Módulos',
-                                html: `<p class='text-sm text-slate-600 mb-1'><strong>${activos.length}</strong> servicio(s) activo(s) con <strong>${totalEq}</strong> equipo(s) registrado(s).</p>
-                                    ${sinEq ? `<p class='text-[11px] text-slate-400 mb-3'>${sinEq} sin equipos: se dibujará la sala vacía.</p>` : `<div class='mb-3'></div>`}
-                                    <div class='flex flex-col gap-3'>
-                                        <label class='flex items-start gap-3 cursor-pointer p-3 border-2 border-indigo-200 rounded-xl hover:bg-indigo-50 transition-all'>
-                                        <input type='radio' name='sync_mode' value='agregar' checked class='mt-0.5 accent-indigo-600'>
-                                        <div class='text-left'><p class='font-bold text-xs text-slate-800'>Agregar a lo existente</p><p class='text-[10px] text-slate-500'>Solo añade equipos nuevos detectados y consultorios faltantes.</p></div>
-                                        </label>
-                                        <label class='flex items-start gap-3 cursor-pointer p-3 border-2 border-rose-200 rounded-xl hover:bg-rose-50 transition-all'>
-                                        <input type='radio' name='sync_mode' value='limpiar' class='mt-0.5 accent-rose-600'>
-                                        <div class='text-left'><p class='font-bold text-xs text-slate-800'>Limpiar y reemplazar</p><p class='text-[10px] text-slate-500'>Borra TODO el croquis actual y lo genera desde cero.</p></div>
-                                        </label>
-                                    </div>`,
+                                title: '🔄 ¿Reiniciar el croquis?',
+                                html: `<p class='text-sm text-slate-600 mb-2'>Se <strong>borrará todo</strong> lo que hay actualmente en el croquis (salas, equipos y cableado) y se <strong>regenerará desde cero</strong> con los datos vigentes:</p>
+                                    <p class='text-sm text-slate-600 mb-1'><strong>${activos.length}</strong> servicio(s) activo(s) con <strong>${totalEq}</strong> equipo(s) registrado(s).</p>
+                                    ${sinEq ? `<p class='text-[11px] text-slate-400 mb-2'>${sinEq} sin equipos: se dibujará la sala vacía.</p>` : ''}
+                                    <p class='text-[11px] text-rose-500 font-bold'>Cualquier posición que hayas movido a mano se perderá.</p>`,
+                                icon: 'warning',
                                 showCancelButton: true,
-                                confirmButtonText: '⚡ Sincronizar',
+                                confirmButtonText: '🔄 Sí, reiniciar',
                                 cancelButtonText: 'Cancelar',
-                                confirmButtonColor: '#4f46e5',
+                                confirmButtonColor: '#e11d48',
                                 cancelButtonColor: '#94a3b8',
                                 customClass: { popup: 'rounded-[2rem]' },
-                                preConfirm: () => document.querySelector('input[name=sync_mode]:checked')?.value || 'agregar'
                             });
 
                             if (result.isConfirmed) {
-                                this.prepopularModulos(result.value === 'limpiar');
+                                this.prepopularModulos(true);
                             }
                         } catch (e) {
                             console.error(e);
                             if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
                             Swal.fire({title: 'Error', text: 'No se pudieron actualizar los datos del servidor.', icon: 'error'});
                         }
+                    },
+
+                    /* ─── Auto-sincronización silenciosa ───
+                       Igual que el botón ⚡, pero sin diálogos: se dispara sola al abrir
+                       el croquis y cada cierto tiempo mientras el usuario lo tiene abierto,
+                       para que un cambio de piso (u otro dato) hecho en la ficha del
+                       consultorio se refleje sin que nadie tenga que acordarse de pulsar
+                       "Sincronizar". Nunca borra ni reemplaza: solo agrega/ajusta, igual
+                       que el modo "Agregar a lo existente" del sync manual. */
+                    async _autoSyncModulos() {
+                        try {
+                            const res = await fetch(`{{ route('usuario.monitoreo.infraestructura-2d.sync-data', $acta->id) }}`, {
+                                cache: 'no-cache'
+                            });
+                            if (!res.ok) return;
+
+                            const data = await res.json();
+                            this.modulosData = data.modulos || [];
+                            this.pozoTierra = data.pozo_tierra ?? 'NO';
+                            this.pozoTierraCantidad = data.pozo_tierra_cantidad ?? 0;
+                            this.pozoTierraOperativos = data.pozo_tierra_operativos ?? 0;
+                            this.pozoTierraInoperativos = data.pozo_tierra_inoperativos ?? 0;
+                            this.panelSolar = data.panel_solar ?? 'NO';
+                            this.panelSolarCantidad = data.panel_solar_cantidad ?? 0;
+                            this.panelSolarOperativos = data.panel_solar_operativos ?? 0;
+                            this.panelSolarInoperativos = data.panel_solar_inoperativos ?? 0;
+
+                            this.prepopularModulos(false, true);
+                        } catch (_) {
+                            /* Silencioso — un fallo de red no debe interrumpir el editor */
+                        }
+                    },
+
+                    /* ─── Calles reales sobre el mapa de fondo ───
+                       Si el establecimiento tiene coordenadas, se consulta a
+                       OpenStreetMap las vías con nombre más cercanas y se guardan
+                       en memoria (NO como elementos del croquis: no se guardan con
+                       el acta ni se pueden mover). Se dibujan encima del mapa base
+                       (drawStreetBase) en su posición geográfica real, así que se
+                       mueven junto con él si el usuario reajusta el zoom/offset del
+                       mapa para calibrarlo con su dibujo. */
+                    async _cargarCallesCercanas(intento = 1) {
+                        if (this.geoLat === null || this.geoLng === null) return;
+                        if (this._callesCercanas.length) return; /* ya se consiguieron */
+
+                        try {
+                            const res = await fetch(`{{ route('usuario.monitoreo.infraestructura-2d.calles-cercanas', $acta->id) }}`, {
+                                cache: 'no-cache'
+                            });
+                            if (!res.ok) throw new Error('respuesta no-ok');
+
+                            const data = await res.json();
+                            const calles = data.calles || [];
+
+                            if (!calles.length && intento < 3) {
+                                /* Overpass (el servicio público de mapas) suele saturarse;
+                                   un vacío en el primer intento no siempre significa que
+                                   de verdad no haya calles cerca. Se reintenta un par de
+                                   veces, espaciado, antes de darlo por definitivo. */
+                                setTimeout(() => this._cargarCallesCercanas(intento + 1), 20000);
+                                return;
+                            }
+
+                            this._callesCercanas = calles;
+                            this.draw();
+                        } catch (_) {
+                            if (intento < 3) {
+                                setTimeout(() => this._cargarCallesCercanas(intento + 1), 20000);
+                            }
+                            /* Al tercer intento fallido, silencioso — no se dibuja nada extra */
+                        }
+                    },
+
+                    /* Proyecta una coordenada geográfica al espacio del lienzo,
+                       con la misma matemática (y el mismo ancla/offset/zoom) que
+                       usa drawStreetBase() para las teselas del mapa — así un
+                       punto real siempre cae exactamente sobre su calle en el
+                       mapa de fondo, se ajuste como se ajuste ese mapa. */
+                    _geoToCanvas(lat, lng) {
+                        if (this.geoLat === null || this.geoLng === null) return null;
+                        if (this.mapAnchorX === null || this.mapAnchorX === undefined) return null;
+
+                        const TILE_ZOOM = 19;
+                        const SIM_ZOOM = parseFloat(this.tileZoom);
+                        const SCALE = Math.pow(2, SIM_ZOOM - TILE_ZOOM);
+                        const T = 256;
+                        const n = Math.pow(2, TILE_ZOOM);
+
+                        const proj = (lt, lg) => {
+                            const latRad = lt * Math.PI / 180;
+                            return {
+                                x: (lg + 180) / 360 * n * T,
+                                y: (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n * T,
+                            };
+                        };
+
+                        const anchorPx = proj(this.geoLat, this.geoLng);
+                        const cx = anchorPx.x + (this.mapOffsetX || 0);
+                        const cy = anchorPx.y + (this.mapOffsetY || 0);
+
+                        const px = proj(lat, lng);
+                        return {
+                            x: this.mapAnchorX + (px.x - cx) * SCALE,
+                            y: this.mapAnchorY + (px.y - cy) * SCALE,
+                        };
+                    },
+
+                    /* Nombres de las calles cercanas, escritos sobre su posición
+                       real en el mapa base — un punto de color + su nombre, con
+                       halo blanco para que se lean sobre cualquier tesela. */
+                    drawCallesCercanas() {
+                        if (!ctx || !this._callesCercanas?.length) return;
+
+                        const COLOR = { avenida: '#4338ca', jiron: '#1d4ed8', pasaje: '#0f766e' };
+
+                        ctx.save();
+                        this._callesCercanas.forEach(c => {
+                            const p = this._geoToCanvas(c.lat, c.lon);
+                            if (!p) return;
+
+                            const color = COLOR[c.tipo] || COLOR.jiron;
+                            const size = this._px(11);
+                            if (!this._readable(9)) return;
+
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, this._px(3), 0, Math.PI * 2);
+                            ctx.fillStyle = color;
+                            ctx.fill();
+
+                            ctx.font = `700 ${size}px Inter, system-ui, Arial`;
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.lineWidth = this._px(3);
+                            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+                            ctx.lineJoin = 'round';
+                            ctx.strokeText(c.nombre, p.x + this._px(6), p.y);
+                            ctx.fillStyle = color;
+                            ctx.fillText(c.nombre, p.x + this._px(6), p.y);
+                        });
+                        ctx.restore();
                     },
 
                     /* ─── Volcar los módulos del acta al croquis ───
@@ -3558,17 +3801,19 @@
                         return 'consultorio_fisico';
                     },
 
-                    prepopularModulos(modoLimpiar = false) {
+                    prepopularModulos(modoLimpiar = false, silent = false) {
                         /* Se dibuja todo servicio activo del establecimiento; los equipos
                            solo se añaden a los que tengan alguno registrado. */
                         const servicios = (this.modulosData || []).filter(m => m.activo);
 
                         if (!servicios.length) {
-                            Swal.fire({
-                                title: 'Sin servicios activos',
-                                text: 'Este establecimiento no tiene módulos activos, así que no hay servicios que dibujar en el croquis.',
-                                icon: 'info', confirmButtonColor: '#4f46e5'
-                            });
+                            if (!silent) {
+                                Swal.fire({
+                                    title: 'Sin servicios activos',
+                                    text: 'Este establecimiento no tiene módulos activos, así que no hay servicios que dibujar en el croquis.',
+                                    icon: 'info', confirmButtonColor: '#4f46e5'
+                                });
+                            }
                             return;
                         }
 
@@ -3605,8 +3850,56 @@
                             this.selectedId = null;
                         }
 
+                        /* ── Autocorrección: si por una sincronización concurrente (dos
+                              pestañas editando a la vez, por ejemplo) quedaron dos salas
+                              para el mismo consultorio (mismo _slug), se fusionan en una
+                              sola antes de seguir. Se conserva la más reciente y se le
+                              reasignan los equipos que solo estaban en la otra copia; la
+                              sobrante se elimina y se notifica a los demás editores. Los
+                              ambientes sin _slug (baños, pasillos... puestos a mano) nunca
+                              se tocan aquí, aunque compartan nombre. ── */
+                        if (!modoLimpiar) {
+                            const gruposPorSlug = {};
+                            this.elements.forEach(e => {
+                                if (e.type !== 'ambiente' || !e._slug) return;
+                                (gruposPorSlug[e._slug] = gruposPorSlug[e._slug] || []).push(e);
+                            });
+                            const idsAFusionar = new Set();
+                            Object.values(gruposPorSlug).forEach(grupo => {
+                                if (grupo.length < 2) return;
+                                grupo.sort((a, b) => (b._ts || 0) - (a._ts || 0));
+                                const keeper = grupo[0];
+                                grupo.slice(1).forEach(dup => {
+                                    this.elements
+                                        .filter(e => e.parentId === dup.id)
+                                        .forEach(hijo => {
+                                            const yaExiste = this.elements.some(e =>
+                                                e.parentId === keeper.id &&
+                                                e.type === hijo.type &&
+                                                e.subtype === hijo.subtype &&
+                                                String(e.estado || '') === String(hijo.estado || '')
+                                            );
+                                            if (yaExiste) {
+                                                idsAFusionar.add(hijo.id);
+                                            } else {
+                                                hijo.parentId = keeper.id;
+                                            }
+                                        });
+                                    idsAFusionar.add(dup.id);
+                                });
+                            });
+                            if (idsAFusionar.size) {
+                                idsAFusionar.forEach(idDup => {
+                                    if (!this.deletedIds.includes(idDup)) this.deletedIds.push(idDup);
+                                });
+                                this.elements = this.elements.filter(e => !idsAFusionar.has(e.id));
+                                this.connections = this.connections.filter(c => !idsAFusionar.has(c.from) && !idsAFusionar.has(c.to));
+                                if (idsAFusionar.has(this.selectedId)) this.selectedId = null;
+                            }
+                        }
+
                         const rid = () => Math.random().toString(36).slice(2, 7);
-                        const now = () => Date.now();
+                        const now = () => this._now();
                         let salasNuevas = 0, equiposNuevos = 0, salasActualizadas = 0;
 
                         /* ── Piso de cada servicio: lo declara la propia ficha del
@@ -3615,7 +3908,10 @@
                               lleva su propia cuenta de posición, para que la rejilla de
                               salas se vea ordenada dentro de cada planta y no dependa
                               de en qué piso esté parado el usuario al sincronizar. ── */
-                        const pisoDe = (m) => Math.max(1, parseInt(m.piso, 10) || 1);
+                        /* Se limita al mismo tope que "Añadir piso": un número de piso
+                           mal tipeado en la ficha (la pregunta admite hasta 99) no debe
+                           poder inflar el croquis más allá de lo manejable. */
+                        const pisoDe = (m) => Math.min(this.MAX_PISOS, Math.max(1, parseInt(m.piso, 10) || 1));
                         const maxPisoServicios = Math.max(1, ...layouts.map(({ m }) => pisoDe(m)));
                         if (maxPisoServicios > this.totalPisos) this.totalPisos = maxPisoServicios;
                         const idxPorPiso = {};
@@ -3625,9 +3921,13 @@
                             const labelUp = label.toUpperCase();
                             const pisoDestino = pisoDe(m);
 
-                            /* ¿La sala ya está en el croquis? */
-                            let sala = modoLimpiar ? null : this.elements.find(
-                                e => e.type === 'ambiente' && (e.name || '').toUpperCase() === labelUp
+                            /* ¿La sala ya está en el croquis? Se identifica por el slug del
+                               módulo (estable aunque se renombre el consultorio); solo los
+                               elementos antiguos que no llevan _slug (de antes de este cambio)
+                               se siguen emparejando por nombre, para no duplicarlos de nuevo. */
+                            let sala = modoLimpiar ? null : (
+                                this.elements.find(e => e.type === 'ambiente' && e._slug === m.slug) ||
+                                this.elements.find(e => e.type === 'ambiente' && !e._slug && (e.name || '').toUpperCase() === labelUp)
                             );
 
                             const idx = idxPorPiso[pisoDestino] || 0;
@@ -3670,8 +3970,17 @@
                                     sala.subtype = nuevoTipo;
                                 }
                                 /* Si en la ficha cambiaron el piso, la sala se traslada a la
-                                   planta correcta (conserva su posición dentro de la nueva). */
-                                if (sala.piso !== pisoDestino) sala.piso = pisoDestino;
+                                   planta correcta. Su x,y viejo pertenecía a la rejilla del
+                                   piso anterior: conservarlo tal cual podía superponerla con
+                                   lo que ya hay en el piso destino, así que se le asigna una
+                                   celda nueva y libre en la rejilla de esa planta. */
+                                if (sala.piso !== pisoDestino) {
+                                    sala.piso = pisoDestino;
+                                    const col = idx % COLS_SALA;
+                                    const row = Math.floor(idx / COLS_SALA);
+                                    sala.x = STARTX + col * (RW + GAP);
+                                    sala.y = STARTY + row * (RH + GAP);
+                                }
                             }
                             idxPorPiso[pisoDestino] = idx + 1;
 
@@ -3686,13 +3995,40 @@
                                 const r = Math.floor(i / cols);
 
                                 /* En modo agregar no se duplica un equipo ya representado */
-                                const yaEsta = !modoLimpiar && this.elements.some(e =>
+                                const existente = !modoLimpiar && this.elements.find(e =>
                                     e.type === 'hardware' &&
                                     e.parentId === sala.id &&
                                     e.subtype === eq.tipo &&
                                     String(e.estado || '') === String(eq.estado || '')
                                 );
-                                if (yaEsta) return;
+                                if (existente) {
+                                    /* Refresca cantidad y descripción: si en la ficha del
+                                       consultorio cambió la cantidad (2 CPUs → 3) o el texto
+                                       de la descripción, el icono ya dibujado debe reflejarlo
+                                       en vez de quedarse con el valor de la primera sincronización. */
+                                    const nuevoNombre = eq.descripcion || eq.tipo.toUpperCase();
+                                    if (existente.cantidad !== eq.cantidad || existente.name !== nuevoNombre) {
+                                        existente.cantidad = eq.cantidad;
+                                        existente.name = nuevoNombre;
+                                        existente._ts = now();
+                                    }
+
+                                    /* Reacomoda el equipo a su celda vigente de la rejilla:
+                                       si la sala cambió de piso, se agrandó, o la cantidad de
+                                       equipos varió desde la última sincronización, la celda
+                                       calculada aquí ya no es la misma con la que se creó este
+                                       elemento — sin este reajuste quedaba "congelado" en su
+                                       posición vieja y terminaba superpuesto con los demás. */
+                                    const nx = originX + c * (HWW + HWGAP);
+                                    const ny = originY + r * (HWH + HWGAP);
+                                    if (existente.piso !== pisoDestino || existente.x !== nx || existente.y !== ny) {
+                                        existente.piso = pisoDestino;
+                                        existente.x = nx;
+                                        existente.y = ny;
+                                        existente._ts = now();
+                                    }
+                                    return;
+                                }
 
                                 this.elements.push({
                                     id: 'hw_' + m.slug + '_' + eq.tipo + '_' + rid(),
@@ -3706,31 +4042,84 @@
                                     rot: 0,
                                     estado: eq.estado,
                                     cantidad: eq.cantidad,
-                                    piso: this.currentPiso,
+                                    piso: pisoDestino,
                                     _ts: now(),
                                     _synced: true,
                                 });
                                 equiposNuevos++;
                             });
 
-                            /* ── Sistema SIHCE, si el módulo declara que lo usa ── */
-                            if (m.utiliza_sihce === 'SI') {
-                                const tieneSihce = this.elements.some(
-                                    e => e.parentId === sala.id && e.type === 'sistema' && e.subtype === 'sihce'
+                            /* ── Quita los equipos auto-sincronizados que ya no están en la
+                                  ficha del consultorio (se borró la fila o cambió de tipo/
+                                  estado): así una edición se refleja en el croquis igual que
+                                  una alta nueva. Nunca toca un icono colocado a mano — esos
+                                  no llevan _synced y quedan fuera de este filtro. ── */
+                            const clavesVigentes = new Set((m.equipos || []).map(eq => eq.tipo + '|' + String(eq.estado || '')));
+                            const idsAEliminar = this.elements
+                                .filter(e => e.type === 'hardware' && e.parentId === sala.id && e._synced &&
+                                    !clavesVigentes.has(e.subtype + '|' + String(e.estado || '')))
+                                .map(e => e.id);
+                            if (idsAEliminar.length) {
+                                const setEliminar = new Set(idsAEliminar);
+                                idsAEliminar.forEach(idEl => {
+                                    if (!this.deletedIds.includes(idEl)) this.deletedIds.push(idEl);
+                                });
+                                this.elements = this.elements.filter(e => !setEliminar.has(e.id));
+                                this.connections = this.connections.filter(c => !setEliminar.has(c.from) && !setEliminar.has(c.to));
+                                if (setEliminar.has(this.selectedId)) this.selectedId = null;
+                            }
+
+                            /* ── Sistema de salud que usa el consultorio (TUA, SIHCE, SISMED,
+                                  HISMINSA, SIS GalenPlus), declarado en su propia ficha.
+                                  Se mantiene SIHCE por defecto si el módulo solo trae la
+                                  pregunta antigua "utiliza_sihce" (módulos fijos). ── */
+                            const sistemaDeclarado = m.sistema_actual || (m.utiliza_sihce === 'SI' ? 'sihce' : '');
+                            if (sistemaDeclarado && SIST_LABEL[sistemaDeclarado]) {
+                                const sistemaExistente = this.elements.find(
+                                    e => e.parentId === sala.id && e.type === 'sistema' && SIST_LABEL[e.subtype]
                                 );
-                                if (!tieneSihce) {
+                                /* Se ancla siempre a la esquina inferior de la sala:
+                                   si esta creció para acoger más equipos, se reubica
+                                   junto con el nuevo borde en vez de quedar flotando. */
+                                const nx = sala.x + 10, ny = sala.y + sala.h - 30;
+                                if (sistemaExistente) {
+                                    if (sistemaExistente.subtype !== sistemaDeclarado) {
+                                        sistemaExistente.subtype = sistemaDeclarado;
+                                        sistemaExistente.name = SIST_LABEL[sistemaDeclarado];
+                                        sistemaExistente._ts = now();
+                                    }
+                                    if (sistemaExistente.piso !== pisoDestino || sistemaExistente.x !== nx || sistemaExistente.y !== ny) {
+                                        sistemaExistente.piso = pisoDestino;
+                                        sistemaExistente.x = nx;
+                                        sistemaExistente.y = ny;
+                                        sistemaExistente._ts = now();
+                                    }
+                                } else {
                                     this.elements.push({
-                                        id: 'sis_' + m.slug + '_sihce_' + rid(),
-                                        type: 'sistema', subtype: 'sihce',
+                                        id: 'sis_' + m.slug + '_' + sistemaDeclarado + '_' + rid(),
+                                        type: 'sistema', subtype: sistemaDeclarado,
                                         parentId: sala.id,
-                                        x: sala.x + 10, y: sala.y + sala.h - 30,
+                                        x: nx, y: ny,
                                         w: 66, h: 24,
-                                        name: 'SIHCE',
+                                        name: SIST_LABEL[sistemaDeclarado],
                                         rot: 0,
-                                        piso: this.currentPiso,
+                                        piso: pisoDestino,
                                         _ts: now(),
                                         _synced: true,
                                     });
+                                }
+                            } else {
+                                /* La ficha ya no declara ningún sistema: si el que se ve en
+                                   el croquis fue puesto por la sincronización, se retira con
+                                   ella. Uno colocado a mano (sin _synced) se respeta. */
+                                const sistemaHuerfano = this.elements.find(
+                                    e => e.parentId === sala.id && e.type === 'sistema' && e._synced
+                                );
+                                if (sistemaHuerfano) {
+                                    if (!this.deletedIds.includes(sistemaHuerfano.id)) this.deletedIds.push(sistemaHuerfano.id);
+                                    this.elements = this.elements.filter(e => e.id !== sistemaHuerfano.id);
+                                    this.connections = this.connections.filter(c => c.from !== sistemaHuerfano.id && c.to !== sistemaHuerfano.id);
+                                    if (this.selectedId === sistemaHuerfano.id) this.selectedId = null;
                                 }
                             }
                         });
@@ -3923,11 +4312,21 @@
                         const inactivos = (this.modulosData || []).filter(m => !m.activo).length;
 
                         if (!salasNuevas && !equiposNuevos) {
-                            Swal.fire({
-                                title: 'Todo al día',
-                                text: 'Los servicios activos y sus equipos ya están representados en el croquis.',
-                                icon: 'info', confirmButtonColor: '#4f46e5'
-                            });
+                            if (!silent) {
+                                Swal.fire({
+                                    title: 'Todo al día',
+                                    text: 'Los servicios activos y sus equipos ya están representados en el croquis.',
+                                    icon: 'info', confirmButtonColor: '#4f46e5'
+                                });
+                            }
+                            return;
+                        }
+
+                        if (silent) {
+                            /* Sincronización automática: se avisa con un toast discreto,
+                               igual que un cambio hecho por otro colaborador, sin cortar
+                               el flujo del usuario con un diálogo modal. */
+                            this._showColabToast('Auto-sync', 'actualizó', 'el croquis desde los módulos');
                             return;
                         }
 
@@ -4007,6 +4406,15 @@
                        COLABORACIÓN EN TIEMPO REAL (polling cada 900ms)
                     ═══════════════════════════════════════════════════ */
 
+                    /** Hora "corregida": Date.now() ajustado con el desfase medido
+                        contra el reloj del servidor (ver _syncState). Se usa para
+                        todo _ts que participa en la fusión colaborativa, así el
+                        reloj mal puesto de un PC no le hace ganar cambios viejos
+                        sobre los más recientes de otro usuario. */
+                    _now() {
+                        return Date.now() + this._clockOffset;
+                    },
+
                     /** Iniciar el ciclo de sincronización */
                     _startColabSync() {
                         /* Sin _syncUrl no hay a quién consultar: se queda en modo un solo usuario. */
@@ -4040,6 +4448,13 @@
                             if (!res.ok) return;
                             const data = await res.json();
                             if (!data.ok) return;
+
+                            /* Corrige el reloj local contra el del servidor (ver _now()):
+                               sin esto, si el PC de alguien tiene la hora adelantada,
+                               sus cambios "ganan" la fusión aunque sean más viejos. */
+                            if (typeof data.server_time === 'number') {
+                                this._clockOffset = data.server_time - Date.now();
+                            }
 
                             /* Actualizar lista de colaboradores (para cursores) */
                             this.colaboradores = data.colaboradores;
@@ -4489,6 +4904,10 @@
                                         </button>
                                     </div>
                                 </div>
+                                <button @click="recentrarMapa()" title="Recalibrar el mapa desde cero (por ejemplo, si se corrigieron las coordenadas del establecimiento)"
+                                    class="w-7 h-7 bg-white border border-amber-200 rounded-xl flex items-center justify-center text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
+                                    <i data-lucide="locate-fixed" class="w-3.5 h-3.5"></i>
+                                </button>
                             </div>
                         </div>
                     @endif
@@ -4515,14 +4934,14 @@
                         <span :class="isMobile ? '' : 'hidden xl:inline'"
                             x-text="isFullscreen ? 'Salir' : 'Pantalla Completa'"></span>
                     </button>
-                    {{-- ⚡ Botón Sincronizar desde Módulos --}}
-                    <button id="btn-sync" @click="fetchAndSyncModulos()"
-                        class="relative px-4 py-2 bg-violet-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-violet-700 transition-all flex items-center gap-2 shadow-lg shadow-violet-200">
+                    {{-- 🔄 Botón Reiniciar Croquis (borra todo y regenera desde los módulos) --}}
+                    <button id="btn-sync" @click="reiniciarCroquis()" title="Borra todo el croquis y lo regenera desde cero con los datos vigentes de los módulos"
+                        class="relative px-4 py-2 bg-amber-500 text-slate-900 rounded-xl text-[10px] font-black uppercase hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-200">
                         {{-- El contador refleja los servicios activos del establecimiento --}}
-                        <span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full text-[8px] flex items-center justify-center font-black text-slate-900 shadow"
+                        <span class="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 rounded-full text-[8px] flex items-center justify-center font-black text-white shadow"
                             x-text="(modulosData || []).filter(m => m.activo).length"></span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        <span :class="isMobile ? '' : 'hidden xl:inline'">Sync Módulos</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span :class="isMobile ? '' : 'hidden xl:inline'">Reiniciar Croquis</span>
                     </button>
                     {{-- Botón Exportar Imagen --}}
                     <button @click="exportImage()" title="Exportar croquis como imagen PNG"

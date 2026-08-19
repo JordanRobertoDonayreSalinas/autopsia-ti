@@ -520,6 +520,38 @@
                 return false;
             }
 
+            // Aviso (no bloqueante) si el piso declarado es inusualmente alto: la
+            // mayoría de establecimientos no supera los 4-5 pisos, y un número mal
+            // tipeado aquí (ej. "17" en vez de "1") hace que el croquis genere de
+            // golpe una decena de pisos vacíos y la sala termine ubicada en un piso
+            // que nadie más revisa. No se bloquea porque sí existen establecimientos
+            // con más pisos: solo se pide confirmar antes de continuar.
+            const pisoVal = parseInt(pisoInput ? pisoInput.value : '1', 10);
+            if (pisoVal > 5 && this.dataset.pisoConfirmado !== '1') {
+                e.preventDefault();
+                const form = this;
+                Swal.fire({
+                    icon: 'warning',
+                    title: `¿Seguro que es el piso ${pisoVal}?`,
+                    html: '<p class="text-xs text-slate-500 font-semibold">La mayoría de establecimientos no supera los 4 o 5 pisos. Si el número es correcto, puede continuar; si fue un error de tipeo, corríjalo.</p>',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, es correcto',
+                    cancelButtonText: 'Corregir el número',
+                    confirmButtonColor: '#4F46E5',
+                    cancelButtonColor: '#94a3b8',
+                    customClass: { popup: 'rounded-[2.5rem] p-6' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.dataset.pisoConfirmado = '1';
+                        if (form.requestSubmit) form.requestSubmit();
+                        else form.submit();
+                    } else if (pisoInput) {
+                        pisoInput.focus();
+                    }
+                });
+                return false;
+            }
+
             const btn = document.getElementById('btn-submit-action');
             const icon = document.getElementById('icon-save-loader');
             if (btn) {

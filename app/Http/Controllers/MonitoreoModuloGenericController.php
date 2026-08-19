@@ -89,8 +89,20 @@ class MonitoreoModuloGenericController extends Controller
             ->where('modulo', $slug)
             ->get();
 
+        // Catálogo de servicios (tabla "ups") para el desplegable de "Servicio
+        // del Consultorio". Por ahora sin filtrar por establecimiento: la tabla
+        // todavía no tiene una columna que la vincule de forma confiable con
+        // "establecimientos" (el código de hospital que trae no coincide en
+        // formato con establecimientos.codigo).
+        $serviciosUps = DB::table('ups')
+            ->whereNotNull('nombre')
+            ->where('nombre', '!=', '')
+            ->distinct()
+            ->orderBy('nombre')
+            ->pluck('nombre');
+
         return view('usuario.monitoreo.modulos.consultorio_dinamico', compact(
-            'acta', 'detalle', 'slug', 'tituloConsultorio', 'equipos'
+            'acta', 'detalle', 'slug', 'tituloConsultorio', 'equipos', 'serviciosUps'
         ));
     }
 
@@ -154,13 +166,16 @@ class MonitoreoModuloGenericController extends Controller
                 );
             }
 
-            // Sincronizar equipos de cómputo (provenientes del componente x-tabla-equipos)
-            $equiposData = $request->input('equipos', $contenido['equipos'] ?? []);
-            if (is_array($equiposData) && count($equiposData) > 0) {
-                EquipoComputo::where('cabecera_monitoreo_id', $id)
-                    ->where('modulo', $slug)
-                    ->delete();
+            // Sincronizar equipos de cómputo (provenientes del componente x-tabla-equipos).
+            // Se borra y recrea siempre, incluso si llega vacío: si el usuario quitó todas
+            // las filas de la tabla y guardó, ese vaciado debe reflejarse también en la BD
+            // en vez de dejar los equipos anteriores huérfanos.
+            $equiposData = $request->input('equipos', []);
+            EquipoComputo::where('cabecera_monitoreo_id', $id)
+                ->where('modulo', $slug)
+                ->delete();
 
+            if (is_array($equiposData)) {
                 foreach ($equiposData as $eq) {
                     if (!empty($eq['descripcion'])) {
                         $especificaciones = $eq['especificaciones'] ?? null;

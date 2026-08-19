@@ -220,6 +220,7 @@ Route::middleware(['auth'])->group(function () {
             Route::prefix('modulo/infraestructura-2d')->name('infraestructura-2d.')->group(function () {
                 Route::get('/{id}', [Infraestructura2DController::class, 'index'])->name('index');
                 Route::get('/{id}/sync-data', [Infraestructura2DController::class, 'getSyncData'])->name('sync-data');
+                Route::get('/{id}/calles-cercanas', [Infraestructura2DController::class, 'callesCercanas'])->name('calles-cercanas');
                 Route::post('/{id}', [Infraestructura2DController::class, 'store'])->name('store');
                 Route::get('/{id}/pdf', [Infraestructura2DPdfController::class, 'generar'])->name('pdf');
 

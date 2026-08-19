@@ -6,6 +6,9 @@ use App\Models\CabeceraMonitoreo;
 use App\Models\MonitoreoModulos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class Infraestructura2DController extends Controller
 {
@@ -51,6 +54,139 @@ class Infraestructura2DController extends Controller
             'panel_solar_operativos'    => (int) ($acta->panel_solar_operativos ?? 0),
             'panel_solar_inoperativos'  => (int) ($acta->panel_solar_inoperativos ?? 0),
         ]);
+    }
+
+    /**
+     * Calles reales más cercanas al establecimiento, según OpenStreetMap
+     * (Overpass API), para que el editor pueda dibujarlas solo alrededor
+     * del croquis con su nombre real en vez de que el usuario las escriba
+     * a mano. Se cachean 30 días por coordenada: el callejero no cambia.
+     */
+    public function callesCercanas($id)
+    {
+        $acta = CabeceraMonitoreo::with('establecimiento')->findOrFail($id);
+        $lat = $acta->establecimiento->latitud ?? null;
+        $lng = $acta->establecimiento->longitud ?? null;
+
+        if (is_null($lat) || is_null($lng)) {
+            return response()->json(['calles' => []]);
+        }
+
+        $cacheKey = 'calles_cercanas_' . round((float) $lat, 5) . '_' . round((float) $lng, 5);
+
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return response()->json(['calles' => $cached]);
+        }
+
+        $calles = $this->_consultarCallesOverpass((float) $lat, (float) $lng);
+
+        // Un fallo de red no se cachea, para que el siguiente intento pueda
+        // reintentar — el servidor público de Overpass suele saturarse y
+        // responder 429/406/504. Un resultado con calles sí es estable (el
+        // callejero no cambia) y se cachea 30 días; pero un resultado VACÍO
+        // se cachea solo unas horas, porque Overpass puede responder 200
+        // con la lista vacía cuando está sobrecargado sin llegar a fallar
+        // como para que se note — así, si fue un vacío falso, se autocorrige
+        // pronto en vez de quedar "sin calles" fijo para ese establecimiento.
+        if ($calles !== null) {
+            Cache::put($cacheKey, $calles, $calles ? now()->addDays(30) : now()->addHours(2));
+        }
+
+        return response()->json(['calles' => $calles ?? []]);
+    }
+
+    /**
+     * Consulta Overpass por las vías con nombre alrededor de un punto,
+     * probando más de un espejo público (el principal se satura seguido).
+     * Devuelve null si ningún espejo respondió, para distinguir "sin calles
+     * cerca" (array vacío, sí cacheable) de "no se pudo consultar" (no
+     * cacheable).
+     */
+    private function _consultarCallesOverpass(float $lat, float $lng): ?array
+    {
+        $espejos = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter',
+        ];
+
+        $query = "[out:json][timeout:15];(way(around:200,{$lat},{$lng})[\"highway\"][\"name\"];);out tags center;";
+
+        foreach ($espejos as $url) {
+            try {
+                // El "Accept" que Laravel manda por defecto hace que el
+                // servidor de Overpass responda 406 (content negotiation);
+                // con un Accept/User-Agent genéricos, tipo curl, acepta bien.
+                $response = Http::timeout(12)
+                    ->withHeaders(['Accept' => '*/*', 'User-Agent' => 'curl/8.0'])
+                    ->asForm()
+                    ->post($url, ['data' => $query]);
+                if (!$response->successful()) continue;
+
+                $elements = $response->json('elements') ?? [];
+                $vistos = [];
+                $resultado = [];
+
+                foreach ($elements as $el) {
+                    $nombre = trim($el['tags']['name'] ?? '');
+                    if ($nombre === '' || isset($vistos[$nombre])) continue;
+
+                    $clat = $el['center']['lat'] ?? null;
+                    $clon = $el['center']['lon'] ?? null;
+                    if ($clat === null || $clon === null) continue;
+
+                    $vistos[$nombre] = true;
+                    $resultado[] = [
+                        'nombre'    => $nombre,
+                        'tipo'      => $this->_tipoVia($nombre, $el['tags']['highway'] ?? ''),
+                        'lat'       => $clat,
+                        'lon'       => $clon,
+                        'distancia' => $this->_distanciaMetros($lat, $lng, $clat, $clon),
+                    ];
+                }
+
+                usort($resultado, fn($a, $b) => $a['distancia'] <=> $b['distancia']);
+
+                // Ya no se limita a 4 (uno por lado del croquis): ahora se dibujan
+                // como etiquetas sobre el mapa real, en su propia posición, así que
+                // se pueden mostrar todas las que haya cerca sin que se estorben.
+                return array_slice($resultado, 0, 8);
+            } catch (\Throwable $e) {
+                Log::warning('[Calles cercanas] Error consultando ' . $url . ': ' . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Clasifica una vía como avenida/jirón/pasaje: primero por el prefijo de
+     * su nombre real (así aparece casi siempre en el mapa de Perú), y si no
+     * trae prefijo, por el tipo de vía que registra OpenStreetMap.
+     */
+    private function _tipoVia(string $nombre, string $highway): string
+    {
+        $n = mb_strtoupper($nombre, 'UTF-8');
+        if (str_starts_with($n, 'AV.') || str_starts_with($n, 'AVENIDA')) return 'avenida';
+        if (str_starts_with($n, 'JR.') || str_starts_with($n, 'JIRON') || str_starts_with($n, 'JIRÓN')) return 'jiron';
+        if (str_starts_with($n, 'PSJ.') || str_starts_with($n, 'PJE.') || str_starts_with($n, 'PASAJE')) return 'pasaje';
+
+        return match ($highway) {
+            'trunk', 'primary', 'secondary' => 'avenida',
+            'service', 'pedestrian', 'footway', 'path', 'living_street' => 'pasaje',
+            default => 'jiron',
+        };
+    }
+
+    /** Distancia en metros entre dos coordenadas (fórmula de Haversine). */
+    private function _distanciaMetros(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $R = 6371000;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $R * $c;
     }
 
     /**
@@ -113,7 +249,16 @@ class Infraestructura2DController extends Controller
             ];
         })->values();
 
-        return response()->json(['ok' => true, 'colaboradores' => $colaboradores]);
+        return response()->json([
+            'ok' => true,
+            'colaboradores' => $colaboradores,
+            // Hora del servidor (ms desde época): el editor la usa para corregir
+            // el desfase del reloj de cada navegador al decidir, en la fusión de
+            // cambios simultáneos, cuál es realmente el más reciente — comparar
+            // los `_ts` de cada usuario tal cual, sin corregir, hace que quien
+            // tenga el reloj adelantado "gane" aunque su cambio sea más viejo.
+            'server_time' => (int) round(microtime(true) * 1000),
+        ]);
     }
 
     /**
@@ -302,7 +447,7 @@ class Infraestructura2DController extends Controller
             }
 
             // Orden estable: primero los equipos principales, luego los accesorios
-            $orden = ['pc', 'laptop', 'tablet', 'monitor', 'impresora', 'ticketera', 'escaner', 'ups', 'teclado', 'mouse', 'equipo'];
+            $orden = ['all_in_one', 'pc', 'laptop', 'tablet', 'monitor', 'impresora', 'ticketera', 'escaner', 'lector_dnie', 'ups', 'teclado', 'mouse', 'equipo'];
             $equipos = array_values($agrupados);
             usort($equipos, function ($a, $b) use ($orden) {
                 $ia = array_search($a['tipo'], $orden); $ib = array_search($b['tipo'], $orden);
@@ -316,6 +461,21 @@ class Infraestructura2DController extends Controller
             // ── 3. Conectividad y sistemas ──
             $utiliza_sihce     = mb_strtoupper(trim((string)($content['utiliza_sihce'] ?? '')), 'UTF-8');
             $tipo_conectividad = mb_strtoupper(trim((string)($content['tipo_conectividad'] ?? '')), 'UTF-8');
+
+            /*
+             * Sistema que usa actualmente el consultorio (pregunta propia de los
+             * consultorios dinámicos). Se normaliza al mismo subtype que dibuja
+             * el croquis para poder sincronizar el ícono automáticamente.
+             */
+            $sistemaActualLabel = mb_strtoupper(trim((string)($content['sistema_actual'] ?? '')), 'UTF-8');
+            $mapaSistemas = [
+                'TUA'           => 'tua',
+                'SIHCE'         => 'sihce',
+                'SISMED'        => 'sismed',
+                'HISMINSA'      => 'hisminsa',
+                'SIS GALENPLUS' => 'sisgalenplus',
+            ];
+            $sistemaActual = $mapaSistemas[$sistemaActualLabel] ?? '';
 
             // ── 4. Ambientes declarados por el módulo ──
             $cantidad = (int)($content['nro_consultorios']
@@ -378,6 +538,7 @@ class Infraestructura2DController extends Controller
                 'equipos'           => $equipos,        // [{ tipo, estado, cantidad, descripcion }]
                 'total_equipos'     => $totalEquipos,
                 'utiliza_sihce'     => $utiliza_sihce,
+                'sistema_actual'    => $sistemaActual,   // 'tua'|'sihce'|'sismed'|'hisminsa'|'sisgalenplus'|''
                 'tipo_conectividad' => $tipo_conectividad,
                 'tipo_consultorio'  => $tipoConsultorio, // 'FISICO' | 'FUNCIONAL' | '' (módulos fijos)
                 'piso'              => $piso,            // piso declarado en la ficha del consultorio
@@ -402,7 +563,12 @@ class Infraestructura2DController extends Controller
         $d = strtr($d, ['Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U']);
 
         $reglas = [
-            'pc'         => ['ALL IN ONE', 'ALL-IN-ONE', 'CPU', 'COMPUTADORA', 'DESKTOP', 'PC '],
+            // "ALL IN ONE" y "CPU/COMPUTADORA/DESKTOP" son equipos físicamente distintos
+            // (una sola pieza vs. torre + monitor aparte): antes se agrupaban en un solo
+            // tipo 'pc' y el croquis terminaba mostrando, por ejemplo, "ALL-IN-ONE ×2"
+            // cuando en realidad había 1 all-in-one + 1 CPU registrados por separado.
+            'all_in_one' => ['ALL IN ONE', 'ALL-IN-ONE'],
+            'pc'         => ['CPU', 'COMPUTADORA', 'DESKTOP', 'PC '],
             'laptop'     => ['LAPTOP', 'PORTATIL', 'NOTEBOOK'],
             'tablet'     => ['TABLET'],
             'monitor'    => ['MONITOR', 'PANTALLA'],
@@ -410,7 +576,10 @@ class Infraestructura2DController extends Controller
             'mouse'      => ['MOUSE', 'RATON'],
             'impresora'  => ['IMPRESORA', 'MULTIFUNCIONAL', 'PLOTTER'],
             'ticketera'  => ['TICKETERA', 'TICKET'],
-            'escaner'    => ['DNIE', 'DNI ELECTRONICO', 'LECTOR', 'LECTORA', 'SCANNER', 'SCANER', 'ESCANER'],
+            // Mismo caso: un lector de DNIe no es un escáner de documentos, así que
+            // se separan en tipos distintos en vez de sumarse bajo un solo icono.
+            'lector_dnie' => ['DNIE', 'DNI ELECTRONICO', 'LECTOR', 'LECTORA'],
+            'escaner'    => ['SCANNER', 'SCANER', 'ESCANER'],
             'ups'        => ['UPS', 'ESTABILIZADOR', 'STABILIZADOR', 'BATERIA'],
         ];
 
