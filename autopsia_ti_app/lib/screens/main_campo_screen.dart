@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/establecimiento.dart';
 import '../models/reunion.dart';
 import '../repositories/acta_repository.dart';
 import '../repositories/establecimiento_repository.dart';
@@ -11,7 +10,6 @@ import '../widgets/sidebar_menu_item.dart';
 import 'login_screen.dart';
 import 'nueva_acta_form_screen.dart';
 import 'reunion_form_screen.dart';
-import 'tabs/actas_diagnostico_tab.dart';
 import 'tabs/actas_monitoreo_listado_tab.dart';
 import 'tabs/dashboard_tab.dart';
 import 'tabs/establecimientos_tab.dart';
@@ -42,11 +40,8 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
   String _anioSeleccionado = 'todos';
   List<Map<String, dynamic>> _realUsers = [];
   List<Reunion> _reuniones = [];
-  int _pendientesCount = 0;
   String _selectedMenu = 'Dashboard';
   String _userName = 'JORDAN ROBERTO';
-  List<Establecimiento> _searchResult = [];
-  final TextEditingController _searchCtrl = TextEditingController();
   Timer? _reconnectTimer;
 
   @override
@@ -69,13 +64,9 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final res = await _establecimientoRepo.buscar('');
-    final actas = await _actaRepo.obtenerPendientes();
     final reuniones = await _reunionRepo.obtenerTodas();
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _searchResult = res;
-      _pendientesCount = actas.length;
       _reuniones = reuniones;
       _userName = prefs.getString('user_name') ?? 'JORDAN ROBERTO';
     });
@@ -194,36 +185,6 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
-  }
-
-  void _onSearch(String term) async {
-    final res = await _establecimientoRepo.buscar(term);
-    setState(() => _searchResult = res);
-  }
-
-  /// "Nueva Acta" es el formulario completo real (fecha, implementador,
-  /// categoría, responsable, equipo mínimo 1, pozo/panel, fotos) — ver
-  /// NuevaActaFormScreen. Antes esto era un diálogo simplificado que ni
-  /// siquiera pedía el campo `equipo`, obligatorio en el store() real.
-  void _mostrarDialogoNuevaActa(Establecimiento? itemSeleccionado) {
-    final ipress = itemSeleccionado ?? (_searchResult.isNotEmpty ? _searchResult.first : null);
-    if (ipress == null || ipress.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(backgroundColor: Color(0xFFB91C1C), content: Text('Seleccione un establecimiento primero.')),
-      );
-      return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => NuevaActaFormScreen(establecimiento: ipress, userName: _userName, usuariosDisponibles: _realUsers),
-      ),
-    ).then((_) {
-      // Recalcula desde SQLite en vez de asumir que se guardó algo — el
-      // usuario pudo haber cancelado/vuelto atrás sin guardar.
-      _loadInitialData();
-      _refrescarListadoActas();
-    });
   }
 
   @override
@@ -533,37 +494,18 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
   int _actasListadoRefreshKey = 0;
   void _refrescarListadoActas() => setState(() => _actasListadoRefreshKey++);
 
-  /// "Nueva Acta" es una pantalla aparte en Laravel (`/crear-acta`), no el
-  /// listado — acá reutiliza el mismo buscador de establecimientos y
-  /// diálogo de creación que ya existían, solo que ahora vive en su propia
-  /// pantalla en vez de ser la vista principal de "Actas de Diagnóstico".
+  /// "Nueva Acta" es un único formulario en Laravel (`/crear-acta`,
+  /// create.blade.php): el establecimiento se busca y selecciona DENTRO del
+  /// propio formulario (autocomplete embebido), no en una pantalla previa
+  /// — ver NuevaActaFormScreen.
   Future<void> _abrirNuevaActaScreen() async {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: const Color(0xFFF1F5F9),
-          appBar: AppBar(
-            title: const Text('Nueva Acta'),
-            backgroundColor: const Color(0xFF0F172A),
-            foregroundColor: Colors.white,
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ActasDiagnosticoTab(
-              totalIpress: _totalIpress,
-              firmadas: 0,
-              pendientesCount: _pendientesCount,
-              anuladas: 0,
-              searchResult: _searchResult,
-              searchCtrl: _searchCtrl,
-              onSearch: _onSearch,
-              onNuevaActa: _mostrarDialogoNuevaActa,
-            ),
-          ),
-        ),
+        builder: (_) => NuevaActaFormScreen(userName: _userName, usuariosDisponibles: _realUsers),
       ),
     );
+    _loadInitialData();
     _refrescarListadoActas();
   }
 

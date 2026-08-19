@@ -5,31 +5,26 @@ import '../models/cabecera_monitoreo.dart';
 import '../models/equipo_monitoreo.dart';
 import '../models/establecimiento.dart';
 import '../repositories/acta_repository.dart';
+import '../repositories/establecimiento_repository.dart';
 import '../repositories/profesional_repository.dart';
 import 'acta_detalle_screen.dart';
 
 /// Formulario "Nueva Acta" — espejo de
-/// resources/views/usuario/monitoreo/create.blade.php (MonitoreoController::store).
-/// Antes este diálogo solo pedía auditor/pozo/panel; el real exige además
-/// (todos obligatorios salvo donde se indica): fecha, implementador (quién
-/// ejecuta, de una lista de usuarios), categoría y responsable/jefe del
-/// establecimiento (editables, prellenados desde el establecimiento), y un
-/// equipo de personal presente (mínimo 1 integrante) — sin esto Laravel
-/// rechaza la creación (`equipo => required|array|min:1`).
-///
-/// El buscador de establecimiento del formulario real vive DENTRO de esta
-/// pantalla (autocomplete); acá se mantiene la búsqueda en la pantalla
-/// anterior (lista + "Iniciar Acta") porque el resultado final
-/// (establecimiento_id) es el mismo — es una simplificación de UX
-/// deliberada, no una desviación de datos.
+/// resources/views/usuario/monitoreo/create.blade.php (MonitoreoController::store),
+/// UNA sola pantalla como en el sistema real: el establecimiento se busca y
+/// selecciona con un autocompletado embebido en la propia "Tarjeta 2: Datos
+/// del Establecimiento" (no hay pantalla previa de selección en Laravel).
+/// Exige además (todos obligatorios salvo donde se indica): fecha,
+/// implementador (quién ejecuta, de una lista de usuarios), categoría y
+/// responsable/jefe del establecimiento (editables, prellenados al elegir el
+/// establecimiento), y un equipo de personal presente (mínimo 1 integrante)
+/// — sin esto Laravel rechaza la creación (`equipo => required|array|min:1`).
 class NuevaActaFormScreen extends StatefulWidget {
-  final Establecimiento establecimiento;
   final String userName;
   final List<Map<String, dynamic>> usuariosDisponibles;
 
   const NuevaActaFormScreen({
     super.key,
-    required this.establecimiento,
     required this.userName,
     this.usuariosDisponibles = const [],
   });
@@ -63,6 +58,12 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
   final _actaRepo = ActaRepository();
   final _profesionalRepo = ProfesionalRepository();
 
+  final _establecimientoRepo = EstablecimientoRepository();
+  final _estSearchCtrl = TextEditingController();
+  Establecimiento? _establecimiento;
+  List<Establecimiento> _estResultados = [];
+  bool _buscandoEst = false;
+
   late final TextEditingController _categoriaCtrl;
   late final TextEditingController _responsableCtrl;
   late String _implementador;
@@ -87,14 +88,15 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
   @override
   void initState() {
     super.initState();
-    _categoriaCtrl = TextEditingController(text: widget.establecimiento.categoria);
-    _responsableCtrl = TextEditingController(text: widget.establecimiento.responsable);
+    _categoriaCtrl = TextEditingController();
+    _responsableCtrl = TextEditingController();
     _implementador = widget.userName.toUpperCase();
     _agregarFilaEquipo(precargarConUsuarioActual: true);
   }
 
   @override
   void dispose() {
+    _estSearchCtrl.dispose();
     _categoriaCtrl.dispose();
     _responsableCtrl.dispose();
     _pozoTierraCantCtrl.dispose();
@@ -145,6 +147,33 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
     });
   }
 
+  Future<void> _buscarEstablecimiento(String term) async {
+    if (term.trim().isEmpty) {
+      setState(() => _estResultados = []);
+      return;
+    }
+    setState(() => _buscandoEst = true);
+    final res = await _establecimientoRepo.buscar(term);
+    if (!mounted) return;
+    setState(() {
+      _estResultados = res.take(8).toList();
+      _buscandoEst = false;
+    });
+  }
+
+  /// Espejo del callback `select:` del autocomplete real: al elegir un
+  /// establecimiento se autorellenan categoría y responsable (editables
+  /// después a mano).
+  void _seleccionarEstablecimiento(Establecimiento e) {
+    setState(() {
+      _establecimiento = e;
+      _estResultados = [];
+      _estSearchCtrl.clear();
+      _categoriaCtrl.text = e.categoria;
+      _responsableCtrl.text = e.responsable;
+    });
+  }
+
   Future<void> _elegirFoto({required bool primera}) async {
     final res = await FilePicker.platform.pickFiles(type: FileType.image);
     if (res == null || res.files.isEmpty || res.files.first.path == null) return;
@@ -158,6 +187,13 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
   }
 
   Future<void> _guardar() async {
+    final establecimiento = _establecimiento;
+    if (establecimiento == null || establecimiento.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(backgroundColor: Color(0xFFB91C1C), content: Text('Falta Establecimiento: busque y seleccione uno antes de guardar.')),
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     final participantesValidos = _equipo.where((p) => p.doc.text.trim().isNotEmpty && p.apellidoPaterno.text.trim().isNotEmpty && p.nombres.text.trim().isNotEmpty).toList();
@@ -174,7 +210,7 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
     final acta = CabeceraMonitoreo(
       offlineId: offlineId,
       localCreatedAt: DateTime.now().toIso8601String(),
-      establecimientoId: widget.establecimiento.id!,
+      establecimientoId: establecimiento.id!,
       fecha: '${_fecha.year.toString().padLeft(4, '0')}-${_fecha.month.toString().padLeft(2, '0')}-${_fecha.day.toString().padLeft(2, '0')}',
       responsable: _responsableCtrl.text.trim().toUpperCase(),
       implementador: _implementador.trim().toUpperCase(),
@@ -209,12 +245,12 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
     setState(() => _guardando = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(backgroundColor: const Color(0xFF15803D), content: Text('Acta ($offlineId) guardada exitosamente en disco local para ${widget.establecimiento.nombre}')),
+      SnackBar(backgroundColor: const Color(0xFF15803D), content: Text('Acta ($offlineId) guardada exitosamente en disco local para ${establecimiento.nombre}')),
     );
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => ActaDetalleScreen(offlineId: offlineId, establecimientoNombre: widget.establecimiento.nombre)),
+      MaterialPageRoute(builder: (_) => ActaDetalleScreen(offlineId: offlineId, establecimientoNombre: establecimiento.nombre)),
     );
   }
 
@@ -242,16 +278,6 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _seccion('Datos Generales', const Color(0xFF3B82F6), [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCBD5E1))),
-                    child: Row(children: [
-                      const Icon(Icons.local_hospital_rounded, color: Color(0xFF4F46E5), size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text('${widget.establecimiento.nombre} (${widget.establecimiento.codigo})', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 13))),
-                    ]),
-                  ),
-                  const SizedBox(height: 14),
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Expanded(
                       child: OutlinedButton.icon(
@@ -274,6 +300,54 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
                       ),
                     ),
                   ]),
+                ]),
+
+                _seccion('Datos del Establecimiento', const Color(0xFF10B981), [
+                  if (_establecimiento == null) ...[
+                    TextField(
+                      controller: _estSearchCtrl,
+                      autofocus: true,
+                      onChanged: _buscarEstablecimiento,
+                      decoration: InputDecoration(
+                        hintText: 'Ej: HOSPITAL REGIONAL, código, distrito…',
+                        prefixIcon: _buscandoEst
+                            ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
+                            : const Icon(Icons.search_rounded),
+                        isDense: true,
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                      ),
+                    ),
+                    if (_estResultados.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE2E8F0)), borderRadius: BorderRadius.circular(10)),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: _estResultados.map((e) {
+                            return ListTile(
+                              dense: true,
+                              title: Text(e.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              subtitle: Text('${e.codigo} · ${e.distrito} - ${e.provincia}', style: const TextStyle(fontSize: 11)),
+                              onTap: () => _seleccionarEstablecimiento(e),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                  ] else
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF86EFAC))),
+                      child: Row(children: [
+                        const Icon(Icons.local_hospital_rounded, color: Color(0xFF15803D), size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text('${_establecimiento!.nombre} (${_establecimiento!.codigo})', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 13))),
+                        TextButton(
+                          onPressed: () => setState(() => _establecimiento = null),
+                          child: const Text('Cambiar'),
+                        ),
+                      ]),
+                    ),
                   const SizedBox(height: 14),
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Expanded(
