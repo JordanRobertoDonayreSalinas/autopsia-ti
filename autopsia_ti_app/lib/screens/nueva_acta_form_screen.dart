@@ -175,13 +175,13 @@ class _NuevaActaFormScreenState extends State<NuevaActaFormScreen> {
   }
 
   Future<void> _elegirFoto({required bool primera}) async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (res == null || res.files.isEmpty || res.files.first.path == null) return;
+    final res = await FilePicker.pickFiles(type: FileType.image);
+    if (res.isEmpty || res.first.path == null) return;
     setState(() {
       if (primera) {
-        _foto1Path = res.files.first.path;
+        _foto1Path = res.first.path;
       } else {
-        _foto2Path = res.files.first.path;
+        _foto2Path = res.first.path;
       }
     });
   }
