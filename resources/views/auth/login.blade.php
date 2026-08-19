@@ -185,6 +185,30 @@
             margin-top: 4px;
             display: block;
         }
+
+        .btn-download-app {
+            width: 100%;
+            margin-top: 14px;
+            padding: 13px;
+            background: #f8fafc;
+            color: #475569;
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-download-app:hover {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            color: #2563eb;
+        }
     </style>
 </head>
 
@@ -239,6 +263,13 @@
                     <span id="btnText">Ingresar</span>
                 </button>
             </form>
+
+            <button type="button" id="btnDescargarApp" onclick="abrirModalDescargaApp()" class="btn-download-app">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Descargar App de Campo (Offline)
+            </button>
         </div>
     </div>
 
@@ -295,6 +326,8 @@
                 });
         });
     </script>
+
+    <x-descargar-app-modal />
 </body>
 
 </html>

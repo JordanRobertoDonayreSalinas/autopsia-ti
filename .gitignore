@@ -25,3 +25,8 @@ Thumbs.db
 *.zip
 scratch/
 autopsia_ti/
+
+# Instaladores compilados de la app de campo (se suben directo al servidor,
+# no van al repo por su tamano).
+/public/downloads/*.exe
+/public/downloads/*.apk

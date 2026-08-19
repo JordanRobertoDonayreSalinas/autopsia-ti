@@ -112,6 +112,12 @@
                     <span class="font-semibold">Mi Perfil</span>
                 </a>
 
+                <button type="button" id="btnDescargarApp" onclick="abrirModalDescargaApp()"
+                    class="w-full group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400 hover:text-white hover:bg-white/5">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    <span class="font-semibold text-left">Descargar App de Campo</span>
+                </button>
+
                 @if(Auth::user()->role === 'admin' || Auth::user()->role === 'operador')
                 <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 mt-6">Operaciones</p>
                 @endif
@@ -488,6 +494,7 @@
     </script>
 
     <x-offline-indicator />
+    <x-descargar-app-modal />
 
     @stack('scripts')
 </body>
