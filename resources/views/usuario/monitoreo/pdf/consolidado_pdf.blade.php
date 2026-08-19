@@ -223,6 +223,17 @@
                 @endif
             </td>
         </tr>
+        <tr>
+            <td class="bg-label">PANEL SOLAR:</td>
+            <td class="uppercase font-bold" style="color: #3730a3;">
+                @if(($acta->panel_solar ?? 'NO') === 'SI')
+                    SÍ (TOTAL: {{ $acta->panel_solar_cantidad ?? 1 }} | OP: {{ $acta->panel_solar_operativos ?? 0 }} | INOP: {{ $acta->panel_solar_inoperativos ?? 0 }})
+                @else
+                    NO
+                @endif
+            </td>
+            <td colspan="2"></td>
+        </tr>
     </table>
 
     @if(isset($equipoMonitoreo) && $equipoMonitoreo->count() > 0)

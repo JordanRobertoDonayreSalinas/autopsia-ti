@@ -141,18 +141,25 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 w-full lg:w-auto justify-center lg:justify-end mt-2 lg:mt-0">
+                <div class="flex items-center gap-3 w-full lg:w-auto justify-center lg:justify-end mt-2 lg:mt-0 flex-wrap sm:flex-nowrap">
                     @if(Auth::user()->role !== 'operador')
                     <button @click="open = !open" type="button"
-                        class="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg border border-white/20 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm">
-                        <i data-lucide="filter" class="w-4 h-4"></i>
+                        class="h-12 px-5 rounded-xl font-bold text-sm transition-all shadow-md border border-white/20 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                        <i data-lucide="filter" class="w-4 h-4 shrink-0"></i>
                         <span x-text="open ? 'Ocultar Filtros' : 'Mostrar Filtros'"></span>
                     </button>
                     @endif
 
+                    <button onclick="if(typeof window.descargarDatosCampoOffline==='function') window.descargarDatosCampoOffline();" type="button"
+                        class="h-12 px-5 rounded-xl font-bold text-sm transition-all shadow-md bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-400 inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                        title="Descargar datos en tu laptop para trabajar en modo offline sin internet">
+                        <i data-lucide="download-cloud" class="w-4 h-4 shrink-0"></i>
+                        <span>Offline</span>
+                    </button>
+
                     <a href="{{ route('usuario.monitoreo.create') }}"
-                        class="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all shadow-lg bg-white text-blue-700 hover:bg-blue-50 border border-transparent">
-                        <i data-lucide="activity" class="w-5 h-5"></i>
+                        class="h-12 px-5 rounded-xl font-bold text-sm transition-all shadow-md bg-white text-blue-700 hover:bg-blue-50 border border-transparent inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                        <i data-lucide="activity" class="w-4 h-4 shrink-0"></i>
                         <span>Nueva Acta</span>
                     </a>
                 </div>
@@ -354,7 +361,9 @@
                                 <td class="px-3 py-3">
                                     <div class="flex items-center justify-between min-w-[150px] group/author">
                                         <span class="font-bold text-slate-700 leading-tight">
-                                            @if($monitoreo->user)
+                                            @if(!empty($monitoreo->implementador))
+                                                {{ mb_strtoupper($monitoreo->implementador, 'UTF-8') }}
+                                            @elseif($monitoreo->user)
                                                 {{ mb_strtoupper("{$monitoreo->user->apellido_paterno} {$monitoreo->user->apellido_materno} {$monitoreo->user->name}", 'UTF-8') }}
                                             @else
                                                 <span class="text-slate-400 italic text-[10px]">NO ASIGNADO</span>

@@ -211,7 +211,12 @@ class MonitoreoController extends Controller
 
     public function create()
     {
-        return view('usuario.monitoreo.create');
+        $usuarios = User::orderBy('apellido_paterno')
+            ->orderBy('apellido_materno')
+            ->orderBy('name')
+            ->get();
+
+        return view('usuario.monitoreo.create', compact('usuarios'));
     }
 
     public function buscarFiltro(Request $request)
@@ -411,6 +416,10 @@ class MonitoreoController extends Controller
             $monitoreo->pozo_tierra_cantidad = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_cantidad') : null;
             $monitoreo->pozo_tierra_operativos = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_operativos') : null;
             $monitoreo->pozo_tierra_inoperativos = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_inoperativos') : null;
+            $monitoreo->panel_solar = $request->input('panel_solar', 'NO');
+            $monitoreo->panel_solar_cantidad = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_cantidad') : null;
+            $monitoreo->panel_solar_operativos = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_operativos') : null;
+            $monitoreo->panel_solar_inoperativos = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_inoperativos') : null;
             $monitoreo->user_id = Auth::id();
 
             // Guardar fotos
@@ -589,9 +598,12 @@ class MonitoreoController extends Controller
             ];
 
             $consultoriosDinamicos = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
-                ->where('modulo_nombre', '!=', 'infraestructura_2d')
-                ->where('modulo_nombre', '!=', 'config_modulos')
+                ->whereNotIn('modulo_nombre', ['infraestructura_2d', 'rrhh', 'config_modulos'])
                 ->get();
+
+            $moduloRrhh = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+                ->where('modulo_nombre', 'rrhh')
+                ->first();
 
             return view('usuario.monitoreo.modulos', compact(
                 'acta',
@@ -599,7 +611,8 @@ class MonitoreoController extends Controller
                 'modulosGuardados',
                 'modulosActivos',
                 'modulosFirmados',
-                'consultoriosDinamicos'
+                'consultoriosDinamicos',
+                'moduloRrhh'
             ));
         }
     }

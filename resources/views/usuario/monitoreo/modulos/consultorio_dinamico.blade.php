@@ -20,9 +20,9 @@
                     <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight">
                         {{ $tituloConsultorio ?? 'CONSULTORIO / MÓDULO' }}
                     </h2>
-                    <p class="text-slate-500 font-bold uppercase text-xs mt-1">
-                        <i data-lucide="hospital" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i>
-                        {{ $acta->establecimiento->nombre }}
+                    <p class="text-slate-500 font-bold uppercase text-xs mt-1 flex flex-wrap items-center gap-4">
+                        <span><i data-lucide="hospital" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i> {{ $acta->establecimiento->nombre }}</span>
+                        <span><i data-lucide="user" class="inline-block w-4 h-4 mr-1 text-indigo-500"></i> Implementador: {{ $acta->implementador ?? ($acta->user ? "{$acta->user->apellido_paterno} {$acta->user->name}" : 'NO ASIGNADO') }}</span>
                     </p>
                 </div>
                 <a href="{{ route('usuario.monitoreo.modulos', $acta->id) }}"
@@ -39,13 +39,32 @@
                     $contenido = $detalle->contenido ?? [];
                 @endphp
 
-                <input type="hidden" name="contenido[titulo_consultorio]" value="{{ $tituloConsultorio ?? 'CONSULTORIO' }}">
-
                 {{-- 1.- DATOS GENERALES --}}
                 <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
                     <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
                         <span class="section-number bg-indigo-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-black text-sm">1</span>
-                        <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">DATOS GENERALES</h3>
+                        <h3 class="text-indigo-900 font-black text-lg uppercase tracking-tight">DATOS GENERALES DEL CONSULTORIO / MÓDULO</h3>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Nombre o Denominación del Consultorio / Módulo
+                        </label>
+                        <input type="text" name="contenido[titulo_consultorio]" 
+                            value="{{ $contenido['titulo_consultorio'] ?? ($tituloConsultorio ?? 'CONSULTORIO') }}" required 
+                            placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA 01, TRIAJE..." 
+                            class="w-full bg-indigo-50/70 border-2 border-indigo-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-black text-indigo-900 text-base uppercase outline-none transition-all shadow-sm">
+                    </div>
+
+                    {{-- SERVICIO DEL CONSULTORIO --}}
+                    <div class="mb-6">
+                        <label class="block text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <i data-lucide="building" class="w-3.5 h-3.5"></i> Servicio del Consultorio
+                        </label>
+                        <input type="text" name="contenido[servicio_asociado]" 
+                            value="{{ $contenido['servicio_asociado'] ?? '' }}" 
+                            placeholder="INGRESE EL SERVICIO DEL CONSULTORIO..." 
+                            class="w-full bg-slate-50 border-2 border-slate-200 focus:border-indigo-600 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-center">
@@ -72,11 +91,62 @@
                                 class="w-full px-4 py-3 bg-indigo-50 border-2 border-indigo-100 rounded-xl font-bold text-sm outline-none text-indigo-700 focus:border-indigo-500 transition-all">
                         </div>
                     </div>
+
+                    {{-- INSTALACIONES Y SERVICIOS BÁSICOS DEL CONSULTORIO --}}
+                    <div class="mt-6 pt-6 border-t border-slate-100">
+                        <label class="block text-indigo-900 text-[11px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i data-lucide="building-2" class="w-4 h-4 text-indigo-600"></i> Habilitación e Instalaciones del Consultorio
+                        </label>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            {{-- PREGUNTA 1: ELECTRICIDAD --}}
+                            <div class="bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 hover:border-indigo-200 transition-all">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                        <i data-lucide="zap" class="w-4 h-4"></i>
+                                    </div>
+                                    <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                        ¿El consultorio cuenta con electricidad?
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    @php $electricidad = strtoupper($contenido['cuenta_electricidad'] ?? 'SI'); @endphp
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_electricidad]" value="SI" {{ $electricidad === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> SÍ</span>
+                                    </label>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $electricidad === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_electricidad]" value="NO" {{ $electricidad === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-600"></i> NO</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- PREGUNTA 2: PUNTO DE RED --}}
+                            <div class="bg-slate-50 border-2 border-slate-100 rounded-2xl p-5 hover:border-indigo-200 transition-all">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <div class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center">
+                                        <i data-lucide="network" class="w-4 h-4"></i>
+                                    </div>
+                                    <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                        ¿El consultorio cuenta con punto de red?
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    @php $puntoRed = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); @endphp
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> SÍ</span>
+                                    </label>
+                                    <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800');">
+                                        <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-600"></i> NO</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-
-
-
 
                 {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
                 <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
@@ -89,7 +159,29 @@
                 </div>
 
                 {{-- 3.- TIPO DE CONECTIVIDAD (RESTAURADO COMPLETO) --}}
-                <x-tipo-conectividad num="3" :contenido="$contenido" />
+                @php
+                    $hasComputo = false;
+                    if (isset($equipos) && count($equipos) > 0) {
+                        foreach ($equipos as $eq) {
+                            $descUpper = str_replace('-', ' ', strtoupper(trim($eq->descripcion ?? '')));
+                            if (
+                                str_contains($descUpper, 'CPU') ||
+                                str_contains($descUpper, 'LAPTOP') ||
+                                str_contains($descUpper, 'COMPUTADORA') ||
+                                str_contains($descUpper, 'COMPUTADOR') ||
+                                str_contains($descUpper, 'ALL IN ONE') ||
+                                str_contains($descUpper, 'AIO') ||
+                                str_contains($descUpper, 'PC')
+                            ) {
+                                $hasComputo = true;
+                                break;
+                            }
+                        }
+                    }
+                @endphp
+                <div id="container_tipo_conectividad" class="{{ !$hasComputo ? 'hidden' : '' }}">
+                    <x-tipo-conectividad num="3" :contenido="$contenido" />
+                </div>
 
                 {{-- 6.- OBSERVACIONES Y EVIDENCIAS --}}
                 <div class="monitoreo-section bg-white rounded-[2rem] p-8 shadow-lg border border-slate-100">
@@ -173,10 +265,42 @@
             updateSectionNumbers();
         }
 
+        function checkComputoEquipos() {
+            const containerConectividad = document.getElementById('container_tipo_conectividad');
+            if (!containerConectividad) return;
+
+            const descInputs = document.querySelectorAll('input[name*="[descripcion]"]');
+            let hasComputo = false;
+
+            descInputs.forEach(input => {
+                const rawVal = input.value.trim().toUpperCase();
+                const val = rawVal.replace(/-/g, ' ');
+                if (
+                    val.includes('CPU') ||
+                    val.includes('LAPTOP') ||
+                    val.includes('COMPUTADORA') ||
+                    val.includes('COMPUTADOR') ||
+                    val.includes('ALL IN ONE') ||
+                    val.includes('AIO') ||
+                    val.includes('PC')
+                ) {
+                    hasComputo = true;
+                }
+            });
+
+            if (hasComputo) {
+                containerConectividad.classList.remove('hidden');
+            } else {
+                containerConectividad.classList.add('hidden');
+            }
+
+            updateSectionNumbers();
+        }
+
         function updateSectionNumbers() {
             let index = 1;
             document.querySelectorAll('.monitoreo-section').forEach(section => {
-                if (!section.classList.contains('hidden')) {
+                if (!section.classList.contains('hidden') && !section.closest('.hidden')) {
                     const numberSpan = section.querySelector('.section-number');
                     if (numberSpan) {
                         numberSpan.textContent = index;
@@ -190,7 +314,22 @@
             const selectSihce = document.getElementById('cuenta_sihce');
             if (selectSihce) toggleSihceAndDocs(selectSihce.value);
 
-            updateSectionNumbers();
+            checkComputoEquipos();
+
+            const bodyEquipos = document.querySelector('tbody[id^="body_equipos_"]');
+            if (bodyEquipos) {
+                bodyEquipos.addEventListener('input', function (e) {
+                    if (e.target && e.target.name && e.target.name.includes('[descripcion]')) {
+                        checkComputoEquipos();
+                    }
+                });
+
+                const observer = new MutationObserver(function () {
+                    checkComputoEquipos();
+                });
+                observer.observe(bodyEquipos, { childList: true, subtree: true });
+            }
+
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
 

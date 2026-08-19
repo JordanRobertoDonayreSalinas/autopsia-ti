@@ -19,8 +19,12 @@ class EditMonitoreoController extends Controller
     {
         // Cargamos la cabecera con sus relaciones para evitar el problema de N+1 consultas
         $monitoreo = CabeceraMonitoreo::with(['establecimiento', 'equipo'])->findOrFail($id);
+        $usuarios = \App\Models\User::orderBy('apellido_paterno')
+            ->orderBy('apellido_materno')
+            ->orderBy('name')
+            ->get();
         
-        return view('usuario.monitoreo.edit', compact('monitoreo'));
+        return view('usuario.monitoreo.edit', compact('monitoreo', 'usuarios'));
     }
 
     /**
@@ -84,6 +88,10 @@ class EditMonitoreoController extends Controller
             $monitoreo->pozo_tierra_cantidad = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_cantidad') : null;
             $monitoreo->pozo_tierra_operativos = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_operativos') : null;
             $monitoreo->pozo_tierra_inoperativos = $request->input('pozo_tierra') === 'SI' ? $request->input('pozo_tierra_inoperativos') : null;
+            $monitoreo->panel_solar = $request->input('panel_solar', 'NO');
+            $monitoreo->panel_solar_cantidad = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_cantidad') : null;
+            $monitoreo->panel_solar_operativos = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_operativos') : null;
+            $monitoreo->panel_solar_inoperativos = $request->input('panel_solar') === 'SI' ? $request->input('panel_solar_inoperativos') : null;
             $monitoreo->save();
 
             // 5. SINCRONIZAR EQUIPO DE MONITOREO

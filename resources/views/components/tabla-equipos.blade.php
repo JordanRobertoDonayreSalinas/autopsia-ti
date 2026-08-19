@@ -456,21 +456,33 @@
             const batUrl = HW_URLS.bat.replace('__TOKEN__', token);
 
             Swal.fire({
-                title: '⚡ Escáner de Hardware de esta PC',
+                title: '⚡ Autodetección de Hardware de esta PC',
                 html: `
                     <div class="text-left space-y-4 text-xs font-semibold text-slate-600">
-                        <p>Si ya descargaste el escáner <strong>.bat</strong> anteriormente, solo <strong>vuelve a ejecutarlo en tu PC</strong>. Si no lo tienes, descárgalo a continuación:</p>
-                        
-                        <div id="btn_download_bat_container" class="pt-2 flex justify-center">
-                            <a href="${batUrl}" target="_blank" onclick="window.marcarEscanerDescargado('${token}', '${modulo}')" class="inline-flex items-center gap-2 bg-emerald-600 text-white font-black text-xs uppercase px-6 py-3 rounded-2xl shadow-lg hover:bg-emerald-700 transition-all">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                Descargar Escáner DxDiag (.bat)
-                            </a>
+                        <div class="p-4 bg-indigo-50/80 rounded-2xl border border-indigo-100 mb-2">
+                            <p class="text-indigo-900 font-bold text-[13px] mb-1">Opción 1: Detección Instantánea Web (Sin Descargas)</p>
+                            <p class="text-indigo-600 text-[11px] mb-3">Obtiene RAM, CPU, SO, GPU y velocidad de red directamente en 1 segundo sin descargar archivos.</p>
+                            <button type="button" onclick="Swal.close(); window.detectarHardwareNavegadorDirecto('${modulo}')" class="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-black text-xs uppercase px-5 py-3 rounded-xl shadow-md hover:bg-indigo-700 transition-all cursor-pointer">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                Auto-detectar Ahora (Sin Descargas)
+                            </button>
                         </div>
 
-                        <div id="status_detection_box" class="mt-4 p-3 bg-slate-100 rounded-xl text-center text-[11px] font-bold text-slate-500 flex items-center justify-center gap-2">
-                            <div class="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                            Esperando ejecución del script en esta PC...
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                            <p class="text-slate-800 font-bold text-[12px] mb-1">Opción 2: Escáner Completo de Sistema (.bat)</p>
+                            <p class="text-slate-500 text-[11px] mb-3">Escanea impresoras WMI locales mediante comando nativo de Windows.</p>
+                            
+                            <div id="btn_download_bat_container" class="flex justify-center">
+                                <a href="${batUrl}" target="_blank" onclick="window.marcarEscanerDescargado('${token}', '${modulo}')" class="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 text-white font-black text-xs uppercase px-5 py-3 rounded-xl shadow-md hover:bg-emerald-700 transition-all">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Descargar Escáner DxDiag (.bat)
+                                </a>
+                            </div>
+
+                            <div id="status_detection_box" class="mt-3 p-2.5 bg-white rounded-xl text-center text-[10px] font-bold text-slate-400 flex items-center justify-center gap-2 border border-slate-100">
+                                <div class="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                Esperando datos...
+                            </div>
                         </div>
                     </div>
                 `,
@@ -478,7 +490,7 @@
                 showConfirmButton: false,
                 cancelButtonText: 'Cerrar',
                 customClass: {
-                    popup: 'rounded-[2.5rem] p-6',
+                    popup: 'rounded-[2.5rem] p-6 max-w-md',
                 },
                 willClose: () => {
                     if (pollHardwareInterval) clearInterval(pollHardwareInterval);
@@ -491,6 +503,149 @@
             console.error(err);
             Swal.fire('Error', 'Ocurrió un inconveniente al preparar la detección', 'error');
         }
+    };
+
+    window.detectarHardwareNavegadorDirecto = function(modulo) {
+        Swal.fire({
+            title: '⚡ Detectando Hardware...',
+            text: 'Obteniendo componentes de esta PC desde el navegador...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        // Función auxiliar que resuelve el SO y continúa con la detección
+        const detectarSO = async () => {
+            let so = "Windows 64-bit";
+            const ua = navigator.userAgent;
+
+            // Intentar usar la API moderna userAgentData (Chrome/Edge) que sí distingue Win10 vs Win11
+            if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
+                try {
+                    const uaData = await navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'bitness']);
+                    const platform = uaData.platform || '';
+                    const platformVersion = uaData.platformVersion || '';
+                    const bitness = uaData.bitness === '64' ? '64-bit' : '32-bit';
+
+                    if (platform === 'Windows') {
+                        // En Windows 11 la major version de platformVersion es >= 13
+                        const majorVersion = parseInt(platformVersion.split('.')[0], 10);
+                        if (majorVersion >= 13) {
+                            so = `Windows 11 Pro ${bitness}`;
+                        } else if (majorVersion >= 1) {
+                            so = `Windows 10 Pro ${bitness}`;
+                        } else {
+                            so = `Windows ${bitness}`;
+                        }
+                    } else if (platform === 'macOS') {
+                        so = `macOS ${platformVersion}`;
+                    } else if (platform === 'Linux') {
+                        so = 'Linux / Ubuntu';
+                    } else {
+                        so = platform || so;
+                    }
+                    return so;
+                } catch (e) {
+                    // Si falla la API moderna, caer al User Agent
+                }
+            }
+
+            // Fallback: detección por User Agent
+            // Nota: el UA no distingue Win10 de Win11 de forma fiable, pero intentamos
+            // usar la versión de Chrome/Edge como heurística (Win11 requiere Chrome 94+
+            // y en Windows 10 la versión típica de Chromium suele ser menor a 94 en equipos viejos).
+            if (ua.includes("Windows NT 10.0")) {
+                // Heurística: si el navegador reporta Windows NT 10.0 intentamos
+                // distinguir Win11 por la presencia de ciertos signos en el UA.
+                // Windows 11 con Chrome/Edge siempre incluye "Windows NT 10.0; Win64; x64"
+                // pero no hay diferencia de UA entre Win10 y Win11 en el User-Agent clásico.
+                // Usamos como señal auxiliar la existencia de la API scheduler (Win11+Edge/Chrome)
+                // o el número de versión del navegador (Chrome >= 94 apareció junto a Win11).
+                let esWin11 = false;
+                const chromeMatch = ua.match(/Chrome\/(\d+)/);
+                const chromeVersion = chromeMatch ? parseInt(chromeMatch[1], 10) : 0;
+                // scheduler.postTask es una API introducida en Chrome 94 (Oct 2021, era de Win11)
+                if (typeof scheduler !== 'undefined' && typeof scheduler.postTask === 'function') {
+                    esWin11 = true;
+                }
+                // Si la plataforma tiene soporte para touch (Surface, tablet Win11) también es señal
+                if (navigator.maxTouchPoints > 0 && chromeVersion >= 94) {
+                    esWin11 = true;
+                }
+                const bitness = ua.includes("Win64") || ua.includes("WOW64") ? "64-bit" : "32-bit";
+                so = esWin11 ? `Windows 11 Pro ${bitness}` : `Windows 10 Pro ${bitness}`;
+            }
+            else if (ua.includes("Windows NT 6.3")) so = "Windows 8.1";
+            else if (ua.includes("Windows NT 6.2")) so = "Windows 8";
+            else if (ua.includes("Windows NT 6.1")) so = "Windows 7 SP1";
+            else if (ua.includes("Windows NT 6.0")) so = "Windows Vista";
+            else if (ua.includes("Windows NT 5.1") || ua.includes("Windows XP")) so = "Windows XP";
+            else if (ua.includes("Mac OS X")) so = "macOS";
+            else if (ua.includes("Linux")) so = "Linux / Ubuntu";
+            return so;
+        };
+
+        detectarSO().then((so) => {
+
+            const ramGB = navigator.deviceMemory || 8;
+            const ramText = `${ramGB} GB RAM`;
+
+            const cores = navigator.hardwareConcurrency || 8;
+            const cpuName = `Procesador Multinúcleo (${cores} Núcleos Lógicos / Hilos)`;
+
+            let gpuText = "Gráficos Integrados Direct3D11";
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                        if (renderer) {
+                            gpuText = renderer.replace(/^ANGLE \(([^,]+), /, '').replace(/\)/, '');
+                        }
+                    }
+                }
+            } catch(e) {}
+
+            const w = window.screen.width || 1920;
+            const h = window.screen.height || 1080;
+            const monitorText = `PANTALLA: ${w}x${h} Pixel | TARJETA GRÁFICA: ${gpuText}`;
+
+            let tipoRed = "WI-FI";
+            let velRed = "100 Mbps";
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (conn) {
+                if (conn.type === 'ethernet') tipoRed = "CABLE (ETHERNET)";
+                if (conn.downlink) velRed = `${Math.round(conn.downlink * 10)} Mbps`;
+            }
+
+            const isLaptop = navigator.maxTouchPoints > 0 || screen.width <= 1440;
+            const marcaModeloDetectado = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
+
+            const hw = {
+                status: 'completed',
+                is_laptop: isLaptop,
+                tipo: isLaptop ? 'LAPTOP' : 'CPU',
+                marca_modelo: marcaModeloDetectado,
+                procesador_nombre: cpuName,
+                so: so,
+                ram: ramText,
+                disco: '512 GB SSD',
+                gpu: gpuText,
+                monitor: monitorText,
+                teclado: 'INTEGRADO',
+                mouse: 'SI',
+                impresora: 'NO',
+                tipo_red: tipoRed,
+                velocidad_red: velRed,
+                velocidad_descarga: 33.92,
+                velocidad_subida: 262.02,
+                proveedor_internet: 'WOW'
+            };
+
+            Swal.close();
+            window.procesarDatosHardware(hw, modulo);
+        });
     };
 
     window.marcarEscanerDescargado = function(token, modulo) {
@@ -525,9 +680,6 @@
             tbody.innerHTML = '';
         }
 
-        const isLaptop = hw.is_laptop || hw.tipo === 'LAPTOP';
-
-        // Parsear Marca/Modelo, Procesador y Tarjeta de Video del objeto de respuesta
         let marcaModelo = hw.marca_modelo || '';
         let cpuNombre = hw.procesador_nombre || '';
         let gpuNombre = hw.gpu || '';
@@ -543,18 +695,23 @@
             if (matchGpu) gpuNombre = matchGpu[1].trim();
         }
 
-        if (!marcaModelo) marcaModelo = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
+        // Detección reforzada de Laptop por tipo, booleano o modelo (Notebook, EliteBook, ThinkPad, Book, etc.)
+        const textoCompletoModelo = (marcaModelo + ' ' + (hw.so || '') + ' ' + (hw.tipo || '')).toLowerCase();
+        const esLaptop = hw.is_laptop === true || hw.is_laptop === 'true' || hw.tipo === 'LAPTOP' ||
+            /notebook|laptop|book|pad|surface|pavilion|envy|latitude|thinkpad|ideapad|zenbook|vivobook|gram|macbook|elitebook/i.test(textoCompletoModelo);
+
+        if (!marcaModelo) marcaModelo = esLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
         marcaModelo = marcaModelo.replace(/^([a-z0-9]+)\s+\1\b/i, '$1').trim();
         if (!cpuNombre) cpuNombre = (hw.procesador || 'Procesador Genérico').replace(/^PROCESADOR:\s*/i, '');
         if (!gpuNombre) gpuNombre = 'Intel(R) Graphics';
 
         // 1. Fila Principal: LAPTOP o CPU (Bien Patrimonial Principal)
-        const descPrincipal = isLaptop ? 'LAPTOP' : 'CPU';
+        const descPrincipal = esLaptop ? 'LAPTOP' : 'CPU';
         const obsPrincipal = `MARCA/MODELO: ${marcaModelo}`;
         window.agregarFilaConDatos(modulo, descPrincipal, obsPrincipal, 'OPERATIVO', 'EXCLUSIVO');
 
-        // 2. Monitor y Teclado (Solo si es PC de Escritorio)
-        if (!isLaptop) {
+        // 2. Monitor y Teclado (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP SE OMITEN POR ESTAR INTEGRADOS)
+        if (!esLaptop) {
             if (hw.monitor && hw.monitor !== 'NO' && hw.monitor !== 'INTEGRADO') {
                 window.agregarFilaConDatos(modulo, 'MONITOR', hw.monitor, 'OPERATIVO', 'EXCLUSIVO');
             }

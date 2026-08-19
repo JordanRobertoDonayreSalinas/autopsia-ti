@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
 // --- IMPORTACIÓN DE CONTROLADORES ACTIVOS ---
+use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditoriaController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\CronogramaActividadesController;
 use App\Http\Controllers\Infraestructura2DController;
 use App\Http\Controllers\Infraestructura2DPdfController;
 use App\Http\Controllers\MonitoreoModuloGenericController;
+use App\Http\Controllers\RecursosHumanosController;
 use App\Http\Controllers\SignatureBankController;
 use App\Http\Controllers\ReunionController;
 use App\Http\Controllers\DnieVerificadorController;
@@ -48,11 +50,14 @@ Route::controller(LoginController::class)->group(function () {
 Route::get('/firmar/{token}', [FirmaMovilController::class, 'viewMobilePad'])->name('firma.movil');
 Route::post('/firmar/save/{token}', [FirmaMovilController::class, 'saveMobileSignature'])->name('firma.movil.save');
 
-// --- RUTAS PÚBLICAS DE ASISTENCIA ---
+// --- RUTAS PÚBLICAS DE ASISTENCIA Y AUTO-DETECCIÓN ---
 Route::prefix('asistencia-reunion')->name('asistencia.')->group(function () {
     Route::get('/{id}', [AttendanceController::class, 'show'])->name('show');
     Route::post('/{id}', [AttendanceController::class, 'store'])->name('store');
 });
+
+// Endpoint público para que el script .bat (Powershell) envíe los datos de hardware escaneados
+Route::match(['get', 'post'], '/usuario/ajax/guardar-deteccion-hardware', [\App\Http\Controllers\HardwareDetectionController::class, 'guardarDeteccion'])->name('usuario.ajax.guardar-deteccion-hardware');
 
 // --- RUTAS PROTEGIDAS (Middleware Auth) ---
 Route::middleware(['auth'])->group(function () {
@@ -101,7 +106,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/ajax/hardware-directo', [\App\Http\Controllers\HardwareDetectionController::class, 'deteccionDirecta'])->name('ajax.hardware-directo');
         Route::post('/ajax/hardware-token', [\App\Http\Controllers\HardwareDetectionController::class, 'generarToken'])->name('ajax.hardware-token');
         Route::get('/ajax/hardware-bat/{token}', [\App\Http\Controllers\HardwareDetectionController::class, 'descargarBat'])->name('ajax.hardware-bat');
-        Route::match(['get', 'post'], '/ajax/guardar-deteccion-hardware', [\App\Http\Controllers\HardwareDetectionController::class, 'guardarDeteccion'])->name('ajax.guardar-deteccion-hardware');
         Route::get('/ajax/check-deteccion-hardware/{token}', [\App\Http\Controllers\HardwareDetectionController::class, 'checkDeteccion'])->name('ajax.check-deteccion-hardware');
 
         // --- SECCIÓN: ACTAS DE REUNIÓN ---
@@ -218,10 +222,22 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('/{id}/sync-data', [Infraestructura2DController::class, 'getSyncData'])->name('sync-data');
                 Route::post('/{id}', [Infraestructura2DController::class, 'store'])->name('store');
                 Route::get('/{id}/pdf', [Infraestructura2DPdfController::class, 'generar'])->name('pdf');
+
+                // Colaboración en tiempo real: sondeo de estado y salida del editor
+                Route::post('/{id}/croquis-sync', [Infraestructura2DController::class, 'croquisSync'])->name('croquis-sync');
+                Route::post('/{id}/croquis-leave', [Infraestructura2DController::class, 'croquisLeave'])->name('croquis-leave');
+            });
+
+            // Módulo Fijo: Recursos Humanos (RR.HH)
+            Route::prefix('modulo/rrhh')->name('rrhh.')->group(function () {
+                Route::get('/{id}', [RecursosHumanosController::class, 'index'])->name('index');
+                Route::post('/{id}', [RecursosHumanosController::class, 'store'])->name('store');
+                Route::get('/{id}/pdf', [RecursosHumanosController::class, 'pdf'])->name('pdf');
             });
 
             // RUTAS DINÁMICAS DE CONSULTORIOS / MÓDULOS
             Route::post('/{id}/crear-consultorio', [MonitoreoModuloGenericController::class, 'crearConsultorio'])->name('consultorio.crear');
+            Route::put('/{id}/consultorio/{slug}/renombrar', [MonitoreoModuloGenericController::class, 'renombrarConsultorio'])->name('consultorio.renombrar');
             Route::get('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'showConsultorio'])->name('consultorio.show');
             Route::post('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'storeConsultorio'])->name('consultorio.store');
             Route::get('/{id}/consultorio/{slug}/pdf', [MonitoreoModuloGenericController::class, 'pdfConsultorio'])->name('consultorio.pdf');
@@ -230,10 +246,13 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}/pdf-consolidado', [MonitoreoController::class, 'generarPDF'])->name('generarPDF');
             Route::post('/{id}/subir-consolidado-final', [MonitoreoController::class, 'subirPDF'])->name('subirConsolidado');
             Route::get('/ver-detalle/{monitoreo}', [MonitoreoController::class, 'show'])->name('show');
-            Route::post('/{id}/anular', [MonitoreoController::class, 'anular'])->name('anular');
             Route::get('/{id}/emails', [MonitoreoController::class, 'getEquipoEmails'])->name('get-emails');
             Route::post('/{id}/enviar-correo', [MonitoreoController::class, 'enviarCorreo'])->name('enviarCorreo');
             Route::post('/consolidado-pdf-export', [MonitoreoController::class, 'consolidadoPDFExport'])->name('consolidadoPDFExport');
+
+            // RUTAS DE MODO OFFLINE / PWA
+            Route::get('/offline/descargar-datos', [OfflineSyncController::class, 'descargarDatosCampo'])->name('offline.descargar');
+            Route::post('/offline/sincronizar-lote', [OfflineSyncController::class, 'sincronizarLoteOffline'])->name('offline.sincronizar');
         });
     });
 

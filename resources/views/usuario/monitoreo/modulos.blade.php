@@ -6,6 +6,10 @@
 <div class="py-12 bg-[#f4f7fa] min-h-screen" 
      x-data="{ 
         showNewModal: false,
+        showEditModal: false,
+        editModalSlug: '',
+        editModalTitle: '',
+        editModalAction: '',
         showUploadModal: false,
         currentModule: '',
         currentModuleName: '',
@@ -32,7 +36,9 @@
                             <span class="text-indigo-200 text-[11px] font-bold uppercase tracking-widest">ACTA DE MONITOREO N°{{ str_pad($acta->numero_acta, 5, '0', STR_PAD_LEFT) }}</span>
                         </div>
                         <h2 class="text-3xl font-black tracking-tight uppercase italic">{{ $acta->establecimiento->nombre }}</h2>
-                        <p class="text-indigo-300/80 text-xs font-bold mt-1 uppercase tracking-widest">Panel de evaluación de consultorios y croquis 2D</p>
+                        <div class="flex flex-wrap items-center gap-4 mt-2 text-indigo-200 text-xs font-bold uppercase tracking-widest">
+                            <span class="flex items-center gap-1.5"><i data-lucide="user" class="w-4 h-4 text-emerald-400"></i> Implementador: {{ $acta->implementador ?? ($acta->user ? "{$acta->user->apellido_paterno} {$acta->user->name}" : 'NO ASIGNADO') }}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
@@ -96,6 +102,47 @@
                 </div>
             </div>
 
+            {{-- 2. MÓDULO FIJO: RR.HH (RECURSOS HUMANOS) --}}
+            @php
+                $rrhhContent = isset($moduloRrhh->contenido) ? (is_array($moduloRrhh->contenido) ? $moduloRrhh->contenido : json_decode($moduloRrhh->contenido, true)) : [];
+                $totalTrabajadoresRrhh = count($rrhhContent['trabajadores'] ?? []);
+            @endphp
+            <div class="relative bg-white rounded-[2.5rem] border-2 border-violet-200 shadow-xl transition-all duration-500 group overflow-hidden flex flex-col hover:border-violet-400">
+                <div class="p-6 pb-0 flex justify-between items-start z-10">
+                    <div class="h-14 w-14 rounded-2xl bg-violet-600 flex items-center justify-center text-white shadow-lg">
+                        <i data-lucide="users-round" class="w-7 h-7"></i>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if($totalTrabajadoresRrhh > 0)
+                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-black text-[9px] rounded-lg uppercase tracking-widest flex items-center gap-1">
+                                <i data-lucide="check" class="w-3 h-3"></i> {{ $totalTrabajadoresRrhh }} Registrados
+                            </span>
+                        @endif
+                        <span class="px-3 py-1 bg-violet-100 text-violet-700 font-black text-[9px] rounded-lg uppercase tracking-widest">
+                            Módulo Fijo
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex-1">
+                    <a href="{{ route('usuario.monitoreo.rrhh.index', $acta->id) }}" class="block p-6 group/link">
+                        <h3 class="text-slate-800 text-sm font-black uppercase tracking-tight leading-tight mb-2 group-hover/link:text-violet-600 transition-colors">
+                            RR.HH (Recursos Humanos)
+                        </h3>
+                        <span class="text-[9px] font-black uppercase tracking-widest text-violet-500 flex items-center gap-1">
+                            <i data-lucide="id-card" class="w-3.5 h-3.5"></i> Padrón de Personal por Servicio
+                        </span>
+                    </a>
+                </div>
+
+                <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
+                    <a href="{{ route('usuario.monitoreo.rrhh.pdf', $acta->id) }}" target="_blank" 
+                       class="flex-1 h-10 bg-white text-violet-600 border border-violet-200 rounded-xl flex items-center justify-center gap-2 hover:bg-violet-600 hover:text-white transition-all shadow-sm font-black text-[10px] uppercase">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Generar Reporte RR.HH
+                    </a>
+                </div>
+            </div>
+
             {{-- 2. TARJETA PARA AÑADIR NUEVO CONSULTORIO --}}
             <div @click="showNewModal = true" 
                  class="cursor-pointer bg-dashed border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50 rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center transition-all group min-h-[220px]">
@@ -121,13 +168,20 @@
                             <i data-lucide="stethoscope" class="w-7 h-7"></i>
                         </div>
                         
-                        <form action="{{ route('usuario.monitoreo.consultorio.destroy', [$acta->id, $cSlug]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio de la lista?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors" title="Eliminar Consultorio">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" @click="editModalSlug = '{{ $cSlug }}'; editModalTitle = '{{ addslashes($cTitulo) }}'; editModalAction = '{{ route('usuario.monitoreo.consultorio.renombrar', [$acta->id, $cSlug]) }}'; showEditModal = true;" 
+                                    class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-400 hover:text-emerald-600 flex items-center justify-center transition-colors" title="Renombrar Consultorio">
+                                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                             </button>
-                        </form>
+                            
+                            <form action="{{ route('usuario.monitoreo.consultorio.destroy', [$acta->id, $cSlug]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio de la lista?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors" title="Eliminar Consultorio">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
 
                     <div class="flex-1">
@@ -192,6 +246,47 @@
                     <button type="submit" 
                             class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs uppercase tracking-widest shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2">
                         <i data-lucide="check" class="w-4 h-4"></i> Crear e Iniciar Evaluación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- MODAL: EDITAR / RENOMBRAR CONSULTORIO --}}
+    <div x-show="showEditModal" 
+         x-cloak 
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div @click.away="showEditModal = false" 
+             class="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl border border-slate-100 transform transition-all">
+            
+            <div class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100">
+                <div class="h-12 w-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                    <i data-lucide="edit-3" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-black text-slate-900 uppercase">Renombrar Consultorio</h3>
+                    <p class="text-slate-400 font-bold text-xs">Modifique la denominación o título de este consultorio</p>
+                </div>
+            </div>
+
+            <form :action="editModalAction" method="POST" class="space-y-6">
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <label class="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Nombre del Consultorio / Módulo</label>
+                    <input type="text" name="nuevo_titulo" x-model="editModalTitle" required placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA, TRIAJE..." 
+                           class="w-full bg-slate-50 border-2 border-slate-200 focus:border-emerald-500 rounded-2xl p-4 font-bold text-slate-800 uppercase outline-none transition-all">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" @click="showEditModal = false" 
+                            class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-xl text-xs uppercase tracking-widest transition-all">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs uppercase tracking-widest shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> Guardar Nombre
                     </button>
                 </div>
             </form>
