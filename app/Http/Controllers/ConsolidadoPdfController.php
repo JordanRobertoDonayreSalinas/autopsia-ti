@@ -72,6 +72,8 @@ class ConsolidadoPdfController extends Controller
                             $obj->estado = $item['estado'] ?? 'REGULAR';
                             $obj->propio = $item['propiedad'] ?? ($item['propio'] ?? 'ESTABLECIMIENTO');
                             $obj->nro_serie = $item['nro_serie'] ?? ($item['codigo'] ?? '-');
+                            $obj->observacion = $item['observacion'] ?? ($item['observaciones'] ?? null);
+                            $obj->especificaciones = $item['especificaciones'] ?? null;
                             $equipos->push($obj);
                         }
                     }
@@ -144,9 +146,20 @@ class ConsolidadoPdfController extends Controller
             }
         }
 
-        $pdf = Pdf::loadView('usuario.monitoreo.pdf.consolidado_pdf', $data);
+        $pdf = Pdf::setOptions([
+            'isPhpEnabled'         => true,
+            'isRemoteEnabled'      => true,
+            'isHtml5ParserEnabled' => true,
+        ])->loadView('usuario.monitoreo.pdf.consolidado_pdf', $data);
+        
+        $pdf->setPaper('a4', 'portrait');
 
-        return $pdf->setPaper('a4', 'portrait')
-                   ->stream("ACTA_CONSOLIDADA_N{$acta->id}.pdf");
+        return response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="ACTA_CONSOLIDADA_N' . $acta->id . '.pdf"',
+            'Cache-Control'       => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma'              => 'no-cache',
+            'Expires'             => 'Sun, 02 Jan 1990 00:00:00 GMT',
+        ]);
     }
 }
