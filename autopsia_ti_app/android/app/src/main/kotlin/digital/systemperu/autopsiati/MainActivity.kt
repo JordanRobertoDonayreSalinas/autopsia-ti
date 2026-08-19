@@ -1,4 +1,4 @@
-package com.example.autopsia_ti_app
+package digital.systemperu.autopsiati
 
 import io.flutter.embedding.android.FlutterActivity
 
