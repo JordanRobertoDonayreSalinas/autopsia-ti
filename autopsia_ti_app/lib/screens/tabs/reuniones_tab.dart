@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../models/reunion.dart';
 
@@ -5,8 +6,18 @@ import '../../models/reunion.dart';
 /// Sin registros muestra un estado vacío en vez de un dato de ejemplo fijo.
 class ReunionesTab extends StatelessWidget {
   final List<Reunion> reuniones;
+  final VoidCallback onNuevaReunion;
 
-  const ReunionesTab({super.key, required this.reuniones});
+  const ReunionesTab({super.key, required this.reuniones, required this.onNuevaReunion});
+
+  int _contarJson(String? raw) {
+    if (raw == null || raw.isEmpty) return 0;
+    try {
+      return (json.decode(raw) as List).length;
+    } catch (_) {
+      return 0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +35,7 @@ class ReunionesTab extends StatelessWidget {
                 const Text('Actas de Reunión de Campo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
                 const Spacer(),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Formulario de Nueva Reunión de Campo')));
-                  },
+                  onPressed: onNuevaReunion,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Nueva Reunión'),
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), foregroundColor: Colors.white),
@@ -58,10 +67,35 @@ class ReunionesTab extends StatelessWidget {
                 itemCount: reuniones.length,
                 itemBuilder: (context, index) {
                   final r = reuniones[index];
-                  return ListTile(
-                    leading: const Icon(Icons.group_rounded, color: Color(0xFF4F46E5)),
-                    title: Text(r.tituloReunion, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Fecha: ${r.fechaReunion} ${r.horaReunion} | ${r.nombreInstitucion}'),
+                  final sincronizada = r.syncStatus == 'synced';
+                  final numParticipantes = _contarJson(r.participantes);
+                  final numAcuerdos = _contarJson(r.acuerdos);
+                  return Card(
+                    elevation: 0,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    color: const Color(0xFFF8FAFC),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFE2E8F0))),
+                    child: ListTile(
+                      leading: const Icon(Icons.group_rounded, color: Color(0xFF4F46E5)),
+                      title: Text(r.tituloReunion, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${r.fechaReunion} ${r.horaReunion} · ${r.nombreInstitucion}\n$numParticipantes participante(s) · $numAcuerdos acuerdo(s)'),
+                      isThreeLine: true,
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: sincronizada ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          sincronizada ? 'SINCRONIZADA' : 'PENDIENTE',
+                          style: TextStyle(
+                            color: sincronizada ? const Color(0xFF065F46) : const Color(0xFF92400E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),

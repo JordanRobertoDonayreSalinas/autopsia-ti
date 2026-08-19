@@ -1,24 +1,22 @@
-import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/cabecera_monitoreo.dart';
-import '../models/equipo_computo.dart';
 import '../models/establecimiento.dart';
-import '../models/monitoreo_modulo.dart';
 import '../models/reunion.dart';
 import '../repositories/acta_repository.dart';
 import '../repositories/establecimiento_repository.dart';
 import '../repositories/reunion_repository.dart';
 import '../services/sync_service.dart';
 import '../widgets/sidebar_menu_item.dart';
-import 'acta_detalle_screen.dart';
 import 'login_screen.dart';
+import 'nueva_acta_form_screen.dart';
+import 'reunion_form_screen.dart';
 import 'tabs/actas_diagnostico_tab.dart';
+import 'tabs/actas_monitoreo_listado_tab.dart';
 import 'tabs/dashboard_tab.dart';
 import 'tabs/establecimientos_tab.dart';
 import 'tabs/gestionar_usuarios_tab.dart';
 import 'tabs/perfil_tab.dart';
-import 'tabs/reportes_tab.dart';
 import 'tabs/reuniones_tab.dart';
 
 class MainCampoScreen extends StatefulWidget {
@@ -40,6 +38,8 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
   int _sinDiagnostico = 0;
   int _conDiagnostico = 0;
   List<Map<String, dynamic>> _markers = [];
+  List<String> _aniosDisponibles = [];
+  String _anioSeleccionado = 'todos';
   List<Map<String, dynamic>> _realUsers = [];
   List<Reunion> _reuniones = [];
   int _pendientesCount = 0;
@@ -47,12 +47,25 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
   String _userName = 'JORDAN ROBERTO';
   List<Establecimiento> _searchResult = [];
   final TextEditingController _searchCtrl = TextEditingController();
+  Timer? _reconnectTimer;
 
   @override
   void initState() {
     super.initState();
     _checkStatus();
     _loadInitialData();
+    // Reintenta la conexión sola cada 20s mientras esté offline — antes,
+    // si el chequeo inicial fallaba (ej. el servidor tardó en levantar),
+    // la app se quedaba "Modo Campo Offline" para siempre sin reintentar.
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!_isOnline) _checkStatus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _reconnectTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
@@ -75,8 +88,8 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
 
   Future<void> _fetchApiData() async {
     try {
-      final stats = await _syncService.getDashboardStats();
-      final marks = await _syncService.getMapMarkers();
+      final stats = await _syncService.getDashboardStats(anio: _anioSeleccionado);
+      final mapa = await _syncService.getMapMarkers(anio: _anioSeleccionado);
       final users = await _syncService.getUsers();
 
       setState(() {
@@ -85,10 +98,20 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
           _sinDiagnostico = stats['sin_diagnostico'] ?? 0;
           _conDiagnostico = stats['con_diagnostico'] ?? 0;
         }
-        _markers = marks;
+        _markers = mapa['markers'] ?? [];
+        _aniosDisponibles = mapa['anios_disponibles'] ?? [];
         _realUsers = users;
       });
     } catch (_) {}
+  }
+
+  /// El filtro "Año" recalcula en el servidor qué establecimientos cuentan
+  /// como "con diagnóstico" (espejo de UsuarioController::index, que hace
+  /// una recarga completa de página con ?anio=X) — a diferencia de los demás
+  /// filtros del dashboard, que son puramente del lado del cliente.
+  Future<void> _onAnioChanged(String anio) async {
+    setState(() => _anioSeleccionado = anio);
+    await _fetchApiData();
   }
 
   Future<void> _checkStatus() async {
@@ -108,19 +131,24 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
     setState(() => _isSyncing = true);
     await _establecimientoRepo.descargarCatalogo();
     final resultado = await _actaRepo.sincronizarPendientes();
+    final resultadoReuniones = await _reunionRepo.sincronizarPendientes();
     await _loadInitialData();
     setState(() => _isSyncing = false);
 
     if (!mounted) return;
-    final sincronizados = resultado['sincronizados'] ?? 0;
-    final errores = List<Map<String, dynamic>>.from(resultado['errores'] ?? []);
+    _refrescarListadoActas();
+    final sincronizados = ((resultado['sincronizados'] ?? 0) as int) + ((resultadoReuniones['sincronizados'] ?? 0) as int);
+    final errores = [
+      ...List<Map<String, dynamic>>.from(resultado['errores'] ?? []),
+      ...List<Map<String, dynamic>>.from(resultadoReuniones['errores'] ?? []),
+    ];
     if (errores.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFFB91C1C),
           content: Text(
             sincronizados > 0
-                ? '$sincronizados acta(s) sincronizada(s). ${errores.length} con error: ${errores.first['message']}'
+                ? '$sincronizados registro(s) sincronizado(s). ${errores.length} con error: ${errores.first['message']}'
                 : 'No se pudo sincronizar: ${errores.first['message']}',
           ),
           duration: const Duration(seconds: 6),
@@ -130,10 +158,31 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFF15803D),
-          content: Text('$sincronizados acta(s) sincronizada(s) con el servidor.'),
+          content: Text('$sincronizados registro(s) sincronizado(s) con el servidor.'),
         ),
       );
     }
+  }
+
+  Future<void> _abrirNuevaReunion() async {
+    final guardado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const ReunionFormScreen()),
+    );
+    if (guardado == true) {
+      final reuniones = await _reunionRepo.obtenerTodas();
+      if (!mounted) return;
+      setState(() => _reuniones = reuniones);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(backgroundColor: Color(0xFF15803D), content: Text('Acta de reunión guardada en disco local.')),
+      );
+    }
+  }
+
+  Future<void> _recargarUsuario() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _userName = prefs.getString('user_name') ?? _userName);
   }
 
   Future<void> _cerrarSesion() async {
@@ -152,255 +201,29 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
     setState(() => _searchResult = res);
   }
 
+  /// "Nueva Acta" es el formulario completo real (fecha, implementador,
+  /// categoría, responsable, equipo mínimo 1, pozo/panel, fotos) — ver
+  /// NuevaActaFormScreen. Antes esto era un diálogo simplificado que ni
+  /// siquiera pedía el campo `equipo`, obligatorio en el store() real.
   void _mostrarDialogoNuevaActa(Establecimiento? itemSeleccionado) {
-    Establecimiento? ipress = itemSeleccionado ?? (_searchResult.isNotEmpty ? _searchResult.first : null);
-    final auditorCtrl = TextEditingController(text: _userName);
-    final obsCtrl = TextEditingController();
-    final equipoNombreCtrl = TextEditingController();
-    final equipoSerieCtrl = TextEditingController();
-    final pozoTierraCantCtrl = TextEditingController();
-    final pozoTierraOpCtrl = TextEditingController();
-    final panelSolarCantCtrl = TextEditingController();
-    final panelSolarOpCtrl = TextEditingController();
-    String pozoTierra = 'NO';
-    String panelSolar = 'NO';
-
-    Map<String, bool> consultorios = {
-      'Triaje / Admisión': true,
-      'Consultorio Medicina General': true,
-      'Consultorio Odontología': false,
-      'Emergencia / Utopic': true,
-      'Farmacia / Almacén': false,
-    };
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.note_add_rounded, color: Color(0xFF4F46E5)),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Nueva Acta de Diagnóstico TI',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: 600,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Establecimiento (IPRESS):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF334155))),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCBD5E1))),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.local_hospital_rounded, color: Color(0xFF4F46E5), size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                ipress != null ? '${ipress.nombre} (${ipress.codigo})' : 'Seleccione una IPRESS',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 13),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Auditor / Técnico Responsable:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF334155))),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: auditorCtrl,
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.person_outline_rounded, color: Color(0xFF64748B)),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Infraestructura Eléctrica:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF334155))),
-                      const SizedBox(height: 6),
-                      _CampoInstalacion(
-                        label: 'Pozo a tierra',
-                        valor: pozoTierra,
-                        cantidadCtrl: pozoTierraCantCtrl,
-                        operativosCtrl: pozoTierraOpCtrl,
-                        onChanged: (v) => setDialogState(() => pozoTierra = v),
-                      ),
-                      const SizedBox(height: 10),
-                      _CampoInstalacion(
-                        label: 'Panel solar',
-                        valor: panelSolar,
-                        cantidadCtrl: panelSolarCantCtrl,
-                        operativosCtrl: panelSolarOpCtrl,
-                        onChanged: (v) => setDialogState(() => panelSolar = v),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Consultorios Evaluados en Campo:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF334155))),
-                      const SizedBox(height: 6),
-                      ...consultorios.keys.map((key) {
-                        return CheckboxListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(key, style: const TextStyle(fontSize: 13)),
-                          value: consultorios[key],
-                          onChanged: (val) {
-                            setDialogState(() {
-                              consultorios[key] = val ?? false;
-                            });
-                          },
-                        );
-                      }),
-                      const SizedBox(height: 16),
-                      const Text('Inventario Rápido de Equipo Principal:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF334155))),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextField(
-                              controller: equipoNombreCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'Descripción',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                filled: true,
-                                fillColor: const Color(0xFFF8FAFC),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 1,
-                            child: TextField(
-                              controller: equipoSerieCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'N° Serie',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                filled: true,
-                                fillColor: const Color(0xFFF8FAFC),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Observaciones Situacionales de Infraestructura:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF334155))),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: obsCtrl,
-                        maxLines: 2,
-                        decoration: InputDecoration(
-                          hintText: 'Ingrese observaciones de red, cableado o equipos informáticos...',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text('Cancelar', style: TextStyle(color: Color(0xFF64748B))),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    if (ipress == null || ipress.id == null) return;
-                    final offlineId = 'ACTA-${DateTime.now().millisecondsSinceEpoch}';
-                    final ahora = DateTime.now();
-                    final responsable = auditorCtrl.text.trim().isEmpty ? _userName : auditorCtrl.text.trim();
-
-                    final acta = CabeceraMonitoreo(
-                      offlineId: offlineId,
-                      localCreatedAt: ahora.toIso8601String(),
-                      establecimientoId: ipress.id!,
-                      fecha: ahora.toString().split(' ')[0],
-                      responsable: responsable,
-                      implementador: responsable,
-                      pozoTierra: pozoTierra,
-                      pozoTierraCantidad: pozoTierra == 'SI' ? int.tryParse(pozoTierraCantCtrl.text) : null,
-                      pozoTierraOperativos: pozoTierra == 'SI' ? int.tryParse(pozoTierraOpCtrl.text) : null,
-                      panelSolar: panelSolar,
-                      panelSolarCantidad: panelSolar == 'SI' ? int.tryParse(panelSolarCantCtrl.text) : null,
-                      panelSolarOperativos: panelSolar == 'SI' ? int.tryParse(panelSolarOpCtrl.text) : null,
-                    );
-
-                    // Un módulo (consultorio) por cada casilla marcada, con la
-                    // observación capturada como contenido inicial. Ver Fase 5
-                    // del plan para las fichas completas por módulo.
-                    final consultoriosMarcados = consultorios.entries.where((e) => e.value).map((e) => e.key).toList();
-                    final modulos = consultoriosMarcados
-                        .map((nombre) => MonitoreoModulo(
-                              actaOfflineId: offlineId,
-                              moduloNombre: nombre,
-                              contenido: jsonEncode({'observaciones': obsCtrl.text.trim()}),
-                            ))
-                        .toList();
-
-                    final equipos = <EquipoComputo>[];
-                    if (equipoNombreCtrl.text.trim().isNotEmpty) {
-                      final moduloEquipo = consultoriosMarcados.isNotEmpty ? consultoriosMarcados.first : 'GENERAL';
-                      equipos.add(EquipoComputo(
-                        actaOfflineId: offlineId,
-                        modulo: moduloEquipo,
-                        descripcion: equipoNombreCtrl.text.trim(),
-                        nroSerie: equipoSerieCtrl.text.trim().isEmpty ? null : equipoSerieCtrl.text.trim(),
-                      ));
-                    }
-
-                    await _actaRepo.guardarActaCompleta(acta, modulos: modulos, equipos: equipos);
-
-                    setState(() {
-                      _pendientesCount++;
-                    });
-
-                    Navigator.pop(dialogCtx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color(0xFF15803D),
-                        content: Text('Acta ($offlineId) guardada exitosamente en disco local para ${ipress.nombre}'),
-                        duration: const Duration(seconds: 4),
-                      ),
-                    );
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ActaDetalleScreen(offlineId: offlineId, establecimientoNombre: ipress.nombre),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.save_rounded, size: 18),
-                  label: const Text('Guardar Acta (Offline)'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+    final ipress = itemSeleccionado ?? (_searchResult.isNotEmpty ? _searchResult.first : null);
+    if (ipress == null || ipress.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(backgroundColor: Color(0xFFB91C1C), content: Text('Seleccione un establecimiento primero.')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NuevaActaFormScreen(establecimiento: ipress, userName: _userName, usuariosDisponibles: _realUsers),
+      ),
+    ).then((_) {
+      // Recalcula desde SQLite en vez de asumir que se guardó algo — el
+      // usuario pudo haber cancelado/vuelto atrás sin guardar.
+      _loadInitialData();
+      _refrescarListadoActas();
+    });
   }
 
   @override
@@ -490,7 +313,6 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
                             _menuItem(Icons.groups_outlined, 'Actas de Reunión'),
                             _menuItem(Icons.local_hospital_outlined, 'Actas de Diagnóstico Situacional'),
                             _menuItem(Icons.business_outlined, 'Establecimientos'),
-                            _menuItem(Icons.bar_chart_outlined, 'Reportes', withChevron: true),
                           ],
                         ),
                       ),
@@ -600,37 +422,51 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
           ),
 
           // BADGE FLOTANTE DE ESTADO (PWA ONLINE / OFFLINE) EN LA ESQUINA INFERIOR DERECHA
+          // Tocable: reintenta la verificación de conexión al toque, en vez
+          // de quedar fijo en "Modo Campo Offline" hasta reiniciar la app.
           Positioned(
             right: 24,
             bottom: 24,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x30000000), blurRadius: 12, offset: Offset(0, 4)),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _isOnline ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                      shape: BoxShape.circle,
-                    ),
+                onTap: () async {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Verificando conexión...'), duration: Duration(seconds: 1)),
+                  );
+                  await _checkStatus();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x30000000), blurRadius: 12, offset: Offset(0, 4)),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _isOnline ? 'PWA Online' : 'Modo Campo Offline',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _isOnline ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isOnline ? 'PWA Online' : 'Modo Campo Offline',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.refresh_rounded, color: Colors.white70, size: 16),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 16),
-                ],
+                ),
               ),
             ),
           ),
@@ -657,35 +493,78 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
           sinDiagnostico: _sinDiagnostico,
           conDiagnostico: _conDiagnostico,
           markers: _markers,
+          aniosDisponibles: _aniosDisponibles,
+          anioSeleccionado: _anioSeleccionado,
+          onAnioChanged: _onAnioChanged,
         );
       case 'Gestionar Usuarios':
-        return GestionarUsuariosTab(realUsers: _realUsers);
+        return GestionarUsuariosTab(
+          realUsers: _realUsers,
+          syncService: _syncService,
+          onChanged: _fetchApiData,
+        );
       case 'Actas de Reunión':
-        return ReunionesTab(reuniones: _reuniones);
+        return ReunionesTab(reuniones: _reuniones, onNuevaReunion: _abrirNuevaReunion);
       case 'Mi Perfil':
         return PerfilTab(
           userName: _userName,
           isSyncing: _isSyncing,
           onSync: _autoSync,
           onLogout: _cerrarSesion,
+          onProfileUpdated: _recargarUsuario,
         );
       case 'Establecimientos':
         return const EstablecimientosTab();
-      case 'Reportes':
-        return const ReportesTab();
       case 'Actas de Diagnóstico Situacional':
       default:
-        return ActasDiagnosticoTab(
-          totalIpress: _totalIpress,
-          firmadas: 0,
-          pendientesCount: _pendientesCount,
-          anuladas: 0,
-          searchResult: _searchResult,
-          searchCtrl: _searchCtrl,
-          onSearch: _onSearch,
-          onNuevaActa: _mostrarDialogoNuevaActa,
+        return ActasMonitoreoListadoTab(
+          key: ValueKey(_actasListadoRefreshKey),
+          onNuevaActa: _abrirNuevaActaScreen,
+          onSincronizar: _autoSync,
+          isSyncing: _isSyncing,
         );
     }
+  }
+
+  /// Fuerza que ActasMonitoreoListadoTab se reconstruya (y por lo tanto
+  /// vuelva a pedir el listado real al servidor) al volver de "Nueva Acta"
+  /// o de un autoSync — el widget no expone otra forma de refrescar porque
+  /// administra su propio estado (filtros, paginación) internamente.
+  int _actasListadoRefreshKey = 0;
+  void _refrescarListadoActas() => setState(() => _actasListadoRefreshKey++);
+
+  /// "Nueva Acta" es una pantalla aparte en Laravel (`/crear-acta`), no el
+  /// listado — acá reutiliza el mismo buscador de establecimientos y
+  /// diálogo de creación que ya existían, solo que ahora vive en su propia
+  /// pantalla en vez de ser la vista principal de "Actas de Diagnóstico".
+  Future<void> _abrirNuevaActaScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: const Color(0xFFF1F5F9),
+          appBar: AppBar(
+            title: const Text('Nueva Acta'),
+            backgroundColor: const Color(0xFF0F172A),
+            foregroundColor: Colors.white,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ActasDiagnosticoTab(
+              totalIpress: _totalIpress,
+              firmadas: 0,
+              pendientesCount: _pendientesCount,
+              anuladas: 0,
+              searchResult: _searchResult,
+              searchCtrl: _searchCtrl,
+              onSearch: _onSearch,
+              onNuevaActa: _mostrarDialogoNuevaActa,
+            ),
+          ),
+        ),
+      ),
+    );
+    _refrescarListadoActas();
   }
 
   String _getPageTitle() {
@@ -696,7 +575,6 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
       case 'Actas de Reunión': return 'Actas de Reunión';
       case 'Actas de Diagnóstico Situacional': return 'Actas de Diagnóstico Situacional';
       case 'Establecimientos': return 'Establecimientos';
-      case 'Reportes': return 'Reportes';
       default: return _selectedMenu;
     }
   }
@@ -709,7 +587,6 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
       case 'Actas de Reunión': return 'Operaciones • Actas de Reunión';
       case 'Actas de Diagnóstico Situacional': return 'Operaciones • Actas de Diagnóstico Situacional';
       case 'Establecimientos': return 'Operaciones • Establecimientos';
-      case 'Reportes': return 'Operaciones • Reportes';
       default: return 'Panel Principal';
     }
   }
@@ -720,75 +597,5 @@ class _MainCampoScreenState extends State<MainCampoScreen> {
       return '${parts[0]} ${parts[1]}';
     }
     return _userName.toUpperCase();
-  }
-}
-
-/// Fila SI/NO + cantidad/operativos para pozo a tierra o panel solar —
-/// espejo de los campos homónimos de mon_cabecera_monitoreo (ver
-/// resources/views/usuario/monitoreo/create.blade.php).
-class _CampoInstalacion extends StatelessWidget {
-  final String label;
-  final String valor;
-  final TextEditingController cantidadCtrl;
-  final TextEditingController operativosCtrl;
-  final ValueChanged<String> onChanged;
-
-  const _CampoInstalacion({
-    required this.label,
-    required this.valor,
-    required this.cantidadCtrl,
-    required this.operativosCtrl,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF334155)))),
-            ChoiceChip(label: const Text('SI'), selected: valor == 'SI', onSelected: (_) => onChanged('SI')),
-            const SizedBox(width: 6),
-            ChoiceChip(label: const Text('NO'), selected: valor == 'NO', onSelected: (_) => onChanged('NO')),
-          ],
-        ),
-        if (valor == 'SI') ...[
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: cantidadCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Cantidad',
-                    isDense: true,
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: operativosCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Operativos',
-                    isDense: true,
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
   }
 }

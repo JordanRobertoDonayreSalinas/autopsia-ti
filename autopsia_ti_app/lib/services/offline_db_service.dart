@@ -302,6 +302,24 @@ class OfflineDbService {
     }).toList();
   }
 
+  /// Catálogo completo sin el límite de 30 de buscarEstablecimientos() — para
+  /// la pantalla "Establecimientos" (listado paginado con filtros), donde el
+  /// filtrado/paginado se hace del lado del cliente sobre el catálogo ya
+  /// descargado, igual que los filtros geográficos del Dashboard.
+  Future<List<Establecimiento>> obtenerTodosLosEstablecimientos() async {
+    if (kIsWeb) return List.from(_memoriaEstablecimientos);
+    try {
+      final db = await instance.database;
+      if (db != null) {
+        final result = await db.query('establecimientos', orderBy: 'nombre ASC');
+        if (result.isNotEmpty) {
+          return result.map((json) => Establecimiento.fromMap(json)).toList();
+        }
+      }
+    } catch (_) {}
+    return List.from(_memoriaEstablecimientos);
+  }
+
   // --- MÉTODOS ACTAS MONITOREO ---
   Future<void> guardarActa(
     CabeceraMonitoreo acta, {
@@ -336,6 +354,37 @@ class OfflineDbService {
   Future<void> guardarActaOffline(Map<String, dynamic> data) async {
     final acta = CabeceraMonitoreo.fromMap(data);
     await guardarActa(acta);
+  }
+
+  /// Descarga completa de una acta que YA EXISTE en el servidor (creada en
+  /// Laravel o en otro dispositivo) para poder editarla localmente. A
+  /// diferencia de guardarActa() (una acta nueva capturada en este
+  /// dispositivo), acá primero se borra cualquier copia local previa de la
+  /// misma acta (mismo offline_id determinístico 'SRV-{id}') para que
+  /// volver a abrirla la refresque en vez de duplicarla.
+  Future<void> hidratarActaServidor(
+    CabeceraMonitoreo acta, {
+    List<EquipoComputo> equipos = const [],
+    List<EquipoMonitoreo> equipoMonitoreo = const [],
+    List<MonitoreoModulo> modulos = const [],
+  }) async {
+    if (kIsWeb) {
+      _memoriaActas.removeWhere((a) => a.offlineId == acta.offlineId);
+      _memoriaEquipos.removeWhere((e) => e.actaOfflineId == acta.offlineId);
+      _memoriaEquipoMonitoreo.removeWhere((e) => e.actaOfflineId == acta.offlineId);
+      _memoriaModulos.removeWhere((m) => m.actaOfflineId == acta.offlineId);
+    } else {
+      try {
+        final db = await instance.database;
+        if (db != null) {
+          await db.delete('mon_cabecera_monitoreo', where: 'offline_id = ?', whereArgs: [acta.offlineId]);
+          await db.delete('mon_equipos_computo', where: 'acta_offline_id = ?', whereArgs: [acta.offlineId]);
+          await db.delete('mon_equipo_monitoreo', where: 'acta_offline_id = ?', whereArgs: [acta.offlineId]);
+          await db.delete('mon_monitoreo_modulos', where: 'acta_offline_id = ?', whereArgs: [acta.offlineId]);
+        }
+      } catch (_) {}
+    }
+    await guardarActa(acta, equipos: equipos, equipoMonitoreo: equipoMonitoreo, modulos: modulos);
   }
 
   Future<List<CabeceraMonitoreo>> obtenerActas() async {
@@ -451,6 +500,60 @@ class OfflineDbService {
     }
   }
 
+  /// Elimina un módulo/consultorio y sus equipos de cómputo asociados —
+  /// espejo de MonitoreoModuloGenericController::destroyConsultorio.
+  Future<void> eliminarModulo(String actaOfflineId, String moduloNombre) async {
+    _memoriaModulos.removeWhere((m) => m.actaOfflineId == actaOfflineId && m.moduloNombre == moduloNombre);
+    _memoriaEquipos.removeWhere((e) => e.actaOfflineId == actaOfflineId && e.modulo == moduloNombre);
+
+    if (!kIsWeb) {
+      try {
+        final db = await instance.database;
+        if (db != null) {
+          await db.delete(
+            'mon_monitoreo_modulos',
+            where: 'acta_offline_id = ? AND modulo_nombre = ?',
+            whereArgs: [actaOfflineId, moduloNombre],
+          );
+          await db.delete(
+            'mon_equipos_computo',
+            where: 'acta_offline_id = ? AND modulo = ?',
+            whereArgs: [actaOfflineId, moduloNombre],
+          );
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<List<EquipoComputo>> obtenerEquiposPorModulo(String actaOfflineId, String moduloNombre) async {
+    final todos = await obtenerEquiposPorActa(actaOfflineId);
+    return todos.where((e) => e.modulo == moduloNombre).toList();
+  }
+
+  /// Reemplaza por completo la lista de equipos de cómputo de un módulo —
+  /// espejo de cómo storeConsultorio sincroniza la tabla mon_equipos_computo
+  /// con el arreglo `equipos[]` recibido en cada guardado del formulario.
+  Future<void> reemplazarEquiposDeModulo(String actaOfflineId, String moduloNombre, List<EquipoComputo> equipos) async {
+    _memoriaEquipos.removeWhere((e) => e.actaOfflineId == actaOfflineId && e.modulo == moduloNombre);
+    _memoriaEquipos.addAll(equipos);
+
+    if (!kIsWeb) {
+      try {
+        final db = await instance.database;
+        if (db != null) {
+          await db.delete(
+            'mon_equipos_computo',
+            where: 'acta_offline_id = ? AND modulo = ?',
+            whereArgs: [actaOfflineId, moduloNombre],
+          );
+          for (var eq in equipos) {
+            await db.insert('mon_equipos_computo', eq.toMap());
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   // --- MÉTODOS REUNIONES ---
   Future<void> guardarReunion(Reunion reunion) async {
     _memoriaReuniones.add(reunion);
@@ -476,6 +579,53 @@ class OfflineDbService {
       }
     } catch (_) {}
     return List.from(_memoriaReuniones);
+  }
+
+  Future<List<Reunion>> obtenerReunionesPendientes() async {
+    final reuniones = await obtenerReuniones();
+    return reuniones.where((r) => r.syncStatus == 'pending').toList();
+  }
+
+  Future<void> marcarReunionSincronizada(String offlineId, {required int id}) async {
+    final idx = _memoriaReuniones.indexWhere((r) => r.offlineId == offlineId);
+    if (idx != -1) {
+      final actual = _memoriaReuniones[idx];
+      _memoriaReuniones[idx] = Reunion(
+        offlineId: actual.offlineId,
+        syncStatus: 'synced',
+        localCreatedAt: actual.localCreatedAt,
+        id: id,
+        tituloReunion: actual.tituloReunion,
+        fechaReunion: actual.fechaReunion,
+        horaReunion: actual.horaReunion,
+        horaFinalizadaReunion: actual.horaFinalizadaReunion,
+        nombreInstitucion: actual.nombreInstitucion,
+        descripcionGeneral: actual.descripcionGeneral,
+        acuerdos: actual.acuerdos,
+        comentariosObservaciones: actual.comentariosObservaciones,
+        foto1: actual.foto1,
+        foto2: actual.foto2,
+        participantes: actual.participantes,
+        archivoPdf: actual.archivoPdf,
+        firmado: actual.firmado,
+        anulado: actual.anulado,
+        asistenciaDesde: actual.asistenciaDesde,
+        asistenciaHasta: actual.asistenciaHasta,
+      );
+    }
+    if (!kIsWeb) {
+      try {
+        final db = await instance.database;
+        if (db != null) {
+          await db.update(
+            'reuniones',
+            {'sync_status': 'synced', 'id': id},
+            where: 'offline_id = ?',
+            whereArgs: [offlineId],
+          );
+        }
+      } catch (_) {}
+    }
   }
 
   // --- MÉTODOS PROFESIONALES ---

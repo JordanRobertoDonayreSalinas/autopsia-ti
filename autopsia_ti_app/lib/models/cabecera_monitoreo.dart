@@ -128,7 +128,10 @@ class CabeceraMonitoreo {
   /// Payload que Laravel realmente espera por acta en POST /v1/sync
   /// (ver OfflineSyncController::sincronizarLoteOffline). Los campos locales
   /// (offline_id, sync_status, id, user_id, numero_acta) no se envían: el id
-  /// y el correlativo los asigna el servidor.
+  /// y el correlativo los asigna el servidor. 'categoria' y pozo/panel
+  /// solían quedar fuera de este mapa y se perdían en silencio al
+  /// sincronizar aunque el formulario sí los capturaba — ver fix en
+  /// OfflineSyncController.
   Map<String, dynamic> toSyncPayload() {
     return {
       'establecimiento_id': establecimientoId,
@@ -136,6 +139,15 @@ class CabeceraMonitoreo {
       'responsable': responsable,
       'implementador': implementador,
       'tipo_origen': tipoOrigen,
+      'categoria': categoriaCongelada,
+      'pozo_tierra': pozoTierra,
+      'pozo_tierra_cantidad': pozoTierraCantidad,
+      'pozo_tierra_operativos': pozoTierraOperativos,
+      'pozo_tierra_inoperativos': pozoTierraInoperativos,
+      'panel_solar': panelSolar,
+      'panel_solar_cantidad': panelSolarCantidad,
+      'panel_solar_operativos': panelSolarOperativos,
+      'panel_solar_inoperativos': panelSolarInoperativos,
     };
   }
 

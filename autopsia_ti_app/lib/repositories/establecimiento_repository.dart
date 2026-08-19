@@ -14,6 +14,29 @@ class EstablecimientoRepository {
 
   Future<List<Establecimiento>> buscar(String term) => _db.buscarEstablecimientos(term);
 
+  /// Catálogo completo (sin límite de 30) para el listado paginado de la
+  /// pestaña "Establecimientos".
+  Future<List<Establecimiento>> obtenerTodos() => _db.obtenerTodosLosEstablecimientos();
+
   /// Descarga el catálogo real desde Laravel (GET /v1/catalog) y lo persiste localmente.
   Future<bool> descargarCatalogo() => _sync.descargarCatalogo();
+
+  /// Guarda cambios de edición contra el servidor (requiere conexión, igual
+  /// que Gestionar Usuarios) y, si el servidor confirma, refresca la copia
+  /// local con los datos ya persistidos.
+  Future<Map<String, dynamic>> actualizar(int id, Map<String, dynamic> payload) async {
+    final res = await _sync.actualizarEstablecimiento(id, payload);
+    if (res['success'] == true && res['establecimiento'] != null) {
+      final actualizado = Establecimiento.fromJson(res['establecimiento']);
+      final todos = await obtenerTodos();
+      final idx = todos.indexWhere((e) => e.id == id);
+      if (idx != -1) {
+        todos[idx] = actualizado;
+        await _db.guardarCatalogo(todos);
+      }
+    }
+    return res;
+  }
+
+  Future<Map<String, dynamic>> consultarRenipress(int id) => _sync.consultarRenipressEstablecimiento(id);
 }

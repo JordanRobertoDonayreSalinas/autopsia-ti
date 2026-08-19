@@ -50,6 +50,13 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setBool('is_logged_in', true);
       await prefs.setString('user_name', nombreUsuario);
       await prefs.setString('user_email', username);
+      if (user['id'] != null) await prefs.setInt('user_id', user['id']);
+      await prefs.setString('user_nombres', user['name'] ?? '');
+      await prefs.setString('user_apellido_paterno', user['apellido_paterno'] ?? '');
+      await prefs.setString('user_apellido_materno', user['apellido_materno'] ?? '');
+      await prefs.setString('user_correo', user['email'] ?? '');
+      await prefs.setString('user_role', user['role'] ?? '');
+      await prefs.setString('user_updated_at', user['updated_at'] ?? '');
       if (res['token'] != null) await prefs.setString('auth_token', res['token']);
       // Username verificado con éxito online: habilita el reingreso en modo
       // campo si más adelante no hay señal (ver rama offline abajo).
@@ -342,9 +349,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 ),
                                 child: _isLoading
-                                    ? Row(
+                                    ? const Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
-                                        children: const [
+                                        children: [
                                           SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
                                           SizedBox(width: 8),
                                           Text('Verificando...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),

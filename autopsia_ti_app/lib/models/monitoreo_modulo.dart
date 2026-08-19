@@ -1,11 +1,9 @@
-/// Espejo de la tabla `mon_monitoreo_modulos` de Laravel (los hasta 18
-/// módulos dinámicos evaluados por acta — RR.HH., Infraestructura,
-/// Enfermería, etc. — ver app/Models/MonitoreoModulos.php). No tenía
-/// equivalente en Flutter — ver Informe de revisión, sección 3.2.
-///
-/// La captura de los formularios de cada módulo es trabajo de Fase 5 del
-/// plan; este modelo solo deja lista la tabla espejo para que ese trabajo
-/// tenga dónde persistir localmente.
+import 'dart:convert';
+
+/// Espejo de la tabla `mon_monitoreo_modulos` de Laravel: el módulo fijo
+/// RR.HH. y los consultorios dinámicos que el auditor va agregando
+/// libremente durante la visita (ver app/Models/MonitoreoModulos.php y
+/// MonitoreoModuloGenericController).
 class MonitoreoModulo {
   // --- Campo local de la cola offline (no existe en Laravel) ---
   final String actaOfflineId;
@@ -48,11 +46,32 @@ class MonitoreoModulo {
     };
   }
 
+  /// Slugs fijos que Laravel reconoce por nombre exacto (ver
+  /// ActaRepository.moduloRRHH / moduloInfraestructura2D).
+  static const _modulosFijos = ['rrhh', 'infraestructura_2d'];
+
   /// Payload que espera cada elemento del arreglo `consultorios` en
   /// POST /v1/sync (ver OfflineSyncController::sincronizarLoteOffline).
+  ///
+  /// Para los módulos fijos, 'titulo_consultorio' debe ser el slug exacto
+  /// ('rrhh') para que el backend lo reconozca. Para los consultorios
+  /// dinámicos, el slug local (ej. 'triaje_1755412345') es solo un
+  /// identificador de cola offline — el backend genera su propio slug
+  /// final a partir del título legible, así que hay que enviar el título
+  /// real guardado en contenido['titulo_consultorio'], no el slug local.
   Map<String, dynamic> toSyncPayload() {
+    String titulo = moduloNombre;
+    if (!_modulosFijos.contains(moduloNombre)) {
+      try {
+        final data = jsonDecode(contenido) as Map<String, dynamic>;
+        final tituloGuardado = (data['titulo_consultorio'] as String?)?.trim();
+        if (tituloGuardado != null && tituloGuardado.isNotEmpty) {
+          titulo = tituloGuardado;
+        }
+      } catch (_) {}
+    }
     return {
-      'titulo_consultorio': moduloNombre,
+      'titulo_consultorio': titulo,
       'contenido': contenido,
     };
   }

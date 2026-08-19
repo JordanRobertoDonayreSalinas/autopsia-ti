@@ -102,10 +102,10 @@ class ActasDiagnosticoTab extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             'Buscar Establecimiento (IPRESS) Offline',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
@@ -170,8 +170,8 @@ class ActasDiagnosticoTab extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Column(
-                  children: const [
+                child: const Column(
+                  children: [
                     Icon(Icons.search_off_rounded, size: 48, color: Color(0xFFCBD5E1)),
                     SizedBox(height: 12),
                     Text(
