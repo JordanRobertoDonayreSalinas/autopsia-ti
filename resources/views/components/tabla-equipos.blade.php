@@ -772,9 +772,9 @@
             }
         }
 
-        // 3. Mouse (Solo si hay mouse externo USB físicamente conectado)
-        if (hw.mouse === 'SI') {
-            window.agregarFilaConDatos(modulo, 'MOUSE', 'MOUSE OPTICO USB', 'OPERATIVO', 'EXCLUSIVO');
+        // 3. Mouse (Solo si hay mouse externo USB o Inalámbrico físicamente conectado)
+        if (hw.mouse === 'SI' || hw.mouse === true) {
+            window.agregarFilaConDatos(modulo, 'MOUSE', 'MOUSE ÓPTICO / INALÁMBRICO USB', 'OPERATIVO', 'EXCLUSIVO');
         }
 
         // 4. Impresora (Solo si está físicamente conectada y ONLINE)

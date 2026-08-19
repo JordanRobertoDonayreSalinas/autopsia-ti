@@ -196,13 +196,15 @@ For Each p In prnSet
 Next
 If prnList <> "" Then impresoraText = prnList
 
-' 6. Mouse USB o Integrado
+' 6. Mouse USB, Inalámbrico (Dongle RF / Bluetooth) o Integrado
 Set mouseSet = wmi.ExecQuery("Select Description, PNPDeviceID from Win32_PointingDevice")
 hasMouse = "SI"
 If isLaptop Then
     hasMouse = "NO"
     For Each m In mouseSet
-        If InStr(1, m.PNPDeviceID, "USB", 1) > 0 Then
+        pnp = UCase(m.PNPDeviceID)
+        desc = UCase(m.Description)
+        If (InStr(pnp, "VID_") > 0 Or InStr(pnp, "USB") > 0 Or InStr(pnp, "BTH") > 0 Or InStr(pnp, "WIRELESS") > 0 Or InStr(desc, "USB") > 0 Or InStr(desc, "WIRELESS") > 0 Or InStr(desc, "INAL") > 0 Or InStr(desc, "MOUSE") > 0 Or InStr(desc, "RATON") > 0) And InStr(pnp, "ELAN0") = 0 And InStr(pnp, "ELAN1") = 0 And InStr(pnp, "SYN") = 0 And InStr(pnp, "ALPS") = 0 And InStr(pnp, "ACPI\") = 0 And InStr(pnp, "ETD") = 0 Then
             hasMouse = "SI"
             Exit For
         End If
@@ -604,11 +606,11 @@ try {
     }
     $impresora = if ($printerList.Count -gt 0) { $printerList -join ", " } else { "NO" }
 
-    # 4. Mouse Externo USB (en Laptop se omiten los Touchpads/Trackpads integrados)
+    # 4. Mouse Externo (USB cableado, inalámbrico 2.4GHz Dongle RF o Bluetooth; en Laptop se omiten los Touchpads/Trackpads integrados)
     $extMice = Get-CimInstance Win32_PointingDevice -ErrorAction SilentlyContinue | Where-Object {
-        ($_.PNPDeviceID -match "^USB\\" -or $_.Description -match "USB") -and
-        $_.PNPDeviceID -notmatch "ELAN|SYN|ALPS|ACPI" -and
-        $_.Description -notmatch "Touchpad|Trackpad|GlidePoint|Synaptics|ELAN|ALPS"
+        ($_.PNPDeviceID -match "VID_|USB|BTH|BLUETOOTH|WIRELESS" -or $_.Description -match "USB|Inal|Wireless|Bluetooth|Optic|Raton|Mouse") -and
+        $_.PNPDeviceID -notmatch "ELAN0|ELAN1|SYN|ALPS|ACPI\\|ETD|FOCAL" -and
+        $_.Description -notmatch "Touchpad|Trackpad|GlidePoint|Synaptics|ELAN Touchpad|ALPS Touchpad"
     }
 
     $hasMouse = if ($isLaptop) {
