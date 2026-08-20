@@ -245,17 +245,21 @@
 {{-- DATALIST --}}
 <datalist id="list_equipos_master">
     <option value="ALL-IN-ONE">
+    <option value="CAMARA WEB">
     <option value="CPU">
-        <option value="IMPRESORA">
-            <option value="LAPTOP">
-                <option value="LECTOR DE DNIe">
-                    <option value="MONITOR">
-                        <option value="MOUSE">
-                            <option value="SCANNER">
-                                <option value="TABLET">
-                                    <option value="TECLADO">
-                                        <option value="TICKETERA">
-                                            
+    <option value="ESCANER">
+    <option value="IMPRESORA">
+    <option value="LAPTOP">
+    <option value="LECTOR DE DNIe">
+    <option value="LECTOR DE CODIGO DE BARRAS">
+    <option value="MONITOR">
+    <option value="MOUSE">
+    <option value="SCANNER">
+    <option value="TABLET">
+    <option value="TECLADO">
+    <option value="TICKETERA">
+    <option value="UPS">
+    <option value="OTRO">
 </datalist>
 
 {{-- MODAL SCANNER --}}
@@ -433,21 +437,25 @@
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const timeoutId = setTimeout(() => controller.abort(), 25000);
 
+            console.log('[HW] Iniciando detección directa...');
             // Intentar detección directa instantánea (servidor local / Windows)
             const resDirect = await fetch(HW_URLS.directo, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 signal: controller.signal
             });
             clearTimeout(timeoutId);
 
+            console.log('[HW] Respuesta directa status:', resDirect.status);
             const lecturaDirect = await leerJsonSeguro(resDirect);
             const dataDirect = lecturaDirect.data;
+            console.log('[HW] dataDirect:', dataDirect ? 'OK' : 'null', 'success:', dataDirect?.success, 'hardware:', !!dataDirect?.hardware, 'sesionExpirada:', lecturaDirect.sesionExpirada);
 
             if (dataDirect && dataDirect.success && dataDirect.hardware) {
                 Swal.close();
@@ -455,7 +463,7 @@
                 return;
             }
         } catch (e) {
-            console.warn('Detección directa no disponible, usando escáner .bat:', e);
+            console.warn('[HW] Detección directa falló:', e.name, e.message);
         }
 
         // 2. Si la detección directa no aplica, mostrar modal de descarga .bat
@@ -538,7 +546,7 @@
         }
     };
 
-    window.detectarHardwareNavegadorDirecto = function(modulo) {
+    window.detectarHardwareNavegadorDirecto = async function(modulo) {
         Swal.fire({
             title: '⚡ Detectando Hardware...',
             text: 'Obteniendo componentes de esta PC desde el navegador...',
@@ -551,7 +559,6 @@
             let so = "Windows 64-bit";
             const ua = navigator.userAgent;
 
-            // Intentar usar la API moderna userAgentData (Chrome/Edge) que sí distingue Win10 vs Win11
             if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
                 try {
                     const uaData = await navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'bitness']);
@@ -560,7 +567,6 @@
                     const bitness = uaData.bitness === '64' ? '64-bit' : '32-bit';
 
                     if (platform === 'Windows') {
-                        // En Windows 11 la major version de platformVersion es >= 13
                         const majorVersion = parseInt(platformVersion.split('.')[0], 10);
                         if (majorVersion >= 13) {
                             so = `Windows 11 Pro ${bitness}`;
@@ -577,30 +583,16 @@
                         so = platform || so;
                     }
                     return so;
-                } catch (e) {
-                    // Si falla la API moderna, caer al User Agent
-                }
+                } catch (e) {}
             }
 
-            // Fallback: detección por User Agent
-            // Nota: el UA no distingue Win10 de Win11 de forma fiable, pero intentamos
-            // usar la versión de Chrome/Edge como heurística (Win11 requiere Chrome 94+
-            // y en Windows 10 la versión típica de Chromium suele ser menor a 94 en equipos viejos).
             if (ua.includes("Windows NT 10.0")) {
-                // Heurística: si el navegador reporta Windows NT 10.0 intentamos
-                // distinguir Win11 por la presencia de ciertos signos en el UA.
-                // Windows 11 con Chrome/Edge siempre incluye "Windows NT 10.0; Win64; x64"
-                // pero no hay diferencia de UA entre Win10 y Win11 en el User-Agent clásico.
-                // Usamos como señal auxiliar la existencia de la API scheduler (Win11+Edge/Chrome)
-                // o el número de versión del navegador (Chrome >= 94 apareció junto a Win11).
                 let esWin11 = false;
                 const chromeMatch = ua.match(/Chrome\/(\d+)/);
                 const chromeVersion = chromeMatch ? parseInt(chromeMatch[1], 10) : 0;
-                // scheduler.postTask es una API introducida en Chrome 94 (Oct 2021, era de Win11)
                 if (typeof scheduler !== 'undefined' && typeof scheduler.postTask === 'function') {
                     esWin11 = true;
                 }
-                // Si la plataforma tiene soporte para touch (Surface, tablet Win11) también es señal
                 if (navigator.maxTouchPoints > 0 && chromeVersion >= 94) {
                     esWin11 = true;
                 }
@@ -617,68 +609,90 @@
             return so;
         };
 
-        detectarSO().then((so) => {
+        const so = await detectarSO();
 
-            const ramGB = navigator.deviceMemory || 8;
-            const ramText = `${ramGB} GB RAM`;
+        const ramGB = navigator.deviceMemory || 8;
+        const ramText = `${ramGB} GB RAM`;
 
-            const cores = navigator.hardwareConcurrency || 8;
-            const cpuName = `Procesador Multinúcleo (${cores} Núcleos Lógicos / Hilos)`;
+        const cores = navigator.hardwareConcurrency || 8;
+        const cpuName = `Procesador Multinúcleo (${cores} Núcleos Lógicos / Hilos)`;
 
-            let gpuText = "Gráficos Integrados Direct3D11";
-            try {
-                const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (gl) {
-                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                    if (debugInfo) {
-                        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                        if (renderer) {
-                            gpuText = renderer.replace(/^ANGLE \(([^,]+), /, '').replace(/\)/, '');
-                        }
+        let gpuText = "Gráficos Integrados Direct3D11";
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    if (renderer) {
+                        gpuText = renderer.replace(/^ANGLE \(([^,]+), /, '').replace(/\)/, '');
                     }
                 }
-            } catch(e) {}
-
-            const w = window.screen.width || 1920;
-            const h = window.screen.height || 1080;
-            const monitorText = `PANTALLA: ${w}x${h} Pixel | TARJETA GRÁFICA: ${gpuText}`;
-
-            let tipoRed = "WI-FI";
-            let velRed = "100 Mbps";
-            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (conn) {
-                if (conn.type === 'ethernet') tipoRed = "CABLE (ETHERNET)";
-                if (conn.downlink) velRed = `${Math.round(conn.downlink * 10)} Mbps`;
             }
+        } catch(e) {}
 
-            const isLaptop = navigator.maxTouchPoints > 0 || screen.width <= 1440;
-            const marcaModeloDetectado = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
+        const w = window.screen.width || 1920;
+        const h = window.screen.height || 1080;
+        const monitorText = `PANTALLA: ${w}x${h} Pixel | TARJETA GRÁFICA: ${gpuText}`;
 
-            const hw = {
-                status: 'completed',
-                is_laptop: isLaptop,
-                tipo: isLaptop ? 'LAPTOP' : 'CPU',
-                marca_modelo: marcaModeloDetectado,
-                procesador_nombre: cpuName,
-                so: so,
-                ram: ramText,
-                disco: '512 GB SSD',
-                gpu: gpuText,
-                monitor: monitorText,
-                teclado: 'INTEGRADO',
-                mouse: 'SI',
-                impresora: 'NO',
-                tipo_red: tipoRed,
-                velocidad_red: velRed,
-                velocidad_descarga: 33.92,
-                velocidad_subida: 262.02,
-                proveedor_internet: 'WOW'
-            };
+        let tipoRed = "WI-FI";
+        let velRed = "100 Mbps";
+        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (conn) {
+            if (conn.type === 'ethernet') tipoRed = "CABLE (ETHERNET)";
+            if (conn.downlink) velRed = `${Math.round(conn.downlink * 10)} Mbps`;
+        }
 
-            Swal.close();
-            window.procesarDatosHardware(hw, modulo);
-        });
+        const isLaptop = navigator.maxTouchPoints > 0 || screen.width <= 1440;
+        const marcaModeloDetectado = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
+
+        // Detectar cámaras web disponibles desde el navegador
+        let camarasDetectadas = [];
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                videoDevices.forEach((v, idx) => {
+                    const label = v.label || (idx === 0 && isLaptop ? 'Cámara Web Integrada' : `Cámara Web USB ${idx + 1}`);
+                    const esIntegrada = (idx === 0 && isLaptop) || /integrated|hp fhd|internal|front|rear|facetime|wide vision/i.test(label);
+                    camarasDetectadas.push({
+                        nombre: label,
+                        tipo: esIntegrada ? 'INTEGRADA' : 'USB EXTERNA',
+                        es_integrada: esIntegrada
+                    });
+                });
+            } catch(e) {}
+        }
+
+        const hw = {
+            status: 'completed',
+            is_laptop: isLaptop,
+            tipo: isLaptop ? 'LAPTOP' : 'CPU',
+            marca_modelo: marcaModeloDetectado,
+            procesador_nombre: cpuName,
+            so: so,
+            ram: ramText,
+            disco: '512 GB SSD',
+            gpu: gpuText,
+            monitor: monitorText,
+            teclado: isLaptop ? 'NO' : 'SI',
+            teclados_lista: isLaptop ? [] : ['TECLADO ESTÁNDAR USB'],
+            mouse: 'SI',
+            mouses_lista: ['MOUSE ÓPTICO / INALÁMBRICO USB'],
+            impresora: 'NO',
+            impresoras_lista: [],
+            camara: camarasDetectadas.length > 0 ? camarasDetectadas.map(c => c.nombre).join(', ') : 'NO',
+            camaras_lista: camarasDetectadas,
+            tipo_red: tipoRed,
+            velocidad_red: velRed,
+            velocidad_descarga: 33.92,
+            velocidad_subida: 262.02,
+            proveedor_internet: 'WOW'
+        };
+
+        Swal.close();
+        window.procesarDatosHardware(hw, modulo);
     };
 
     window.marcarEscanerDescargado = function(token, modulo) {
@@ -762,24 +776,70 @@
         const obsPrincipal = `MARCA/MODELO: ${marcaModelo}`;
         window.agregarFilaConDatos(modulo, descPrincipal, obsPrincipal, 'OPERATIVO', 'EXCLUSIVO', specsDiagnostico);
 
-        // 2. Monitor y Teclado (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP O ALL-IN-ONE SE OMITEN O AJUSTAN)
+        // 2. Monitor (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP O ALL-IN-ONE LA PANTALLA ES INTEGRADA)
         if (!esLaptop && !esAIO) {
             if (hw.monitor && hw.monitor !== 'NO' && hw.monitor !== 'INTEGRADO') {
                 window.agregarFilaConDatos(modulo, 'MONITOR', hw.monitor, 'OPERATIVO', 'EXCLUSIVO');
             }
-            if (hw.teclado === 'SI') {
-                window.agregarFilaConDatos(modulo, 'TECLADO', 'TECLADO ESTÁNDAR USB', 'OPERATIVO', 'EXCLUSIVO');
-            }
         }
 
-        // 3. Mouse (Solo si hay mouse externo USB o Inalámbrico físicamente conectado)
-        if (hw.mouse === 'SI' || hw.mouse === true) {
+        // 3. Teclados (SOLO TECLADOS EXTERNOS FÍSICAMENTE CONECTADOS - NUNCA EL TECLADO INTEGRADO DE LAPTOP)
+        if (Array.isArray(hw.teclados_lista) && hw.teclados_lista.length > 0) {
+            hw.teclados_lista.forEach(t => {
+                window.agregarFilaConDatos(modulo, 'TECLADO', t || 'TECLADO ESTÁNDAR USB', 'OPERATIVO', 'EXCLUSIVO');
+            });
+        } else if (!esLaptop && !esAIO) {
+            // En PC de escritorio CPU siempre se requiere teclado externo
+            window.agregarFilaConDatos(modulo, 'TECLADO', 'TECLADO ESTÁNDAR USB', 'OPERATIVO', 'EXCLUSIVO');
+        }
+
+        // 4. Mouse (SOLO MOUSE EXTERNO USB O INALÁMBRICO - NUNCA TOUCHPAD/MOUSEPAD INTEGRADO)
+        if (Array.isArray(hw.mouses_lista) && hw.mouses_lista.length > 0) {
+            hw.mouses_lista.forEach(m => {
+                window.agregarFilaConDatos(modulo, 'MOUSE', m || 'MOUSE ÓPTICO / INALÁMBRICO USB', 'OPERATIVO', 'EXCLUSIVO');
+            });
+        } else if (hw.mouse === 'SI' || hw.mouse === true) {
             window.agregarFilaConDatos(modulo, 'MOUSE', 'MOUSE ÓPTICO / INALÁMBRICO USB', 'OPERATIVO', 'EXCLUSIVO');
         }
 
-        // 4. Impresora (Solo si está físicamente conectada y ONLINE)
-        if (hw.impresora && hw.impresora !== 'NO') {
-            window.agregarFilaConDatos(modulo, 'IMPRESORA', hw.impresora, 'OPERATIVO', 'EXCLUSIVO');
+        // 5. Cámaras Web (SOLO CÁMARAS WEB EXTERNAS USB - SE OMITEN LAS CÁMARAS INTEGRADAS DE LAPTOP/AIO)
+        if (Array.isArray(hw.camaras_lista) && hw.camaras_lista.length > 0) {
+            hw.camaras_lista.forEach(c => {
+                const nombreCam = typeof c === 'object' ? (c.nombre || 'CÁMARA WEB') : c;
+                const esIntegrada = typeof c === 'object' && (c.es_integrada === true || c.tipo === 'INTEGRADA' || /integrated|hp fhd|internal|front|rear|facetime|wide vision/i.test(nombreCam));
+
+                // Omitir cámara integrada en Laptop o All-in-One
+                if ((esLaptop || esAIO) && esIntegrada) {
+                    return;
+                }
+                const descObs = /^CÁMARA WEB/i.test(nombreCam) ? nombreCam : `CÁMARA WEB USB: ${nombreCam}`;
+                window.agregarFilaConDatos(modulo, 'CAMARA WEB', descObs, 'OPERATIVO', 'EXCLUSIVO');
+            });
+        } else if (hw.camara && hw.camara !== 'NO' && hw.camara !== 'INTEGRADO') {
+            const cams = hw.camara.split(',').map(s => s.trim()).filter(Boolean);
+            cams.forEach(cName => {
+                if ((esLaptop || esAIO) && /integrated|hp fhd|internal|front|rear|facetime|wide vision/i.test(cName)) {
+                    return;
+                }
+                const descObs = /^CÁMARA WEB/i.test(cName) ? cName : `CÁMARA WEB USB: ${cName}`;
+                window.agregarFilaConDatos(modulo, 'CAMARA WEB', descObs, 'OPERATIVO', 'EXCLUSIVO');
+            });
+        }
+
+        // 6. Impresoras y Ticketeras (Físicas, Wi-Fi, Red, USB, Térmicas POS)
+        if (Array.isArray(hw.impresoras_lista) && hw.impresoras_lista.length > 0) {
+            hw.impresoras_lista.forEach(p => {
+                const esTicketera = /ticket|pos|termic|térmic|tm-t|xprinter|bixolon|zj-|receipt|rp80|xp-|58mm|80mm|mini/i.test(p);
+                const tipoDesc = esTicketera ? 'TICKETERA' : 'IMPRESORA';
+                window.agregarFilaConDatos(modulo, tipoDesc, p, 'OPERATIVO', 'EXCLUSIVO');
+            });
+        } else if (hw.impresora && hw.impresora !== 'NO') {
+            const prns = hw.impresora.split(',').map(s => s.trim()).filter(Boolean);
+            prns.forEach(pName => {
+                const esTicketera = /ticket|pos|termic|térmic|tm-t|xprinter|bixolon|zj-|receipt|rp80|xp-|58mm|80mm|mini/i.test(pName);
+                const tipoDesc = esTicketera ? 'TICKETERA' : 'IMPRESORA';
+                window.agregarFilaConDatos(modulo, tipoDesc, pName, 'OPERATIVO', 'EXCLUSIVO');
+            });
         }
 
         // 5. Poblar el Panel de Especificaciones Técnicas (DxDiag) ubicado DEBAJO de la tabla
@@ -935,7 +995,7 @@
             const valDesc = inputDesc ? inputDesc.value.trim().toUpperCase() : '';
             const valObs = inputObs ? inputObs.value.trim().toUpperCase() : '';
 
-            if (valDesc === descUpper && (!obsUpper || valObs === obsUpper || ['CPU', 'LAPTOP', 'ALL-IN-ONE', 'MONITOR', 'TECLADO', 'MOUSE', 'IMPRESORA'].includes(valDesc))) {
+            if (valDesc === descUpper && (valObs === obsUpper || ['CPU', 'LAPTOP', 'ALL-IN-ONE', 'MONITOR'].includes(valDesc))) {
                 if (specsStr && inputSpecs) {
                     inputSpecs.value = specsStr;
                 }
