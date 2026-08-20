@@ -502,15 +502,31 @@ try {
     $tipoEquipo = if ($isLaptop) { "LAPTOP" } else { "CPU" }
     $monitorObs = "MONITOR EXTERNO"
 
-    # 3. Impresoras reales (USB, Red, Wi-Fi) excluyendo virtuales
-    $printers = Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue | Where-Object { 
-        $_.WorkOffline -eq $false -and 
+    # 3. Impresoras reales (USB, Red, Wi-Fi) excluyendo virtuales. Win32_Printer
+    # es la cola de impresion instalada en Windows: el driver se queda
+    # registrado ahi aunque desconectes el dispositivo, WorkOffline no
+    # siempre se actualiza solo. Para impresoras locales (no de red) se
+    # exige ademas que exista un dispositivo PnP con ese mismo nombre
+    # realmente presente ahora mismo (igual criterio que mouse/teclado/camara).
+    $printers = Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue | Where-Object {
+        $_.WorkOffline -eq $false -and
         $_.Name -notmatch "Fax|PDF|XPS|OneNote|Microsoft|AnyDesk|Send To|Root Print"
+    }
+    $printerPnpNames = @()
+    $printerPnp = Get-CimInstance Win32_PnPEntity -Filter "PNPClass='Printer' or PNPClass='PrinterUpgrade'" -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'OK' }
+    if ($printerPnp) {
+        foreach ($pp in $printerPnp) { if ($pp.Name) { $printerPnpNames += $pp.Name.Trim() } }
     }
     $printerList = @()
     if ($printers) {
         foreach ($p in $printers) {
-            if ($p.Name) { $printerList += $p.Name.Trim() }
+            if (-not $p.Name) { continue }
+            $pName = $p.Name.Trim()
+            $esRed = [bool]$p.Network
+            $usbPresente = $printerPnpNames | Where-Object { $pName -like "*$_*" -or $_ -like "*$pName*" }
+            if ($esRed -or $usbPresente) {
+                $printerList += $pName
+            }
         }
     }
     $impresora = if ($printerList.Count -gt 0) { $printerList -join ", " } else { "NO" }
