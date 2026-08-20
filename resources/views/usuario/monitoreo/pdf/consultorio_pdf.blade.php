@@ -445,10 +445,14 @@
             </tr>
         </table>
 
-        {{-- FILA 1: Denominación y Servicio --}}
+        {{-- FILA 1: Denominación, Servicio y Departamento --}}
+        @php
+            $colsFila1 = 1 + (!empty($contenido['servicio_asociado']) ? 1 : 0) + (!empty($contenido['departamento_asociado']) ? 1 : 0);
+            $anchoFila1 = round(100 / $colsFila1, 2) . '%';
+        @endphp
         <table class="form-grid" style="margin-bottom: 4px;">
             <tr>
-                <td style="width: {{ !empty($contenido['servicio_asociado']) ? '50%' : '100%' }};">
+                <td style="width: {{ $anchoFila1 }};">
                     <div class="field-box" style="border-color: #c7d2fe; background: #eef2ff;">
                         <span class="field-label" style="color: #4f46e5;">Denominación del Consultorio / Módulo</span>
                         <span class="field-value" style="color: #312e81; font-size: 8px;">
@@ -457,11 +461,21 @@
                     </div>
                 </td>
                 @if(!empty($contenido['servicio_asociado']))
-                <td style="width: 50%;">
+                <td style="width: {{ $anchoFila1 }};">
                     <div class="field-box" style="border-color: #c7d2fe; background: #eef2ff;">
                         <span class="field-label" style="color: #4f46e5;">Servicio del Consultorio</span>
                         <span class="field-value" style="color: #312e81; font-size: 8px;">
                             {{ strtoupper($contenido['servicio_asociado']) }}
+                        </span>
+                    </div>
+                </td>
+                @endif
+                @if(!empty($contenido['departamento_asociado']))
+                <td style="width: {{ $anchoFila1 }};">
+                    <div class="field-box" style="border-color: #c7d2fe; background: #eef2ff;">
+                        <span class="field-label" style="color: #4f46e5;">Departamento del Consultorio</span>
+                        <span class="field-value" style="color: #312e81; font-size: 8px;">
+                            {{ strtoupper($contenido['departamento_asociado']) }}
                         </span>
                     </div>
                 </td>

@@ -429,6 +429,7 @@
                     'slug'      => $slug,
                     'titulo'    => $tituloCons,
                     'servicio'  => strtoupper($cont['servicio_asociado'] ?? 'GENERAL'),
+                    'departamento' => strtoupper($cont['departamento_asociado'] ?? ''),
                     'tipo'      => strtoupper($cont['tipo_consultorio'] ?? 'FÍSICO'),
                     'piso'      => is_numeric($cont['piso'] ?? '') ? ('PISO ' . $cont['piso']) : strtoupper($cont['piso'] ?? 'PISO 1'),
                     'electricidad' => strtoupper($cont['cuenta_electricidad'] ?? 'SI'),
@@ -751,6 +752,9 @@
                                 <strong style="color: #0f172a; font-size: 7.5px;">{{ $c['titulo'] }}</strong>
                                 @if(!empty($c['servicio']) && $c['servicio'] !== 'GENERAL')
                                     <div style="font-size: 6px; color: #4f46e5; font-weight: bold;">{{ $c['servicio'] }}</div>
+                                @endif
+                                @if(!empty($c['departamento']))
+                                    <div style="font-size: 6px; color: #64748b; font-weight: bold;">{{ $c['departamento'] }}</div>
                                 @endif
                             </td>
                             <td style="text-align: center; font-size: 7px;">

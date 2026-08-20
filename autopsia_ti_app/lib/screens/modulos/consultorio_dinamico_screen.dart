@@ -31,6 +31,7 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
 
   final _tituloCtrl = TextEditingController();
   final _servicioCtrl = TextEditingController();
+  final _departamentoCtrl = TextEditingController();
   final _fechaCtrl = TextEditingController();
   final _pisoCtrl = TextEditingController();
   final _cantidadPuntosRedCtrl = TextEditingController();
@@ -73,6 +74,7 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
       final data = jsonDecode(match.first.contenido) as Map<String, dynamic>;
       _tituloCtrl.text = data['titulo_consultorio'] ?? '';
       _servicioCtrl.text = data['servicio_asociado'] ?? '';
+      _departamentoCtrl.text = data['departamento_asociado'] ?? '';
       _fechaCtrl.text = data['fecha'] ?? DateTime.now().toString().split(' ')[0];
       _pisoCtrl.text = (data['piso'] ?? '').toString();
       _cantidadPuntosRedCtrl.text = (data['cantidad_puntos_red'] ?? '').toString();
@@ -104,6 +106,7 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
     final contenido = jsonEncode({
       'titulo_consultorio': _tituloCtrl.text.trim().toUpperCase(),
       'servicio_asociado': _servicioCtrl.text.trim(),
+      'departamento_asociado': _departamentoCtrl.text.trim(),
       'fecha': _fechaCtrl.text.trim(),
       'turno': _turno,
       'tipo_consultorio': _tipoConsultorio,
@@ -188,6 +191,7 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
                 _seccion('Datos Generales', [
                   _campoTexto('Título del consultorio', _tituloCtrl, requerido: true, onDone: _persistir),
                   _campoTexto('Servicio asociado (opcional)', _servicioCtrl, onDone: _persistir),
+                  _campoTexto('Departamento asociado (opcional)', _departamentoCtrl, onDone: _persistir),
                   _campoTexto('Fecha (AAAA-MM-DD)', _fechaCtrl, onDone: _persistir),
                   _pillGroup('Turno', ['MAÑANA', 'TARDE'], _turno, (v) => setState(() => _turno = v)),
                   _dropdown('Tipo de consultorio', _tipoConsultorio, const ['FISICO', 'FUNCIONAL'], (v) => setState(() => _tipoConsultorio = v!)),

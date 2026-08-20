@@ -72,15 +72,15 @@
                         </div>
                     </div>
 
-                    {{-- DENOMINACIÓN Y SERVICIO --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {{-- DENOMINACIÓN, SERVICIO Y DEPARTAMENTO --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div class="bg-indigo-50/40 p-5 rounded-2xl border border-indigo-100">
                             <label class="block text-indigo-900 text-[11px] font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                 <i data-lucide="tag" class="w-3.5 h-3.5 text-indigo-600"></i> Nombre o Denominación del Consultorio / Módulo <span class="text-rose-500">*</span>
                             </label>
-                            <input type="text" name="contenido[titulo_consultorio]" 
-                                value="{{ $contenido['titulo_consultorio'] ?? ($tituloConsultorio ?? 'CONSULTORIO') }}" required 
-                                placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA 01, TRIAJE..." 
+                            <input type="text" name="contenido[titulo_consultorio]"
+                                value="{{ $contenido['titulo_consultorio'] ?? ($tituloConsultorio ?? 'CONSULTORIO') }}" required
+                                placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA 01, TRIAJE..."
                                 class="w-full bg-white border-2 border-indigo-200/80 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-3 font-black text-indigo-950 text-sm uppercase outline-none transition-all shadow-sm">
                         </div>
 
@@ -88,9 +88,19 @@
                             <label class="block text-slate-700 text-[11px] font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                 <i data-lucide="activity" class="w-3.5 h-3.5 text-slate-500"></i> Servicio Asociado al Consultorio
                             </label>
-                            <input type="text" name="contenido[servicio_asociado]" 
-                                value="{{ $contenido['servicio_asociado'] ?? '' }}" 
-                                placeholder="INGRESE EL SERVICIO DEL CONSULTORIO..." 
+                            <input type="text" name="contenido[servicio_asociado]"
+                                value="{{ $contenido['servicio_asociado'] ?? '' }}"
+                                placeholder="INGRESE EL SERVICIO DEL CONSULTORIO..."
+                                class="w-full bg-white border-2 border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
+                        </div>
+
+                        <div class="bg-slate-50/60 p-5 rounded-2xl border border-slate-200/80">
+                            <label class="block text-slate-700 text-[11px] font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i data-lucide="building-2" class="w-3.5 h-3.5 text-slate-500"></i> Departamento Asociado al Consultorio
+                            </label>
+                            <input type="text" name="contenido[departamento_asociado]"
+                                value="{{ $contenido['departamento_asociado'] ?? '' }}"
+                                placeholder="INGRESE EL DEPARTAMENTO DEL CONSULTORIO..."
                                 class="w-full bg-white border-2 border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
                         </div>
                     </div>
