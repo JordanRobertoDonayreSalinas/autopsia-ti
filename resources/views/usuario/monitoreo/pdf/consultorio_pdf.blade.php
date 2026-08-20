@@ -814,41 +814,61 @@
             </div>
         </div>
 
-        {{-- EVIDENCIA FOTOGRÁFICA (hasta 3 fotos) --}}
+        {{-- EVIDENCIA FOTOGRÁFICA (hasta 10 fotos, cada una con su descripción) --}}
         @php
-            $fotosBase64 = [];
-            for ($i = 1; $i <= 3; $i++) {
-                $evidenciaPath = $detalle->contenido['evidencia_path_' . $i]
-                    ?? $contenido['evidencia_path_' . $i]
-                    ?? ($i === 1 ? ($detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '') : '');
-                if (!empty($evidenciaPath)) {
-                    $p = storage_path('app/public/' . $evidenciaPath);
-                    if (file_exists($p)) {
-                        $ext = strtolower(pathinfo($p, PATHINFO_EXTENSION));
-                        $mime = ($ext === 'png') ? 'image/png' : 'image/jpeg';
-                        $fotosBase64[$i] = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($p));
+            $evidenciasPdf = [];
+            if (!empty($detalle->contenido['evidencias']) && is_array($detalle->contenido['evidencias'])) {
+                $evidenciasPdf = $detalle->contenido['evidencias'];
+            } elseif (!empty($contenido['evidencias']) && is_array($contenido['evidencias'])) {
+                $evidenciasPdf = $contenido['evidencias'];
+            } else {
+                // Compatibilidad con formatos anteriores a la lista de hasta 10 fotos
+                for ($i = 1; $i <= 3; $i++) {
+                    $pOld = $detalle->contenido['evidencia_path_' . $i]
+                        ?? $contenido['evidencia_path_' . $i]
+                        ?? ($i === 1 ? ($detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '') : '');
+                    if (!empty($pOld)) {
+                        $evidenciasPdf[] = ['path' => $pOld, 'descripcion' => ''];
                     }
                 }
             }
+
+            $fotosBase64 = [];
+            foreach ($evidenciasPdf as $ev) {
+                $evidenciaPath = $ev['path'] ?? '';
+                if (empty($evidenciaPath)) continue;
+                $p = storage_path('app/public/' . $evidenciaPath);
+                if (file_exists($p)) {
+                    $ext = strtolower(pathinfo($p, PATHINFO_EXTENSION));
+                    $mime = ($ext === 'png') ? 'image/png' : 'image/jpeg';
+                    $fotosBase64[] = [
+                        'src' => 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($p)),
+                        'descripcion' => $ev['descripcion'] ?? '',
+                    ];
+                }
+            }
+            $fotosBase64Chunks = array_chunk($fotosBase64, 3);
         @endphp
 
         <div style="margin-top: 4px;">
             <span class="field-label" style="margin-bottom: 2px;">Fotografías / Evidencia Adjunta</span>
             @if(count($fotosBase64) > 0)
-                <table class="form-grid">
-                    <tr>
-                        @foreach($fotosBase64 as $i => $fotoBase64)
-                            <td style="width: {{ 100 / count($fotosBase64) }}%;">
-                                <div class="evidence-card">
-                                    <img src="{{ $fotoBase64 }}" class="evidence-img">
-                                    <div class="evidence-caption">
-                                        FOTO {{ $i }}
+                @foreach($fotosBase64Chunks as $chunk)
+                    <table class="form-grid" style="margin-bottom: 4px;">
+                        <tr>
+                            @foreach($chunk as $foto)
+                                <td style="width: {{ 100 / count($chunk) }}%;">
+                                    <div class="evidence-card">
+                                        <img src="{{ $foto['src'] }}" class="evidence-img">
+                                        <div class="evidence-caption">
+                                            {{ !empty($foto['descripcion']) ? strtoupper($foto['descripcion']) : 'SIN DESCRIPCIÓN' }}
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                        @endforeach
-                    </tr>
-                </table>
+                                </td>
+                            @endforeach
+                        </tr>
+                    </table>
+                @endforeach
             @else
                 <div style="background-color: #fafbff; border: 1.5px dashed #cbd5e1; border-radius: 5px; padding: 7px; text-align: center; color: #94a3b8; font-size: 7.5px; font-weight: bold; text-transform: uppercase;">
                     Sin evidencia fotográfica adjunta para este consultorio.

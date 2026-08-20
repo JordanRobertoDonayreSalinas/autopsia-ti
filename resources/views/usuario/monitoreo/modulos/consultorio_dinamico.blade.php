@@ -392,53 +392,56 @@
                         </div>
 
                         <div>
-                            <label class="block text-slate-700 text-xs font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                <i data-lucide="camera" class="w-4 h-4 text-slate-400"></i> Fotografías / Evidencia Adjunta (Máximo 3, Opcional)
-                            </label>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-slate-700 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                                    <i data-lucide="camera" class="w-4 h-4 text-slate-400"></i> Fotografías / Evidencia Adjunta (Máximo 10, Opcional)
+                                </label>
+                                <button type="button" id="btn_add_evidencia" onclick="addEvidenciaRow()"
+                                        class="group flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md active:scale-95">
+                                    <i data-lucide="plus-circle" class="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300"></i>
+                                    Añadir Fotografía
+                                </button>
+                            </div>
 
                             @php
-                                $evidenciaPaths = [];
-                                for ($i = 1; $i <= 3; $i++) {
-                                    $evidenciaPaths[$i] = $detalle->contenido['evidencia_path_' . $i]
-                                        ?? $contenido['evidencia_path_' . $i]
-                                        ?? ($i === 1 ? ($detalle->contenido['evidencia_path'] ?? '') : '');
+                                // Formato nuevo: contenido['evidencias'] = [['path' => ..., 'descripcion' => ...], ...]
+                                // Si no existe todavia, se migra desde el formato viejo (3 casillas fijas,
+                                // o 1 sola foto antes de eso) para no perder evidencia ya cargada.
+                                $evidencias = [];
+                                if (!empty($detalle->contenido['evidencias']) && is_array($detalle->contenido['evidencias'])) {
+                                    $evidencias = $detalle->contenido['evidencias'];
+                                } else {
+                                    for ($i = 1; $i <= 3; $i++) {
+                                        $pOld = $detalle->contenido['evidencia_path_' . $i]
+                                            ?? ($i === 1 ? ($detalle->contenido['evidencia_path'] ?? null) : null);
+                                        if (!empty($pOld)) {
+                                            $evidencias[] = ['path' => $pOld, 'descripcion' => ''];
+                                        }
+                                    }
                                 }
                             @endphp
 
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                @for ($i = 1; $i <= 3; $i++)
-                                    <div>
-                                        <div id="dropzone_evidencia_{{ $i }}" class="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-2xl p-5 text-center bg-slate-50/50 hover:bg-indigo-50/20 transition-all cursor-pointer relative {{ !empty($evidenciaPaths[$i]) ? 'hidden' : '' }}">
-                                            <input type="file" name="evidencia_{{ $i }}" id="input_evidencia_foto_{{ $i }}" accept="image/*" onchange="previewEvidenciaImage({{ $i }}, this)"
-                                                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
-
-                                            <div class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
-                                                <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                                                    <i data-lucide="upload-cloud" class="w-5 h-5"></i>
-                                                </div>
-                                                <p class="text-[10px] font-black text-slate-700 uppercase">Foto {{ $i }}</p>
-                                                <p class="text-[9px] font-bold text-slate-400 uppercase">JPG, PNG, WEBP</p>
-                                            </div>
+                            <div id="container_evidencias" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-count="{{ count($evidencias) }}">
+                                @foreach ($evidencias as $idx => $ev)
+                                    <div class="evidencia-card bg-slate-50 rounded-2xl border-2 border-indigo-200 p-3 shadow-sm" data-idx="{{ $idx }}">
+                                        <input type="hidden" name="evidencias[{{ $idx }}][path_existente]" value="{{ $ev['path'] }}">
+                                        <div class="relative group">
+                                            <img id="img_preview_evidencia_{{ $idx }}"
+                                                 src="{{ asset('storage/' . $ev['path']) }}"
+                                                 alt="Evidencia {{ $idx + 1 }}"
+                                                 class="h-40 w-full rounded-xl object-cover shadow-inner bg-white">
+                                            <input type="file" name="evidencias[{{ $idx }}][foto]" accept="image/*" onchange="previewEvidenciaImage({{ $idx }}, this)"
+                                                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" title="Reemplazar fotografía">
+                                            <button type="button" onclick="removeEvidenciaRow({{ $idx }})"
+                                                class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 z-30" title="Quitar fotografía">
+                                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                            </button>
                                         </div>
-
-                                        <input type="hidden" name="eliminar_evidencia_{{ $i }}" id="input_eliminar_evidencia_{{ $i }}" value="0">
-                                        <div id="container_preview_evidencia_{{ $i }}" class="{{ empty($evidenciaPaths[$i]) ? 'hidden' : '' }}">
-                                            <div class="relative bg-slate-100 p-2.5 rounded-2xl border-2 border-indigo-200 shadow-md group">
-                                                <img id="img_preview_evidencia_{{ $i }}"
-                                                     src="{{ !empty($evidenciaPaths[$i]) ? asset('storage/' . $evidenciaPaths[$i]) : '' }}"
-                                                     alt="Previsualización Evidencia {{ $i }}"
-                                                     class="h-40 w-full rounded-xl object-cover shadow-inner bg-white">
-                                                <button type="button" onclick="eliminarEvidenciaActual({{ $i }})"
-                                                    class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95" title="Quitar fotografía {{ $i }}">
-                                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                                </button>
-                                                <div class="mt-2 text-center text-[9px] font-black text-indigo-700 uppercase tracking-wider">
-                                                    FOTO {{ $i }}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <input type="text" name="evidencias[{{ $idx }}][descripcion]" value="{{ $ev['descripcion'] ?? '' }}"
+                                               placeholder="Descripción de la foto..."
+                                               class="w-full mt-2 px-3 py-2 bg-white border-2 border-indigo-200 focus:border-indigo-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
                                     </div>
-                                @endfor
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -458,35 +461,79 @@
     </div>
 
     <script>
+        const MAX_EVIDENCIAS = 10;
+        let evidenciaCounter = parseInt(document.getElementById('container_evidencias')?.dataset.count || '0', 10);
+
+        function updateBtnAddEvidenciaState() {
+            const btn = document.getElementById('btn_add_evidencia');
+            const total = document.querySelectorAll('#container_evidencias .evidencia-card').length;
+            if (btn) btn.disabled = total >= MAX_EVIDENCIAS;
+            if (btn) btn.classList.toggle('opacity-40', total >= MAX_EVIDENCIAS);
+            if (btn) btn.classList.toggle('cursor-not-allowed', total >= MAX_EVIDENCIAS);
+        }
+
+        function addEvidenciaRow() {
+            const total = document.querySelectorAll('#container_evidencias .evidencia-card').length;
+            if (total >= MAX_EVIDENCIAS) return;
+
+            const idx = evidenciaCounter++;
+            const container = document.getElementById('container_evidencias');
+            const card = document.createElement('div');
+            card.className = 'evidencia-card bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300 p-3 shadow-sm';
+            card.dataset.idx = idx;
+            card.innerHTML = `
+                <div class="relative">
+                    <div id="dropzone_evidencia_${idx}" class="h-40 rounded-xl bg-white border border-slate-200 flex flex-col items-center justify-center gap-1.5 text-center">
+                        <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                            <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                        </div>
+                        <p class="text-[10px] font-black text-slate-700 uppercase">Toque para subir</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">JPG, PNG, WEBP</p>
+                    </div>
+                    <img id="img_preview_evidencia_${idx}" class="h-40 w-full rounded-xl object-cover shadow-inner bg-white hidden" alt="Evidencia ${idx + 1}">
+                    <input type="file" name="evidencias[${idx}][foto]" accept="image/*" onchange="previewEvidenciaImage(${idx}, this)"
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                    <button type="button" onclick="removeEvidenciaRow(${idx})"
+                        class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 z-30 hidden" id="btn_remove_evidencia_${idx}" title="Quitar fotografía">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+                <input type="text" name="evidencias[${idx}][descripcion]"
+                       placeholder="Descripción de la foto..."
+                       class="w-full mt-2 px-3 py-2 bg-white border-2 border-indigo-200 focus:border-indigo-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
+            `;
+            container.appendChild(card);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateBtnAddEvidenciaState();
+        }
+
         function previewEvidenciaImage(idx, input) {
             const dropzone = document.getElementById('dropzone_evidencia_' + idx);
-            const container = document.getElementById('container_preview_evidencia_' + idx);
             const img = document.getElementById('img_preview_evidencia_' + idx);
-            const inputEliminar = document.getElementById('input_eliminar_evidencia_' + idx);
+            const btnRemove = document.getElementById('btn_remove_evidencia_' + idx);
 
             if (input.files && input.files[0]) {
-                if (inputEliminar) inputEliminar.value = '0';
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    img.src = e.target.result;
+                    if (img) {
+                        img.src = e.target.result;
+                        img.classList.remove('hidden');
+                    }
                     if (dropzone) dropzone.classList.add('hidden');
-                    if (container) container.classList.remove('hidden');
+                    if (btnRemove) btnRemove.classList.remove('hidden');
                     if (typeof lucide !== 'undefined') lucide.createIcons();
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
-        function eliminarEvidenciaActual(idx) {
-            const dropzone = document.getElementById('dropzone_evidencia_' + idx);
-            const inputEliminar = document.getElementById('input_eliminar_evidencia_' + idx);
-            const container = document.getElementById('container_preview_evidencia_' + idx);
-            const inputFoto = document.getElementById('input_evidencia_foto_' + idx);
-            if (inputEliminar) inputEliminar.value = '1';
-            if (inputFoto) inputFoto.value = '';
-            if (container) container.classList.add('hidden');
-            if (dropzone) dropzone.classList.remove('hidden');
+        function removeEvidenciaRow(idx) {
+            const card = document.querySelector(`.evidencia-card[data-idx="${idx}"]`);
+            if (card) card.remove();
+            updateBtnAddEvidenciaState();
         }
+
+        document.addEventListener('DOMContentLoaded', updateBtnAddEvidenciaState);
 
         function toggleSihceAndDocs(val) {
             const dj = document.getElementById('div_firmo_dj');
@@ -621,6 +668,22 @@
                 }
                 if (prop && !prop.value.trim()) {
                     faltantes.push(`EQUIPOS DE CÓMPUTO: Propiedad en fila #${i + 1}`);
+                }
+            });
+
+            // 2.5. FOTOGRAFÍAS DE EVIDENCIA: cada casilla presente necesita foto
+            // (existente o recien elegida) y descripción, sino no tiene sentido
+            document.querySelectorAll('#container_evidencias .evidencia-card').forEach((card, i) => {
+                const tienePathExistente = !!card.querySelector('input[name*="[path_existente]"]')?.value;
+                const inputFoto = card.querySelector('input[type="file"][name*="[foto]"]');
+                const tieneFotoNueva = inputFoto && inputFoto.files && inputFoto.files.length > 0;
+                const desc = card.querySelector('input[name*="[descripcion]"]');
+
+                if (!tienePathExistente && !tieneFotoNueva) {
+                    faltantes.push(`FOTOGRAFÍAS: Falta subir la imagen en la foto #${i + 1}`);
+                }
+                if (desc && !desc.value.trim()) {
+                    faltantes.push(`FOTOGRAFÍAS: Falta la descripción de la foto #${i + 1}`);
                 }
             });
 
