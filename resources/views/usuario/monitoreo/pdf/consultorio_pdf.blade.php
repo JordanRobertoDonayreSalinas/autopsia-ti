@@ -530,6 +530,40 @@
             </tr>
         </table>
 
+        {{-- FILA 3: Tomas Eléctricas (Estabilizada Roja-Naranja y Comercial Blanco) --}}
+        @php
+            $tomaEstSi = strtoupper($contenido['tiene_toma_estabilizada'] ?? 'NO') === 'SI';
+            $tomaComSi = strtoupper($contenido['tiene_toma_comercial'] ?? 'NO') === 'SI';
+            $colsFila3 = ($tomaEstSi ? 1 : 0) + ($tomaComSi ? 1 : 0);
+            $anchoFila3 = $colsFila3 > 0 ? round(100 / $colsFila3, 2) . '%' : '100%';
+        @endphp
+        @if($colsFila3 > 0)
+        <table class="form-grid" style="margin-top: 4px;">
+            <tr>
+                @if($tomaEstSi)
+                <td style="width: {{ $anchoFila3 }};">
+                    <div class="field-box" style="border-color: #fdba74; background: #fff7ed;">
+                        <span class="field-label" style="color: #c2410c;">Toma Estabilizada (Roja-Naranja)</span>
+                        <span class="field-value" style="color: #7c2d12; font-size: 8px;">
+                            {{ (int) ($contenido['toma_estabilizada_internas'] ?? 0) }} INTERNAS / {{ (int) ($contenido['toma_estabilizada_externas'] ?? 0) }} EXTERNAS
+                        </span>
+                    </div>
+                </td>
+                @endif
+                @if($tomaComSi)
+                <td style="width: {{ $anchoFila3 }};">
+                    <div class="field-box" style="border-color: #cbd5e1; background: #f8fafc;">
+                        <span class="field-label" style="color: #334155;">Toma Comercial (Blanco)</span>
+                        <span class="field-value" style="color: #1e293b; font-size: 8px;">
+                            {{ (int) ($contenido['toma_comercial_internas'] ?? 0) }} INTERNAS / {{ (int) ($contenido['toma_comercial_externas'] ?? 0) }} EXTERNAS
+                        </span>
+                    </div>
+                </td>
+                @endif
+            </tr>
+        </table>
+        @endif
+
         @if(strtoupper($contenido['requiere_mas_puntos_red'] ?? 'NO') === 'SI')
             @php $cantPuntosReq = $contenido['cantidad_puntos_red_requerido'] ?? 1; @endphp
             <div style="margin-top: 6px; background-color: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 5px; padding: 6px 8px; font-size: 7px; color: #92400e;">

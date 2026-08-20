@@ -246,6 +246,40 @@
                     </td>
                 </tr>
             </table>
+
+            {{-- Tomas Electricas (Estabilizada Roja-Naranja y Comercial Blanco) --}}
+            @php
+                $tomaEstSi = strtoupper($contenido['tiene_toma_estabilizada'] ?? 'NO') === 'SI';
+                $tomaComSi = strtoupper($contenido['tiene_toma_comercial'] ?? 'NO') === 'SI';
+                $colsFila3 = ($tomaEstSi ? 1 : 0) + ($tomaComSi ? 1 : 0);
+                $anchoFila3 = $colsFila3 > 0 ? round(100 / $colsFila3, 2) . '%' : '100%';
+            @endphp
+            @if($colsFila3 > 0)
+            <table class="form-grid" style="margin-top: 4px;">
+                <tr>
+                    @if($tomaEstSi)
+                    <td style="width: {{ $anchoFila3 }};">
+                        <div class="field-box" style="border-color: #fdba74; background: #fff7ed;">
+                            <span class="field-label" style="color: #c2410c;">Toma Estabilizada (Roja-Naranja)</span>
+                            <span class="field-value" style="color: #7c2d12; font-size: 8px;">
+                                {{ (int) ($contenido['toma_estabilizada_internas'] ?? 0) }} INTERNAS / {{ (int) ($contenido['toma_estabilizada_externas'] ?? 0) }} EXTERNAS
+                            </span>
+                        </div>
+                    </td>
+                    @endif
+                    @if($tomaComSi)
+                    <td style="width: {{ $anchoFila3 }};">
+                        <div class="field-box" style="border-color: #cbd5e1; background: #f8fafc;">
+                            <span class="field-label" style="color: #334155;">Toma Comercial (Blanco)</span>
+                            <span class="field-value" style="color: #1e293b; font-size: 8px;">
+                                {{ (int) ($contenido['toma_comercial_internas'] ?? 0) }} INTERNAS / {{ (int) ($contenido['toma_comercial_externas'] ?? 0) }} EXTERNAS
+                            </span>
+                        </div>
+                    </td>
+                    @endif
+                </tr>
+            </table>
+            @endif
         </div>
 
         {{-- 2. EQUIPOS DE COMPUTO --}}

@@ -222,6 +222,25 @@ class MonitoreoModuloGenericController extends Controller
                 $contenido['observacion_requerimiento_punto_red'] = null;
             }
 
+            // Normalizar desglose de tomas estabilizadas (roja-naranja) y comerciales (blanco)
+            if (($contenido['tiene_toma_estabilizada'] ?? '') === 'SI') {
+                $contenido['toma_estabilizada_internas'] = max(0, (int) ($contenido['toma_estabilizada_internas'] ?? 0));
+                $contenido['toma_estabilizada_externas'] = max(0, (int) ($contenido['toma_estabilizada_externas'] ?? 0));
+            } else {
+                $contenido['tiene_toma_estabilizada'] = 'NO';
+                $contenido['toma_estabilizada_internas'] = null;
+                $contenido['toma_estabilizada_externas'] = null;
+            }
+
+            if (($contenido['tiene_toma_comercial'] ?? '') === 'SI') {
+                $contenido['toma_comercial_internas'] = max(0, (int) ($contenido['toma_comercial_internas'] ?? 0));
+                $contenido['toma_comercial_externas'] = max(0, (int) ($contenido['toma_comercial_externas'] ?? 0));
+            } else {
+                $contenido['tiene_toma_comercial'] = 'NO';
+                $contenido['toma_comercial_internas'] = null;
+                $contenido['toma_comercial_externas'] = null;
+            }
+
             $detalle->update(['contenido' => $contenido]);
 
             // Sincronizar datos del profesional entrevistado si se enviaron

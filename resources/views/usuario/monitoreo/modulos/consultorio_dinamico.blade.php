@@ -190,6 +190,86 @@
                                         <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i> NO CUENTA</span>
                                     </label>
                                 </div>
+
+                                {{-- TOMA ESTABILIZADA (ROJA-NARANJA) --}}
+                                <div class="mt-4 pt-4 border-t border-slate-200/70">
+                                    <label class="block text-[10px] font-black text-orange-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex-shrink-0"></span>
+                                        ¿Tiene toma estabilizada (roja-naranja)?
+                                    </label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        @php $tomaEstabilizada = strtoupper($contenido['tiene_toma_estabilizada'] ?? 'NO'); @endphp
+                                        <label class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ $tomaEstabilizada === 'SI' ? 'border-orange-500 bg-orange-50 text-orange-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                            <input type="radio" name="contenido[tiene_toma_estabilizada]" value="SI" {{ $tomaEstabilizada === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-orange-500', 'bg-orange-50', 'text-orange-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-orange-500', 'bg-orange-50', 'text-orange-800', 'shadow-sm'); document.getElementById('container_toma_estabilizada').classList.remove('hidden');">
+                                            <span class="font-black text-xs uppercase">SÍ, TIENE</span>
+                                        </label>
+                                        <label class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ $tomaEstabilizada === 'NO' ? 'border-slate-400 bg-slate-100 text-slate-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                            <input type="radio" name="contenido[tiene_toma_estabilizada]" value="NO" {{ $tomaEstabilizada === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-orange-500', 'bg-orange-50', 'text-orange-800', 'border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm'); document.getElementById('container_toma_estabilizada').classList.add('hidden');">
+                                            <span class="font-black text-xs uppercase">NO TIENE</span>
+                                        </label>
+                                    </div>
+
+                                    @php
+                                        $tomaEstInternas = $contenido['toma_estabilizada_internas'] ?? 1;
+                                        $tomaEstExternas = $contenido['toma_estabilizada_externas'] ?? 0;
+                                    @endphp
+                                    <div id="container_toma_estabilizada" class="mt-3 grid grid-cols-2 gap-3 {{ $tomaEstabilizada === 'SI' ? '' : 'hidden' }}">
+                                        <div>
+                                            <label class="block text-[10px] font-black text-orange-800 uppercase tracking-wider mb-1.5">Internas</label>
+                                            <input type="number" min="0" max="99" step="1" name="contenido[toma_estabilizada_internas]"
+                                                value="{{ max(0, (int)$tomaEstInternas) }}"
+                                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                                class="w-full px-4 py-2.5 bg-white border-2 border-orange-200 focus:border-orange-600 rounded-xl font-black text-xs text-orange-900 outline-none transition-all shadow-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-black text-orange-800 uppercase tracking-wider mb-1.5">Externas</label>
+                                            <input type="number" min="0" max="99" step="1" name="contenido[toma_estabilizada_externas]"
+                                                value="{{ max(0, (int)$tomaEstExternas) }}"
+                                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                                class="w-full px-4 py-2.5 bg-white border-2 border-orange-200 focus:border-orange-600 rounded-xl font-black text-xs text-orange-900 outline-none transition-all shadow-sm">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- TOMA COMERCIAL (BLANCO) --}}
+                                <div class="mt-4 pt-4 border-t border-slate-200/70">
+                                    <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-white border-2 border-slate-400 flex-shrink-0"></span>
+                                        ¿Tiene toma comercial (blanco)?
+                                    </label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        @php $tomaComercial = strtoupper($contenido['tiene_toma_comercial'] ?? 'NO'); @endphp
+                                        <label class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ $tomaComercial === 'SI' ? 'border-zinc-500 bg-zinc-100 text-zinc-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                            <input type="radio" name="contenido[tiene_toma_comercial]" value="SI" {{ $tomaComercial === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-zinc-500', 'bg-zinc-100', 'text-zinc-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-zinc-500', 'bg-zinc-100', 'text-zinc-800', 'shadow-sm'); document.getElementById('container_toma_comercial').classList.remove('hidden');">
+                                            <span class="font-black text-xs uppercase">SÍ, TIENE</span>
+                                        </label>
+                                        <label class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ $tomaComercial === 'NO' ? 'border-slate-400 bg-slate-100 text-slate-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                            <input type="radio" name="contenido[tiene_toma_comercial]" value="NO" {{ $tomaComercial === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-zinc-500', 'bg-zinc-100', 'text-zinc-800', 'border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm'); document.getElementById('container_toma_comercial').classList.add('hidden');">
+                                            <span class="font-black text-xs uppercase">NO TIENE</span>
+                                        </label>
+                                    </div>
+
+                                    @php
+                                        $tomaComInternas = $contenido['toma_comercial_internas'] ?? 1;
+                                        $tomaComExternas = $contenido['toma_comercial_externas'] ?? 0;
+                                    @endphp
+                                    <div id="container_toma_comercial" class="mt-3 grid grid-cols-2 gap-3 {{ $tomaComercial === 'SI' ? '' : 'hidden' }}">
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1.5">Internas</label>
+                                            <input type="number" min="0" max="99" step="1" name="contenido[toma_comercial_internas]"
+                                                value="{{ max(0, (int)$tomaComInternas) }}"
+                                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                                class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 focus:border-slate-600 rounded-xl font-black text-xs text-slate-800 outline-none transition-all shadow-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1.5">Externas</label>
+                                            <input type="number" min="0" max="99" step="1" name="contenido[toma_comercial_externas]"
+                                                value="{{ max(0, (int)$tomaComExternas) }}"
+                                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                                class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 focus:border-slate-600 rounded-xl font-black text-xs text-slate-800 outline-none transition-all shadow-sm">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- PREGUNTA 2: PUNTO DE RED --}}

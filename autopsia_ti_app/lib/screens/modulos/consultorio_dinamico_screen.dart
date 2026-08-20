@@ -35,6 +35,10 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
   final _fechaCtrl = TextEditingController();
   final _pisoCtrl = TextEditingController();
   final _cantidadPuntosRedCtrl = TextEditingController();
+  final _tomaEstabilizadaInternasCtrl = TextEditingController();
+  final _tomaEstabilizadaExternasCtrl = TextEditingController();
+  final _tomaComercialInternasCtrl = TextEditingController();
+  final _tomaComercialExternasCtrl = TextEditingController();
   final _operadorOtroCtrl = TextEditingController();
   final _velocidadDescargaCtrl = TextEditingController();
   final _velocidadSubidaCtrl = TextEditingController();
@@ -43,6 +47,8 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
   String _turno = 'MAÑANA';
   String _tipoConsultorio = 'FISICO';
   String _cuentaElectricidad = 'NO';
+  String _tieneTomaEstabilizada = 'NO';
+  String _tieneTomaComercial = 'NO';
   String _cuentaPuntoRed = 'NO';
   String _tipoConectividad = 'SIN CONECTIVIDAD';
   String _wifiFuente = 'ESTABLECIMIENTO';
@@ -78,6 +84,12 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
       _fechaCtrl.text = data['fecha'] ?? DateTime.now().toString().split(' ')[0];
       _pisoCtrl.text = (data['piso'] ?? '').toString();
       _cantidadPuntosRedCtrl.text = (data['cantidad_puntos_red'] ?? '').toString();
+      _tieneTomaEstabilizada = data['tiene_toma_estabilizada'] ?? 'NO';
+      _tomaEstabilizadaInternasCtrl.text = (data['toma_estabilizada_internas'] ?? '').toString();
+      _tomaEstabilizadaExternasCtrl.text = (data['toma_estabilizada_externas'] ?? '').toString();
+      _tieneTomaComercial = data['tiene_toma_comercial'] ?? 'NO';
+      _tomaComercialInternasCtrl.text = (data['toma_comercial_internas'] ?? '').toString();
+      _tomaComercialExternasCtrl.text = (data['toma_comercial_externas'] ?? '').toString();
       _operadorOtroCtrl.text = data['operador_otro'] ?? '';
       _velocidadDescargaCtrl.text = (data['velocidad_descarga'] ?? '').toString();
       _velocidadSubidaCtrl.text = (data['velocidad_subida'] ?? '').toString();
@@ -112,6 +124,12 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
       'tipo_consultorio': _tipoConsultorio,
       'piso': int.tryParse(_pisoCtrl.text),
       'cuenta_electricidad': _cuentaElectricidad,
+      'tiene_toma_estabilizada': _tieneTomaEstabilizada,
+      'toma_estabilizada_internas': _tieneTomaEstabilizada == 'SI' ? int.tryParse(_tomaEstabilizadaInternasCtrl.text) : null,
+      'toma_estabilizada_externas': _tieneTomaEstabilizada == 'SI' ? int.tryParse(_tomaEstabilizadaExternasCtrl.text) : null,
+      'tiene_toma_comercial': _tieneTomaComercial,
+      'toma_comercial_internas': _tieneTomaComercial == 'SI' ? int.tryParse(_tomaComercialInternasCtrl.text) : null,
+      'toma_comercial_externas': _tieneTomaComercial == 'SI' ? int.tryParse(_tomaComercialExternasCtrl.text) : null,
       'cuenta_punto_red': _cuentaPuntoRed,
       'cantidad_puntos_red': _cuentaPuntoRed == 'SI' ? int.tryParse(_cantidadPuntosRedCtrl.text) : null,
       'tipo_conectividad': _tipoConectividad,
@@ -197,6 +215,20 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
                   _dropdown('Tipo de consultorio', _tipoConsultorio, const ['FISICO', 'FUNCIONAL'], (v) => setState(() => _tipoConsultorio = v!)),
                   _campoTexto('Piso', _pisoCtrl, teclado: TextInputType.number, onDone: _persistir),
                   _pillGroup('¿Cuenta con electricidad?', ['SI', 'NO'], _cuentaElectricidad, (v) => setState(() => _cuentaElectricidad = v)),
+                  _pillGroup('¿Tiene toma estabilizada (roja-naranja)?', ['SI', 'NO'], _tieneTomaEstabilizada, (v) => setState(() => _tieneTomaEstabilizada = v)),
+                  if (_tieneTomaEstabilizada == 'SI')
+                    Row(children: [
+                      Expanded(child: _campoTexto('Internas', _tomaEstabilizadaInternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _campoTexto('Externas', _tomaEstabilizadaExternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                    ]),
+                  _pillGroup('¿Tiene toma comercial (blanco)?', ['SI', 'NO'], _tieneTomaComercial, (v) => setState(() => _tieneTomaComercial = v)),
+                  if (_tieneTomaComercial == 'SI')
+                    Row(children: [
+                      Expanded(child: _campoTexto('Internas', _tomaComercialInternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _campoTexto('Externas', _tomaComercialExternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                    ]),
                   _pillGroup('¿Cuenta con punto de red?', ['SI', 'NO'], _cuentaPuntoRed, (v) => setState(() => _cuentaPuntoRed = v)),
                   if (_cuentaPuntoRed == 'SI') _campoTexto('Cantidad de puntos de red', _cantidadPuntosRedCtrl, teclado: TextInputType.number, onDone: _persistir),
                 ]),
