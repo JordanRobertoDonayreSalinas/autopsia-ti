@@ -624,7 +624,6 @@ try {
 } catch {
     Write-Output "{}"
 }
-[System.Environment]::Exit(0)
 POWERSHELL;
     }
 
