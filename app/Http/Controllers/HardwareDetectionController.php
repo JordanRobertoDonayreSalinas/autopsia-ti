@@ -419,12 +419,22 @@ $WarningPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'SilentlyContinue'
 
 try {
-    # 1. Detectar Laptop por batería o ChassisType
+    # 1. Detectar Laptop por bateria, PCSystemType o ChassisType (tres señales
+    # independientes porque cada una puede fallar/venir vacia segun el
+    # fabricante: hay laptops que no exponen Win32_Battery via WMI, y otras
+    # que reportan un ChassisType generico/incorrecto desde su BIOS).
     $isLaptop = $false
     $battery = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
     if ($battery) {
         $isLaptop = $true
-    } else {
+    }
+    if (-not $isLaptop) {
+        $sysType = Get-CimInstance Win32_ComputerSystem -Property PCSystemType -ErrorAction SilentlyContinue
+        if ($sysType -and $sysType.PCSystemType -eq 2) {
+            $isLaptop = $true
+        }
+    }
+    if (-not $isLaptop) {
         $chassis = Get-CimInstance Win32_SystemEnclosure -Property ChassisTypes -ErrorAction SilentlyContinue
         if ($chassis) {
             foreach ($c in $chassis.ChassisTypes) {

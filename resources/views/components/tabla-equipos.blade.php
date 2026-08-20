@@ -644,7 +644,26 @@
             if (conn.downlink) velRed = `${Math.round(conn.downlink * 10)} Mbps`;
         }
 
-        const isLaptop = navigator.maxTouchPoints > 0 || screen.width <= 1440;
+        // Deteccion de laptop vs PC de escritorio: el navegador no expone el
+        // tipo de chasis real, asi que se combinan tres señales imperfectas
+        // por orden de confiabilidad. La resolucion de pantalla sola (usada
+        // antes) daba muchos falsos positivos/negativos porque hoy es comun
+        // que tanto laptops como monitores de escritorio sean 1920x1080+.
+        let isLaptop = navigator.maxTouchPoints > 0; // pantallas tactiles / 2-en-1
+        if (!isLaptop && navigator.getBattery) {
+            try {
+                const battery = await navigator.getBattery();
+                // Una PC de escritorio sin bateria real reporta "cargada al
+                // 100% y sin tiempo de carga/descarga" de forma constante;
+                // cualquier otro valor indica una bateria de verdad.
+                if (battery && (battery.level < 1 || battery.chargingTime !== 0 || battery.dischargingTime !== Infinity)) {
+                    isLaptop = true;
+                }
+            } catch (e) {}
+        }
+        if (!isLaptop && screen.width <= 1366) {
+            isLaptop = true; // resolucion tipica de laptops economicas
+        }
         const marcaModeloDetectado = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
 
         // Detectar cámaras web disponibles desde el navegador
