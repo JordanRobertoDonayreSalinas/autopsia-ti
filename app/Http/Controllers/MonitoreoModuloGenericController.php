@@ -31,7 +31,7 @@ class MonitoreoModuloGenericController extends Controller
         if (empty($slugBase)) {
             $slugBase = 'consultorio';
         }
-        $slug = $slugBase.'_'.time();
+        $slug = $slugBase . '_' . time();
 
         // Crear registro inicial en mon_monitoreo_modulos
         MonitoreoModulos::create([
@@ -103,7 +103,12 @@ class MonitoreoModuloGenericController extends Controller
             ->pluck('nombre');
 
         return view('usuario.monitoreo.modulos.consultorio_dinamico', compact(
-            'acta', 'detalle', 'slug', 'tituloConsultorio', 'equipos', 'serviciosUps'
+            'acta',
+            'detalle',
+            'slug',
+            'tituloConsultorio',
+            'equipos',
+            'serviciosUps'
         ));
     }
 
@@ -123,7 +128,7 @@ class MonitoreoModuloGenericController extends Controller
                 ->firstOrFail();
 
             // Preservar o actualizar el título del consultorio
-            if (! empty($contenido['titulo_consultorio'])) {
+            if (!empty($contenido['titulo_consultorio'])) {
                 $contenido['titulo_consultorio'] = mb_strtoupper(trim($contenido['titulo_consultorio']));
             } elseif (isset($detalle->contenido['titulo_consultorio'])) {
                 $contenido['titulo_consultorio'] = $detalle->contenido['titulo_consultorio'];
@@ -167,11 +172,11 @@ class MonitoreoModuloGenericController extends Controller
 
             // Sincronizar datos del profesional entrevistado si se enviaron
             $prof = $contenido['profesional']
-                 ?? $contenido['datos_del_profesional']
-                 ?? $contenido['busqueda_temporal']
-                 ?? null;
+                ?? $contenido['datos_del_profesional']
+                ?? $contenido['busqueda_temporal']
+                ?? null;
 
-            if ($prof && ! empty($prof['doc'])) {
+            if ($prof && !empty($prof['doc'])) {
                 Profesional::updateOrCreate(
                     ['doc' => trim($prof['doc'])],
                     [
@@ -197,9 +202,9 @@ class MonitoreoModuloGenericController extends Controller
 
             if (is_array($equiposData)) {
                 foreach ($equiposData as $eq) {
-                    if (! empty($eq['descripcion'])) {
+                    if (!empty($eq['descripcion'])) {
                         $especificaciones = $eq['especificaciones'] ?? null;
-                        if (is_string($especificaciones) && ! empty(trim($especificaciones))) {
+                        if (is_string($especificaciones) && !empty(trim($especificaciones))) {
                             $decoded = json_decode($especificaciones, true);
                             if (json_last_error() === JSON_ERROR_NONE) {
                                 $especificaciones = $decoded;
@@ -228,12 +233,12 @@ class MonitoreoModuloGenericController extends Controller
                 ->with('success', 'Evaluación del consultorio guardada correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Error al guardar consultorio {$slug} para el acta #{$id}: ".$e->getMessage());
+            Log::error("Error al guardar consultorio {$slug} para el acta #{$id}: " . $e->getMessage());
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Error al guardar el consultorio: '.$e->getMessage());
+                ->with('error', 'Error al guardar el consultorio: ' . $e->getMessage());
         }
     }
 
@@ -267,7 +272,7 @@ class MonitoreoModuloGenericController extends Controller
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Consultorio_'.$slug.'_Acta_'.$id.'.pdf"',
+            'Content-Disposition' => 'inline; filename="Consultorio_' . $slug . '_Acta_' . $id . '.pdf"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
             'Pragma' => 'no-cache',
             'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
@@ -304,6 +309,8 @@ class MonitoreoModuloGenericController extends Controller
             abort(404, "No se encontraron consultorios para el servicio: {$servicio}");
         }
 
+
+
         // Cargar los equipos de cada módulo y preparar los datos para la vista
         $consultorios = $modulosFiltrados->map(function ($modulo) use ($id) {
             $contenido = is_array($modulo->contenido)
@@ -329,11 +336,11 @@ class MonitoreoModuloGenericController extends Controller
 
         $pdf->setPaper('a4', 'portrait');
 
-        $nombreArchivo = 'Servicio_'.\Str::slug($servicio).'_Acta_'.$id.'.pdf';
+        $nombreArchivo = 'Servicio_' . \Str::slug($servicio) . '_Acta_' . $id . '.pdf';
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$nombreArchivo.'"',
+            'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
             'Pragma' => 'no-cache',
             'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
@@ -374,7 +381,7 @@ class MonitoreoModuloGenericController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Error al eliminar el consultorio: '.$e->getMessage());
+                ->with('error', 'Error al eliminar el consultorio: ' . $e->getMessage());
         }
     }
 
