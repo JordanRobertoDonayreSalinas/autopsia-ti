@@ -174,6 +174,16 @@ class MonitoreoModuloGenericController extends Controller
                 $contenido['cantidad_puntos_red'] = null;
             }
 
+            // Idem para el requerimiento de puntos de red adicionales
+            if (($contenido['requiere_mas_puntos_red'] ?? '') === 'SI') {
+                $contenido['cantidad_puntos_red_requerido'] = max(1, (int) ($contenido['cantidad_puntos_red_requerido'] ?? 1));
+                $contenido['observacion_requerimiento_punto_red'] = mb_strtoupper(trim($contenido['observacion_requerimiento_punto_red'] ?? ''));
+            } else {
+                $contenido['requiere_mas_puntos_red'] = 'NO';
+                $contenido['cantidad_puntos_red_requerido'] = null;
+                $contenido['observacion_requerimiento_punto_red'] = null;
+            }
+
             $detalle->update(['contenido' => $contenido]);
 
             // Sincronizar datos del profesional entrevistado si se enviaron

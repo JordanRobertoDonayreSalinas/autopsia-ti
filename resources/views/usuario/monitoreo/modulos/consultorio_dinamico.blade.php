@@ -218,6 +218,47 @@
                                         onblur="if(!this.value || parseInt(this.value) < 1) this.value = '1';"
                                         class="w-full px-4 py-2.5 bg-white border-2 border-indigo-200 focus:border-indigo-600 rounded-xl font-black text-xs text-indigo-900 outline-none transition-all shadow-sm">
                                 </div>
+
+                                {{-- REQUERIMIENTO: ¿NECESITA IMPLEMENTAR MÁS PUNTOS DE RED? --}}
+                                <div class="mt-4 pt-4 border-t border-slate-200/70">
+                                    <label class="block text-[10px] font-black text-amber-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                        <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-amber-600"></i> ¿Necesita implementar más puntos de red?
+                                    </label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        @php $reqMasPuntosRed = strtoupper($contenido['requiere_mas_puntos_red'] ?? 'NO'); @endphp
+                                        <label class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ $reqMasPuntosRed === 'SI' ? 'border-amber-500 bg-amber-50 text-amber-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                            <input type="radio" name="contenido[requiere_mas_puntos_red]" value="SI" {{ $reqMasPuntosRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-amber-500', 'bg-amber-50', 'text-amber-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-amber-500', 'bg-amber-50', 'text-amber-800', 'shadow-sm'); document.getElementById('container_requerimiento_punto_red').classList.remove('hidden');">
+                                            <span class="font-black text-xs uppercase">SÍ, REQUIERE</span>
+                                        </label>
+                                        <label class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ $reqMasPuntosRed === 'NO' ? 'border-slate-400 bg-slate-100 text-slate-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                            <input type="radio" name="contenido[requiere_mas_puntos_red]" value="NO" {{ $reqMasPuntosRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-amber-500', 'bg-amber-50', 'text-amber-800', 'border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm'); document.getElementById('container_requerimiento_punto_red').classList.add('hidden');">
+                                            <span class="font-black text-xs uppercase">NO REQUIERE</span>
+                                        </label>
+                                    </div>
+
+                                    @php $cantPuntosRedReq = $contenido['cantidad_puntos_red_requerido'] ?? 1; @endphp
+                                    <div id="container_requerimiento_punto_red" class="mt-3 space-y-3 {{ $reqMasPuntosRed === 'SI' ? '' : 'hidden' }}">
+                                        <div>
+                                            <label class="block text-[10px] font-black text-amber-800 uppercase tracking-wider mb-1.5">
+                                                Cantidad Adicional Requerida
+                                            </label>
+                                            <input type="number" min="1" max="99" step="1" name="contenido[cantidad_puntos_red_requerido]"
+                                                value="{{ max(1, (int)$cantPuntosRedReq) }}"
+                                                placeholder="Ej: 2"
+                                                onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E'||event.key==='.') event.preventDefault();"
+                                                oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value && parseInt(this.value) < 1) this.value = '1';"
+                                                onblur="if(!this.value || parseInt(this.value) < 1) this.value = '1';"
+                                                class="w-full px-4 py-2.5 bg-white border-2 border-amber-200 focus:border-amber-600 rounded-xl font-black text-xs text-amber-900 outline-none transition-all shadow-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-black text-amber-800 uppercase tracking-wider mb-1.5">
+                                                Observación del Requerimiento
+                                            </label>
+                                            <textarea name="contenido[observacion_requerimiento_punto_red]" rows="2" placeholder="Ej: se necesita para instalar una laptop adicional en el area de admision..."
+                                                class="w-full px-4 py-2.5 bg-white border-2 border-amber-200 focus:border-amber-600 rounded-xl font-semibold text-xs text-slate-700 outline-none transition-all shadow-sm resize-none">{{ $contenido['observacion_requerimiento_punto_red'] ?? '' }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

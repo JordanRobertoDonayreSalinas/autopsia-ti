@@ -515,6 +515,16 @@
                 </td>
             </tr>
         </table>
+
+        @if(strtoupper($contenido['requiere_mas_puntos_red'] ?? 'NO') === 'SI')
+            @php $cantPuntosReq = $contenido['cantidad_puntos_red_requerido'] ?? 1; @endphp
+            <div style="margin-top: 6px; background-color: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 5px; padding: 6px 8px; font-size: 7px; color: #92400e;">
+                <strong style="text-transform: uppercase;">⚠ Requiere implementar {{ $cantPuntosReq }} {{ (int)$cantPuntosReq === 1 ? 'punto de red adicional' : 'puntos de red adicionales' }}</strong>
+                @if(!empty($contenido['observacion_requerimiento_punto_red']))
+                    <br>{{ strtoupper($contenido['observacion_requerimiento_punto_red']) }}
+                @endif
+            </div>
+        @endif
     </div>
 
     {{-- ═══ 2. EQUIPOS DE CÓMPUTO E IMPRESORA ═══ --}}
