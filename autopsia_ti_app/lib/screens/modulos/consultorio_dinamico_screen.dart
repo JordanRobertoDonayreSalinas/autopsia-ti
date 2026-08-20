@@ -415,7 +415,7 @@ class _EquipoFormDialogState extends State<_EquipoFormDialog> {
               DropdownButtonFormField<String>(
                 initialValue: _propio,
                 decoration: InputDecoration(labelText: 'Propiedad', filled: true, fillColor: const Color(0xFFF8FAFC), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
-                items: const ['EXCLUSIVO', 'COMPARTIDO', 'PERSONAL'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                items: const ['EXCLUSIVO', 'COMPARTIDO', 'PERSONAL', 'ALQUILADO'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                 onChanged: (v) => setState(() => _propio = v!),
               ),
               const SizedBox(height: 12),

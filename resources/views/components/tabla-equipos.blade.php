@@ -117,6 +117,7 @@
                                 <option value="COMPARTIDO" {{ $eq->propio == 'COMPARTIDO' ? 'selected' : '' }}>COMPARTIDO</option>
                                 <option value="EXCLUSIVO" {{ $eq->propio == 'EXCLUSIVO' ? 'selected' : '' }}>EXCLUSIVO</option>
                                 <option value="PERSONAL" {{ $eq->propio == 'PERSONAL' ? 'selected' : '' }}>PERSONAL</option>
+                                <option value="ALQUILADO" {{ $eq->propio == 'ALQUILADO' ? 'selected' : '' }}>ALQUILADO</option>
                             </select>
                         </td>
 
@@ -350,6 +351,7 @@
                     <option value="EXCLUSIVO">EXCLUSIVO</option>
                     <option value="COMPARTIDO">COMPARTIDO</option>
                     <option value="PERSONAL">PERSONAL</option>
+                    <option value="ALQUILADO">ALQUILADO</option>
                 </select>
             </td>
             <td class="px-4 py-4">
@@ -1019,6 +1021,7 @@
                     <option value="EXCLUSIVO" ${propio === 'EXCLUSIVO' ? 'selected' : ''}>EXCLUSIVO</option>
                     <option value="COMPARTIDO" ${propio === 'COMPARTIDO' ? 'selected' : ''}>COMPARTIDO</option>
                     <option value="PERSONAL" ${propio === 'PERSONAL' ? 'selected' : ''}>PERSONAL</option>
+                    <option value="ALQUILADO" ${propio === 'ALQUILADO' ? 'selected' : ''}>ALQUILADO</option>
                 </select>
             </td>
             <td class="px-4 py-4">
