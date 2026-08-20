@@ -342,28 +342,10 @@
                     </div>
                 </div>
 
-                {{-- 3.- TIPO DE CONECTIVIDAD --}}
-                @php
-                    $hasComputo = false;
-                    if (isset($equipos) && count($equipos) > 0) {
-                        foreach ($equipos as $eq) {
-                            $descUpper = str_replace('-', ' ', strtoupper(trim($eq->descripcion ?? '')));
-                            if (
-                                str_contains($descUpper, 'CPU') ||
-                                str_contains($descUpper, 'LAPTOP') ||
-                                str_contains($descUpper, 'COMPUTADORA') ||
-                                str_contains($descUpper, 'COMPUTADOR') ||
-                                str_contains($descUpper, 'ALL IN ONE') ||
-                                str_contains($descUpper, 'AIO') ||
-                                str_contains($descUpper, 'PC')
-                            ) {
-                                $hasComputo = true;
-                                break;
-                            }
-                        }
-                    }
-                @endphp
-                <div id="container_tipo_conectividad" class="{{ !$hasComputo ? 'hidden' : '' }}">
+                {{-- 3.- TIPO DE CONECTIVIDAD (siempre visible: un consultorio puede no
+                     tener equipo de computo y aun asi necesitar registrar si cuenta
+                     o no con conectividad en el ambiente, ej. "SIN CONECTIVIDAD") --}}
+                <div id="container_tipo_conectividad">
                     <x-tipo-conectividad num="3" :contenido="$contenido" />
                 </div>
 
@@ -549,38 +531,6 @@
             updateSectionNumbers();
         }
 
-        function checkComputoEquipos() {
-            const containerConectividad = document.getElementById('container_tipo_conectividad');
-            if (!containerConectividad) return;
-
-            const descInputs = document.querySelectorAll('input[name*="[descripcion]"]');
-            let hasComputo = false;
-
-            descInputs.forEach(input => {
-                const rawVal = input.value.trim().toUpperCase();
-                const val = rawVal.replace(/-/g, ' ');
-                if (
-                    val.includes('CPU') ||
-                    val.includes('LAPTOP') ||
-                    val.includes('COMPUTADORA') ||
-                    val.includes('COMPUTADOR') ||
-                    val.includes('ALL IN ONE') ||
-                    val.includes('AIO') ||
-                    val.includes('PC')
-                ) {
-                    hasComputo = true;
-                }
-            });
-
-            if (hasComputo) {
-                containerConectividad.classList.remove('hidden');
-            } else {
-                containerConectividad.classList.add('hidden');
-            }
-
-            updateSectionNumbers();
-        }
-
         function updateSectionNumbers() {
             let index = 1;
             document.querySelectorAll('.monitoreo-section').forEach(section => {
@@ -597,22 +547,6 @@
         document.addEventListener('DOMContentLoaded', function () {
             const selectSihce = document.getElementById('cuenta_sihce');
             if (selectSihce) toggleSihceAndDocs(selectSihce.value);
-
-            checkComputoEquipos();
-
-            const bodyEquipos = document.querySelector('tbody[id^="body_equipos_"]');
-            if (bodyEquipos) {
-                bodyEquipos.addEventListener('input', function (e) {
-                    if (e.target && e.target.name && e.target.name.includes('[descripcion]')) {
-                        checkComputoEquipos();
-                    }
-                });
-
-                const observer = new MutationObserver(function () {
-                    checkComputoEquipos();
-                });
-                observer.observe(bodyEquipos, { childList: true, subtree: true });
-            }
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
@@ -687,39 +621,34 @@
                 }
             });
 
-            // 3. TIPO DE CONECTIVIDAD (solo obligatorio si la sección está visible,
-            // es decir, si hay al menos un equipo de cómputo real cargado — un
-            // simple requerimiento/necesidad no cuenta, ver checkComputoEquipos())
-            const containerConectividadValidacion = document.getElementById('container_tipo_conectividad');
-            const conectividadEsRequerida = containerConectividadValidacion && !containerConectividadValidacion.classList.contains('hidden');
+            // 3. TIPO DE CONECTIVIDAD (siempre obligatorio: la sección ya no
+            // depende de si hay equipo de cómputo cargado — un consultorio sin
+            // computadora igual necesita registrar "SIN CONECTIVIDAD" si aplica)
+            const tipoConectividad = document.getElementById('tipo_conectividad_input')?.value;
+            if (!tipoConectividad || !tipoConectividad.trim()) {
+                faltantes.push("TIPO DE CONECTIVIDAD: Seleccione opción (WIFI, CABLEADO o SIN CONECTIVIDAD)");
+            } else {
+                if (tipoConectividad === 'WIFI') {
+                    const wifiFuente = document.getElementById('wifi_fuente_input')?.value;
+                    if (!wifiFuente || !wifiFuente.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Procedencia de WiFi (Establecimiento o Personal)");
+                    }
+                }
 
-            if (conectividadEsRequerida) {
-                const tipoConectividad = document.getElementById('tipo_conectividad_input')?.value;
-                if (!tipoConectividad || !tipoConectividad.trim()) {
-                    faltantes.push("TIPO DE CONECTIVIDAD: Seleccione opción (WIFI, CABLEADO o SIN CONECTIVIDAD)");
-                } else {
-                    if (tipoConectividad === 'WIFI') {
-                        const wifiFuente = document.getElementById('wifi_fuente_input')?.value;
-                        if (!wifiFuente || !wifiFuente.trim()) {
-                            faltantes.push("TIPO DE CONECTIVIDAD: Procedencia de WiFi (Establecimiento o Personal)");
-                        }
+                if (tipoConectividad === 'WIFI' || tipoConectividad === 'CABLEADO') {
+                    const operador = document.getElementById('operador_servicio_select')?.value;
+                    if (!operador || !operador.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Operador de Servicio de Internet");
                     }
 
-                    if (tipoConectividad === 'WIFI' || tipoConectividad === 'CABLEADO') {
-                        const operador = document.getElementById('operador_servicio_select')?.value;
-                        if (!operador || !operador.trim()) {
-                            faltantes.push("TIPO DE CONECTIVIDAD: Operador de Servicio de Internet");
-                        }
+                    const velDescarga = document.getElementById('velocidad_descarga_input')?.value;
+                    if (!velDescarga || !velDescarga.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Descarga");
+                    }
 
-                        const velDescarga = document.getElementById('velocidad_descarga_input')?.value;
-                        if (!velDescarga || !velDescarga.trim()) {
-                            faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Descarga");
-                        }
-
-                        const velSubida = document.getElementById('velocidad_subida_input')?.value;
-                        if (!velSubida || !velSubida.trim()) {
-                            faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Subida");
-                        }
+                    const velSubida = document.getElementById('velocidad_subida_input')?.value;
+                    if (!velSubida || !velSubida.trim()) {
+                        faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Subida");
                     }
                 }
             }
