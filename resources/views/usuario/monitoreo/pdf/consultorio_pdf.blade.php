@@ -814,29 +814,41 @@
             </div>
         </div>
 
-        {{-- EVIDENCIA FOTOGRÁFICA --}}
+        {{-- EVIDENCIA FOTOGRÁFICA (hasta 3 fotos) --}}
         @php
-            $evidenciaPath = $detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '';
-            $fotoBase64 = null;
-            if (!empty($evidenciaPath)) {
-                $p = storage_path('app/public/' . $evidenciaPath);
-                if (file_exists($p)) {
-                    $ext = strtolower(pathinfo($p, PATHINFO_EXTENSION));
-                    $mime = ($ext === 'png') ? 'image/png' : 'image/jpeg';
-                    $fotoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($p));
+            $fotosBase64 = [];
+            for ($i = 1; $i <= 3; $i++) {
+                $evidenciaPath = $detalle->contenido['evidencia_path_' . $i]
+                    ?? $contenido['evidencia_path_' . $i]
+                    ?? ($i === 1 ? ($detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '') : '');
+                if (!empty($evidenciaPath)) {
+                    $p = storage_path('app/public/' . $evidenciaPath);
+                    if (file_exists($p)) {
+                        $ext = strtolower(pathinfo($p, PATHINFO_EXTENSION));
+                        $mime = ($ext === 'png') ? 'image/png' : 'image/jpeg';
+                        $fotosBase64[$i] = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($p));
+                    }
                 }
             }
         @endphp
 
         <div style="margin-top: 4px;">
-            <span class="field-label" style="margin-bottom: 2px;">Fotografía / Evidencia Adjunta</span>
-            @if(!empty($fotoBase64))
-                <div class="evidence-card">
-                    <img src="{{ $fotoBase64 }}" class="evidence-img">
-                    <div class="evidence-caption">
-                        FOTO 1
-                    </div>
-                </div>
+            <span class="field-label" style="margin-bottom: 2px;">Fotografías / Evidencia Adjunta</span>
+            @if(count($fotosBase64) > 0)
+                <table class="form-grid">
+                    <tr>
+                        @foreach($fotosBase64 as $i => $fotoBase64)
+                            <td style="width: {{ 100 / count($fotosBase64) }}%;">
+                                <div class="evidence-card">
+                                    <img src="{{ $fotoBase64 }}" class="evidence-img">
+                                    <div class="evidence-caption">
+                                        FOTO {{ $i }}
+                                    </div>
+                                </div>
+                            </td>
+                        @endforeach
+                    </tr>
+                </table>
             @else
                 <div style="background-color: #fafbff; border: 1.5px dashed #cbd5e1; border-radius: 5px; padding: 7px; text-align: center; color: #94a3b8; font-size: 7.5px; font-weight: bold; text-transform: uppercase;">
                     Sin evidencia fotográfica adjunta para este consultorio.

@@ -439,11 +439,13 @@
                     'descarga'  => !empty($cont['velocidad_descarga']) ? ($cont['velocidad_descarga'] . ' ' . ($cont['velocidad_descarga_unidad'] ?? 'Mbps')) : '',
                     'subida'    => !empty($cont['velocidad_subida']) ? ($cont['velocidad_subida'] . ' ' . ($cont['velocidad_subida_unidad'] ?? 'Mbps')) : '',
                     'observaciones' => $cont['observaciones'] ?? '',
-                    'evidencia_path'=> $cont['evidencia_path'] ?? ($cont['foto_evidencia'] ?? '')
+                    'evidencia_path'=> $cont['evidencia_path_1'] ?? ($cont['evidencia_path'] ?? ($cont['foto_evidencia'] ?? ''))
                 ];
 
-                // Extraer foto de evidencia del consultorio
-                $evPath = $cont['evidencia_path'] ?? ($cont['foto_evidencia'] ?? '');
+                // Extraer foto de evidencia del consultorio (foto 1; el consolidado
+                // resume con una sola imagen por consultorio, ver consultorio_pdf.blade.php
+                // para las 3 fotos completas)
+                $evPath = $cont['evidencia_path_1'] ?? ($cont['evidencia_path'] ?? ($cont['foto_evidencia'] ?? ''));
                 if (!empty($evPath)) {
                     $p = storage_path('app/public/' . $evPath);
                     if (file_exists($p)) {

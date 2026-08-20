@@ -140,32 +140,41 @@ class MonitoreoModuloGenericController extends Controller
                 $contenido['titulo_consultorio'] = $detalle->contenido['titulo_consultorio'];
             }
 
-            // Manejo de archivo de evidencia fotográfica (Reemplazo / Eliminación / Mantenimiento)
-            $fotoAnterior = $detalle->contenido['evidencia_path'] ?? null;
+            // Manejo de hasta 3 fotografías de evidencia (Reemplazo / Eliminación / Mantenimiento
+            // por cada una de las 3 casillas independientes). El campo viejo "evidencia_path"
+            // (singular, de cuando solo se permitia 1 foto) se trata como alias de la foto 1
+            // para no perder evidencia ya cargada en actas anteriores a este cambio.
+            $slugLimpio = Str::slug($slug, '_');
+            for ($i = 1; $i <= 3; $i++) {
+                $campoFoto = "evidencia_{$i}";
+                $campoPath = "evidencia_path_{$i}";
+                $campoEliminar = "eliminar_evidencia_{$i}";
 
-            if ($request->hasFile('evidencia')) {
-                // 1. Si ya existía una fotografía previa, se elimina físicamente del almacenamiento
-                if ($fotoAnterior && Storage::disk('public')->exists($fotoAnterior)) {
-                    Storage::disk('public')->delete($fotoAnterior);
+                $fotoAnterior = $detalle->contenido[$campoPath]
+                    ?? ($i === 1 ? ($detalle->contenido['evidencia_path'] ?? null) : null);
+
+                if ($request->hasFile($campoFoto)) {
+                    if ($fotoAnterior && Storage::disk('public')->exists($fotoAnterior)) {
+                        Storage::disk('public')->delete($fotoAnterior);
+                    }
+
+                    $file = $request->file($campoFoto);
+                    $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+                    $nombreEstandar = "evidencia_acta_{$id}_{$slugLimpio}_{$i}_".date('Ymd_His').'.'.$extension;
+
+                    $path = $file->storeAs('evidencias_monitoreo', $nombreEstandar, 'public');
+                    $contenido[$campoPath] = $path;
+                } elseif ($request->input($campoEliminar) === '1') {
+                    if ($fotoAnterior && Storage::disk('public')->exists($fotoAnterior)) {
+                        Storage::disk('public')->delete($fotoAnterior);
+                    }
+                    $contenido[$campoPath] = null;
+                } else {
+                    $contenido[$campoPath] = $fotoAnterior;
                 }
-
-                // 2. Nomenclatura estándar y ordenada: evidencia_acta_{id}_{slug}_{fecha_hora}.{ext}
-                $file = $request->file('evidencia');
-                $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-                $slugLimpio = Str::slug($slug, '_');
-                $nombreEstandar = "evidencia_acta_{$id}_{$slugLimpio}_".date('Ymd_His').'.'.$extension;
-
-                $path = $file->storeAs('evidencias_monitoreo', $nombreEstandar, 'public');
-                $contenido['evidencia_path'] = $path;
-            } elseif ($request->input('eliminar_evidencia') === '1') {
-                // Si el usuario solicitó explícitamente quitar la imagen existente
-                if ($fotoAnterior && Storage::disk('public')->exists($fotoAnterior)) {
-                    Storage::disk('public')->delete($fotoAnterior);
-                }
-                $contenido['evidencia_path'] = null;
-            } elseif (isset($detalle->contenido['evidencia_path'])) {
-                $contenido['evidencia_path'] = $detalle->contenido['evidencia_path'];
             }
+            // El campo viejo ya no se usa una vez migrado a las 3 casillas
+            unset($contenido['evidencia_path']);
 
             // Normalizar y validar cantidad de puntos de red (mínimo 1, sin negativos)
             if (($contenido['cuenta_punto_red'] ?? '') === 'SI') {
