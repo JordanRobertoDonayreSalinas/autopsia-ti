@@ -352,6 +352,7 @@
                         <div class="bg-white/5 p-3 rounded-2xl border border-white/5">
                             <span class="block text-[9px] font-black text-slate-400 uppercase">PROVEEDOR</span>
                             <span class="text-xs font-black text-indigo-300 truncate block" id="st_val_isp">Detectando...</span>
+                            <span class="text-[8px] font-bold text-slate-500 truncate block mt-0.5" id="st_val_isp_raw"></span>
                         </div>
                     </div>
                 </div>
@@ -469,6 +470,7 @@
         async function detectClientISP(operadorFallback) {
             const cacheBust = `_t=${Date.now()}`;
             let resultadoApi1 = null;
+            let textoCrudoDetectado = '';
 
             // --- Intento 1: ipapi.co ---
             try {
@@ -476,6 +478,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     const ispStr = (data.isp || data.org || data.asn || '').toUpperCase();
+                    textoCrudoDetectado = data.isp || data.org || data.asn || '';
                     console.log('[SpeedTest] ipapi.co respuesta:', { isp: data.isp, org: data.org, ip: data.ip });
                     resultadoApi1 = matchIspOption(ispStr);
                     if (resultadoApi1 !== 'OTROS') return resultadoApi1;
@@ -491,6 +494,7 @@
                 if (resp2.ok) {
                     const d2 = await resp2.json();
                     const ispStr2 = (d2.isp || d2.org || '').toUpperCase();
+                    if (!textoCrudoDetectado) textoCrudoDetectado = d2.isp || d2.org || '';
                     console.log('[SpeedTest] ip-api.com respuesta:', { isp: d2.isp, org: d2.org, query: d2.query });
                     const matched2 = matchIspOption(ispStr2);
                     if (matched2 !== 'OTROS') return matched2;
@@ -499,8 +503,15 @@
                 console.warn('[SpeedTest] ip-api.com falló:', e2.message);
             }
 
-            // Ambas APIs devolvieron OTROS o fallaron: usar fallback del operador seleccionado
-            console.log('[SpeedTest] ISP no reconocido por APIs. Fallback:', operadorFallback || 'OTROS');
+            // Ambas APIs devolvieron OTROS o fallaron: usar fallback del operador seleccionado.
+            // Se muestra el texto crudo detectado en pantalla (no solo en consola) para que,
+            // si no coincidio con ningun proveedor conocido, quede a la vista y se pueda
+            // reportar el nombre exacto para agregarlo a la lista de coincidencias.
+            const elRaw = document.getElementById('st_val_isp_raw');
+            if (elRaw && textoCrudoDetectado) {
+                elRaw.innerText = 'Detectado como: "' + textoCrudoDetectado + '" (no reconocido, corrija manualmente)';
+            }
+            console.log('[SpeedTest] ISP no reconocido por APIs. Texto crudo:', textoCrudoDetectado, '| Fallback:', operadorFallback || 'OTROS');
             return operadorFallback || 'OTROS';
         }
 
@@ -509,8 +520,10 @@
             if (ispName.includes('WOW') || ispName.includes('DESARROLLO DE INFRAESTRUCTURA DE TELECOMUNICACIONES')) return 'WOW';
             if (ispName.includes('TELEFONICA') || ispName.includes('MOVISTAR') || ispName.includes('TDF')) return 'MOVISTAR';
             if (ispName.includes('CLARO') || ispName.includes('AMERICA MOVIL')) return 'CLARO';
-            // WIN: verificar antes de ENTEL para evitar falsos positivos
-            if (ispName.includes('OPTICAL TECHNOLOGIES') || ispName.includes('OPTIKA') || (ispName.includes('WIN') && !ispName.includes('ENTEL'))) return 'WIN';
+            // WIN: verificar antes de ENTEL para evitar falsos positivos.
+            // AS27843 (razón social de WIN Empresas) figura en ip-api.com/ipapi.co
+            // como "ON EMPRESAS S.A.C." y "Comunicate Facil S.A.C." (no contienen "WIN").
+            if (ispName.includes('OPTICAL TECHNOLOGIES') || ispName.includes('OPTIKA') || ispName.includes('ON EMPRESAS') || ispName.includes('COMUNICATE FACIL') || ispName.includes('AS27843') || ispName.includes('WIN TELECOM') || ispName.includes('WIN INTERNET') || ispName.includes('WIN PERU') || ispName.includes('WINET') || (ispName.includes('WIN') && !ispName.includes('ENTEL') && !ispName.includes('DARWIN'))) return 'WIN';
             if (ispName.includes('ENTEL')) return 'ENTEL';
             if (ispName.includes('BITEL') || ispName.includes('VIETTEL')) return 'BITEL';
             if (ispName.includes('FIBERPRO')) return 'FIBERPRO';
