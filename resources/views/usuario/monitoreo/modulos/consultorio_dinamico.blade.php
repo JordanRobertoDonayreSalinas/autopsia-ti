@@ -311,15 +311,21 @@
                             @php
                                 $evidenciaPath = $detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '';
                             @endphp
+                            <input type="hidden" name="eliminar_evidencia" id="input_eliminar_evidencia" value="0">
                             <div id="container_preview_evidencia" class="mt-4 {{ empty($evidenciaPath) ? 'hidden' : '' }}">
-                                <div class="relative inline-block bg-slate-100 p-2.5 rounded-2xl border-2 border-indigo-200 shadow-md">
+                                <div class="relative inline-block bg-slate-100 p-3 rounded-2xl border-2 border-indigo-200 shadow-md group">
                                     <img id="img_preview_evidencia" 
                                          src="{{ !empty($evidenciaPath) ? asset('storage/' . $evidenciaPath) : '' }}" 
                                          alt="Previsualización Evidencia" 
                                          class="max-h-64 max-w-full rounded-xl object-contain shadow-inner bg-white">
-                                    <div class="mt-2 text-center text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                                        <span id="text_preview_evidencia_name">{{ !empty($evidenciaPath) ? basename($evidenciaPath) : 'Evidencia Adjunta' }}</span>
+                                    <button type="button" onclick="eliminarEvidenciaActual()"
+                                        class="absolute top-5 right-5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider" title="Quitar fotografía">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Quitar</span>
+                                    </button>
+                                    <div class="mt-2.5 text-center text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                        <i data-lucide="camera" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                        <span id="text_preview_evidencia_name">EVIDENCIA: {{ $tituloConsultorio }} (ACTA #{{ str_pad($acta->numero_acta ?? $acta->id, 5, '0', STR_PAD_LEFT) }})</span>
                                     </div>
                                 </div>
                             </div>
@@ -345,16 +351,28 @@
             const container = document.getElementById('container_preview_evidencia');
             const img = document.getElementById('img_preview_evidencia');
             const txtName = document.getElementById('text_preview_evidencia_name');
+            const inputEliminar = document.getElementById('input_eliminar_evidencia');
 
             if (input.files && input.files[0]) {
+                if (inputEliminar) inputEliminar.value = '0';
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     img.src = e.target.result;
                     if (container) container.classList.remove('hidden');
                     if (txtName) txtName.innerText = "NUEVA: " + input.files[0].name.toUpperCase();
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
                 };
                 reader.readAsDataURL(input.files[0]);
             }
+        }
+
+        function eliminarEvidenciaActual() {
+            const inputEliminar = document.getElementById('input_eliminar_evidencia');
+            const container = document.getElementById('container_preview_evidencia');
+            const inputFoto = document.getElementById('input_evidencia_foto');
+            if (inputEliminar) inputEliminar.value = '1';
+            if (inputFoto) inputFoto.value = '';
+            if (container) container.classList.add('hidden');
         }
 
         function toggleSihceAndDocs(val) {

@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\CabeceraMonitoreo;
-use App\Models\MonitoreoModulos;
 use App\Models\EquipoComputo;
+use App\Models\MonitoreoModulos;
 use App\Models\Profesional;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Mpdf\Mpdf;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class MonitoreoModuloGenericController extends Controller
 {
@@ -30,16 +31,16 @@ class MonitoreoModuloGenericController extends Controller
         if (empty($slugBase)) {
             $slugBase = 'consultorio';
         }
-        $slug = $slugBase . '_' . time();
+        $slug = $slugBase.'_'.time();
 
         // Crear registro inicial en mon_monitoreo_modulos
         MonitoreoModulos::create([
             'cabecera_monitoreo_id' => $actaId,
-            'modulo_nombre'         => $slug,
-            'contenido'             => [
+            'modulo_nombre' => $slug,
+            'contenido' => [
                 'titulo_consultorio' => $titulo,
-                'fecha'              => date('Y-m-d'),
-                'turno'              => 'MAÑANA',
+                'fecha' => date('Y-m-d'),
+                'turno' => 'MAÑANA',
             ],
         ]);
 
@@ -122,23 +123,42 @@ class MonitoreoModuloGenericController extends Controller
                 ->firstOrFail();
 
             // Preservar o actualizar el título del consultorio
-            if (!empty($contenido['titulo_consultorio'])) {
+            if (! empty($contenido['titulo_consultorio'])) {
                 $contenido['titulo_consultorio'] = mb_strtoupper(trim($contenido['titulo_consultorio']));
-            } else if (isset($detalle->contenido['titulo_consultorio'])) {
+            } elseif (isset($detalle->contenido['titulo_consultorio'])) {
                 $contenido['titulo_consultorio'] = $detalle->contenido['titulo_consultorio'];
             }
 
-            // Manejo de archivo de evidencia fotográfica si se adjunta
+            // Manejo de archivo de evidencia fotográfica (Reemplazo / Eliminación / Mantenimiento)
+            $fotoAnterior = $detalle->contenido['evidencia_path'] ?? null;
+
             if ($request->hasFile('evidencia')) {
-                $path = $request->file('evidencia')->store('evidencias_monitoreo', 'public');
+                // 1. Si ya existía una fotografía previa, se elimina físicamente del almacenamiento
+                if ($fotoAnterior && Storage::disk('public')->exists($fotoAnterior)) {
+                    Storage::disk('public')->delete($fotoAnterior);
+                }
+
+                // 2. Nomenclatura estándar y ordenada: evidencia_acta_{id}_{slug}_{fecha_hora}.{ext}
+                $file = $request->file('evidencia');
+                $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+                $slugLimpio = Str::slug($slug, '_');
+                $nombreEstandar = "evidencia_acta_{$id}_{$slugLimpio}_".date('Ymd_His').'.'.$extension;
+
+                $path = $file->storeAs('evidencias_monitoreo', $nombreEstandar, 'public');
                 $contenido['evidencia_path'] = $path;
-            } else if (isset($detalle->contenido['evidencia_path'])) {
+            } elseif ($request->input('eliminar_evidencia') === '1') {
+                // Si el usuario solicitó explícitamente quitar la imagen existente
+                if ($fotoAnterior && Storage::disk('public')->exists($fotoAnterior)) {
+                    Storage::disk('public')->delete($fotoAnterior);
+                }
+                $contenido['evidencia_path'] = null;
+            } elseif (isset($detalle->contenido['evidencia_path'])) {
                 $contenido['evidencia_path'] = $detalle->contenido['evidencia_path'];
             }
 
             // Normalizar y validar cantidad de puntos de red (mínimo 1, sin negativos)
             if (($contenido['cuenta_punto_red'] ?? '') === 'SI') {
-                $contenido['cantidad_puntos_red'] = max(1, (int)($contenido['cantidad_puntos_red'] ?? 1));
+                $contenido['cantidad_puntos_red'] = max(1, (int) ($contenido['cantidad_puntos_red'] ?? 1));
             } else {
                 $contenido['cantidad_puntos_red'] = null;
             }
@@ -151,17 +171,17 @@ class MonitoreoModuloGenericController extends Controller
                  ?? $contenido['busqueda_temporal']
                  ?? null;
 
-            if ($prof && !empty($prof['doc'])) {
+            if ($prof && ! empty($prof['doc'])) {
                 Profesional::updateOrCreate(
                     ['doc' => trim($prof['doc'])],
                     [
-                        'tipo_doc'         => $prof['tipo_doc'] ?? 'DNI',
-                        'nombres'          => mb_strtoupper(trim($prof['nombres'] ?? '')),
+                        'tipo_doc' => $prof['tipo_doc'] ?? 'DNI',
+                        'nombres' => mb_strtoupper(trim($prof['nombres'] ?? '')),
                         'apellido_paterno' => mb_strtoupper(trim($prof['apellido_paterno'] ?? '')),
                         'apellido_materno' => mb_strtoupper(trim($prof['apellido_materno'] ?? '')),
-                        'cargo'            => mb_strtoupper(trim($prof['cargo'] ?? '')),
-                        'email'            => trim($prof['email'] ?? ''),
-                        'telefono'         => trim($prof['telefono'] ?? ''),
+                        'cargo' => mb_strtoupper(trim($prof['cargo'] ?? '')),
+                        'email' => trim($prof['email'] ?? ''),
+                        'telefono' => trim($prof['telefono'] ?? ''),
                     ]
                 );
             }
@@ -177,9 +197,9 @@ class MonitoreoModuloGenericController extends Controller
 
             if (is_array($equiposData)) {
                 foreach ($equiposData as $eq) {
-                    if (!empty($eq['descripcion'])) {
+                    if (! empty($eq['descripcion'])) {
                         $especificaciones = $eq['especificaciones'] ?? null;
-                        if (is_string($especificaciones) && !empty(trim($especificaciones))) {
+                        if (is_string($especificaciones) && ! empty(trim($especificaciones))) {
                             $decoded = json_decode($especificaciones, true);
                             if (json_last_error() === JSON_ERROR_NONE) {
                                 $especificaciones = $decoded;
@@ -188,14 +208,14 @@ class MonitoreoModuloGenericController extends Controller
 
                         EquipoComputo::create([
                             'cabecera_monitoreo_id' => $id,
-                            'modulo'                => $slug,
-                            'descripcion'           => mb_strtoupper(trim($eq['descripcion'] ?? '')),
-                            'cantidad'              => (int)($eq['cantidad'] ?? 1),
-                            'estado'                => mb_strtoupper(trim($eq['estado'] ?? 'OPERATIVO')),
-                            'propio'                => mb_strtoupper(trim($eq['propio'] ?? 'EXCLUSIVO')),
-                            'nro_serie'             => mb_strtoupper(trim($eq['nro_serie'] ?? $eq['serie'] ?? '')),
-                            'observacion'           => mb_strtoupper(trim($eq['observacion'] ?? $eq['observaciones'] ?? '')),
-                            'especificaciones'      => is_array($especificaciones) ? $especificaciones : null
+                            'modulo' => $slug,
+                            'descripcion' => mb_strtoupper(trim($eq['descripcion'] ?? '')),
+                            'cantidad' => (int) ($eq['cantidad'] ?? 1),
+                            'estado' => mb_strtoupper(trim($eq['estado'] ?? 'OPERATIVO')),
+                            'propio' => mb_strtoupper(trim($eq['propio'] ?? 'EXCLUSIVO')),
+                            'nro_serie' => mb_strtoupper(trim($eq['nro_serie'] ?? $eq['serie'] ?? '')),
+                            'observacion' => mb_strtoupper(trim($eq['observacion'] ?? $eq['observaciones'] ?? '')),
+                            'especificaciones' => is_array($especificaciones) ? $especificaciones : null,
                         ]);
                     }
                 }
@@ -208,12 +228,12 @@ class MonitoreoModuloGenericController extends Controller
                 ->with('success', 'Evaluación del consultorio guardada correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Error al guardar consultorio {$slug} para el acta #{$id}: " . $e->getMessage());
+            Log::error("Error al guardar consultorio {$slug} para el acta #{$id}: ".$e->getMessage());
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Error al guardar el consultorio: ' . $e->getMessage());
+                ->with('error', 'Error al guardar el consultorio: '.$e->getMessage());
         }
     }
 
@@ -238,19 +258,19 @@ class MonitoreoModuloGenericController extends Controller
             ->get();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
-            'isPhpEnabled'         => true,
-            'isRemoteEnabled'      => true,
+            'isPhpEnabled' => true,
+            'isRemoteEnabled' => true,
             'isHtml5ParserEnabled' => true,
         ])->loadView('usuario.monitoreo.pdf.consultorio_pdf', compact('acta', 'detalle', 'contenido', 'equipos', 'slug'));
-        
+
         $pdf->setPaper('a4', 'portrait');
 
         return response($pdf->output(), 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Consultorio_' . $slug . '_Acta_' . $id . '.pdf"',
-            'Cache-Control'       => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
-            'Pragma'              => 'no-cache',
-            'Expires'             => 'Sun, 02 Jan 1990 00:00:00 GMT',
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Consultorio_'.$slug.'_Acta_'.$id.'.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
         ]);
     }
 
@@ -262,9 +282,17 @@ class MonitoreoModuloGenericController extends Controller
         try {
             DB::beginTransaction();
 
-            MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+            $moduloRegistro = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
                 ->where('modulo_nombre', $slug)
-                ->delete();
+                ->first();
+
+            if ($moduloRegistro) {
+                $evidencia = $moduloRegistro->contenido['evidencia_path'] ?? null;
+                if ($evidencia && Storage::disk('public')->exists($evidencia)) {
+                    Storage::disk('public')->delete($evidencia);
+                }
+                $moduloRegistro->delete();
+            }
 
             EquipoComputo::where('cabecera_monitoreo_id', $id)
                 ->where('modulo', $slug)
@@ -277,9 +305,10 @@ class MonitoreoModuloGenericController extends Controller
                 ->with('success', 'Consultorio eliminado del acta correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return redirect()
                 ->back()
-                ->with('error', 'Error al eliminar el consultorio: ' . $e->getMessage());
+                ->with('error', 'Error al eliminar el consultorio: '.$e->getMessage());
         }
     }
 
@@ -293,6 +322,7 @@ class MonitoreoModuloGenericController extends Controller
             $cleanName = str_replace(['usuario.monitoreo.', '.index', '.store', '.pdf'], '', $routeName);
             $modulo = $cleanName;
         }
+
         return str_replace('-', '_', $modulo);
     }
 

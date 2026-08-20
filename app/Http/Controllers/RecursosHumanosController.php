@@ -231,7 +231,10 @@ class RecursosHumanosController extends Controller
                 if ($foto1Anterior && Storage::disk('public')->exists($foto1Anterior)) {
                     Storage::disk('public')->delete($foto1Anterior);
                 }
-                $path1 = $request->file('foto_1')->store('evidencias_rrhh', 'public');
+                $file1 = $request->file('foto_1');
+                $ext1 = strtolower($file1->getClientOriginalExtension() ?: 'jpg');
+                $nombreFoto1 = "evidencia_acta_{$id}_rrhh_foto1_".date('Ymd_His').'.'.$ext1;
+                $path1 = $file1->storeAs('evidencias_rrhh', $nombreFoto1, 'public');
                 $contenido['foto_1'] = $path1;
             } else {
                 $foto1Actual = $request->input('foto_1_actual');
@@ -251,7 +254,10 @@ class RecursosHumanosController extends Controller
                 if ($foto2Anterior && Storage::disk('public')->exists($foto2Anterior)) {
                     Storage::disk('public')->delete($foto2Anterior);
                 }
-                $path2 = $request->file('foto_2')->store('evidencias_rrhh', 'public');
+                $file2 = $request->file('foto_2');
+                $ext2 = strtolower($file2->getClientOriginalExtension() ?: 'jpg');
+                $nombreFoto2 = "evidencia_acta_{$id}_rrhh_foto2_".date('Ymd_His').'.'.$ext2;
+                $path2 = $file2->storeAs('evidencias_rrhh', $nombreFoto2, 'public');
                 $contenido['foto_2'] = $path2;
             } else {
                 $foto2Actual = $request->input('foto_2_actual');
