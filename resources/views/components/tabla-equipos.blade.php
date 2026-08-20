@@ -40,10 +40,8 @@
         </div>
         
         <div class="flex items-center gap-2">
-            {{-- Oculto en celular/tablet: el navegador movil no puede describir el
-                 hardware del establecimiento, solo el del propio celular. --}}
             <button type="button" onclick="iniciarDeteccionHardware('{{$modulo}}')"
-                    class="hidden md:flex group items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-md active:scale-95">
+                    class="group flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-md active:scale-95">
                 <i data-lucide="zap" class="w-4 h-4 text-amber-100 group-hover:scale-110 transition-transform"></i>
                 Auto-detectar Hardware
             </button>
@@ -498,23 +496,39 @@
             const token = dataToken.token;
             const batUrl = HW_URLS.bat.replace('__TOKEN__', token);
 
+            // El .bat es PowerShell/Windows puro: no corre en celular ni
+            // tablet. Ahi se ofrece la deteccion propia del navegador
+            // (correctamente clasificada como Celular/Tablet), no el .bat.
+            if (window.esDispositivoMovil()) {
+                Swal.fire({
+                    title: '⚡ Autodetección de Hardware de este Dispositivo',
+                    html: `
+                        <div class="text-left space-y-3 text-xs font-semibold text-slate-600">
+                            <div class="p-4 bg-indigo-50/80 rounded-2xl border border-indigo-100">
+                                <p class="text-indigo-600 text-[11px] mb-3">Obtiene modelo, sistema operativo, cámara y conectividad de este celular/tablet directamente, sin descargar archivos.</p>
+                                <button type="button" onclick="Swal.close(); window.detectarHardwareMovil('${modulo}')" class="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-black text-xs uppercase px-5 py-3 rounded-xl shadow-md hover:bg-indigo-700 transition-all cursor-pointer">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                    Detectar Hardware de este Dispositivo
+                                </button>
+                            </div>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    showConfirmButton: false,
+                    cancelButtonText: 'Cerrar',
+                    customClass: { popup: 'rounded-[2.5rem] p-6 max-w-md' },
+                });
+                return;
+            }
+
             Swal.fire({
                 title: '⚡ Autodetección de Hardware de esta PC',
                 html: `
                     <div class="text-left space-y-4 text-xs font-semibold text-slate-600">
-                        <div class="p-4 bg-indigo-50/80 rounded-2xl border border-indigo-100 mb-2">
-                            <p class="text-indigo-900 font-bold text-[13px] mb-1">Opción 1: Detección Instantánea Web (Sin Descargas)</p>
-                            <p class="text-indigo-600 text-[11px] mb-3">Obtiene RAM, CPU, SO, GPU y velocidad de red directamente en 1 segundo sin descargar archivos.</p>
-                            <button type="button" onclick="Swal.close(); window.detectarHardwareNavegadorDirecto('${modulo}')" class="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-black text-xs uppercase px-5 py-3 rounded-xl shadow-md hover:bg-indigo-700 transition-all cursor-pointer">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                                Auto-detectar Ahora (Sin Descargas)
-                            </button>
-                        </div>
-
                         <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                            <p class="text-slate-800 font-bold text-[12px] mb-1">Opción 2: Escáner Completo de Sistema (.bat)</p>
+                            <p class="text-slate-800 font-bold text-[12px] mb-1">Escáner Completo de Sistema (.bat)</p>
                             <p class="text-slate-500 text-[11px] mb-3">Escanea impresoras WMI locales mediante comando nativo de Windows.</p>
-                            
+
                             <div id="btn_download_bat_container" class="flex justify-center">
                                 <a href="${batUrl}" target="_blank" onclick="window.marcarEscanerDescargado('${token}', '${modulo}')" class="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 text-white font-black text-xs uppercase px-5 py-3 rounded-xl shadow-md hover:bg-emerald-700 transition-all">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -548,78 +562,53 @@
         }
     };
 
-    window.detectarHardwareNavegadorDirecto = async function(modulo) {
+    // Un celular/tablet siempre se autoidentifica en su User-Agent (a
+    // diferencia de laptop vs PC de escritorio, que comparten el mismo SO/UA
+    // en Windows y no se pueden distinguir de forma confiable). Un iPad
+    // moderno pide "sitio de escritorio" por defecto y se anuncia como Mac,
+    // por eso se detecta aparte via el truco tactil+plataforma.
+    window.esDispositivoMovil = function() {
+        const ua = navigator.userAgent || '';
+        const esIPadDisfrazado = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        const esTablet = /iPad/i.test(ua) || esIPadDisfrazado || (/Android/i.test(ua) && !/Mobile/i.test(ua));
+        const esCelular = !esTablet && (/iPhone|iPod/i.test(ua) || (/Android/i.test(ua) && /Mobile/i.test(ua)));
+        return esTablet || esCelular;
+    };
+
+    window.detectarHardwareMovil = async function(modulo) {
         Swal.fire({
             title: '⚡ Detectando Hardware...',
-            text: 'Obteniendo componentes de esta PC desde el navegador...',
+            text: 'Obteniendo componentes de este dispositivo...',
             allowOutsideClick: false,
             didOpen: () => { Swal.showLoading(); }
         });
 
-        // Función auxiliar que resuelve el SO y continúa con la detección
-        const detectarSO = async () => {
-            let so = "Windows 64-bit";
-            const ua = navigator.userAgent;
+        const ua = navigator.userAgent || '';
+        const esIPadDisfrazado = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        const esTablet = /iPad/i.test(ua) || esIPadDisfrazado || (/Android/i.test(ua) && !/Mobile/i.test(ua));
+        const esIPhone = /iPhone|iPod/i.test(ua);
+        const esCelular = !esTablet && (esIPhone || /Android/i.test(ua));
 
-            if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
-                try {
-                    const uaData = await navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'bitness']);
-                    const platform = uaData.platform || '';
-                    const platformVersion = uaData.platformVersion || '';
-                    const bitness = uaData.bitness === '64' ? '64-bit' : '32-bit';
+        let so = 'Android';
+        if (esIPadDisfrazado || /iPad|iPhone|iPod/i.test(ua)) {
+            const m = ua.match(/OS (\d+)_(\d+)/);
+            so = m ? `iOS ${m[1]}.${m[2]}` : 'iOS';
+        } else if (/Android/i.test(ua)) {
+            const m = ua.match(/Android (\d+(\.\d+)?)/);
+            so = m ? `Android ${m[1]}` : 'Android';
+        }
 
-                    if (platform === 'Windows') {
-                        const majorVersion = parseInt(platformVersion.split('.')[0], 10);
-                        if (majorVersion >= 13) {
-                            so = `Windows 11 Pro ${bitness}`;
-                        } else if (majorVersion >= 1) {
-                            so = `Windows 10 Pro ${bitness}`;
-                        } else {
-                            so = `Windows ${bitness}`;
-                        }
-                    } else if (platform === 'macOS') {
-                        so = `macOS ${platformVersion}`;
-                    } else if (platform === 'Linux') {
-                        so = 'Linux / Ubuntu';
-                    } else {
-                        so = platform || so;
-                    }
-                    return so;
-                } catch (e) {}
-            }
+        const marcaModeloDetectado = esTablet
+            ? (/iPad/i.test(ua) || esIPadDisfrazado ? 'iPad' : 'Tablet Android')
+            : (esIPhone ? 'iPhone' : 'Celular Android');
 
-            if (ua.includes("Windows NT 10.0")) {
-                let esWin11 = false;
-                const chromeMatch = ua.match(/Chrome\/(\d+)/);
-                const chromeVersion = chromeMatch ? parseInt(chromeMatch[1], 10) : 0;
-                if (typeof scheduler !== 'undefined' && typeof scheduler.postTask === 'function') {
-                    esWin11 = true;
-                }
-                if (navigator.maxTouchPoints > 0 && chromeVersion >= 94) {
-                    esWin11 = true;
-                }
-                const bitness = ua.includes("Win64") || ua.includes("WOW64") ? "64-bit" : "32-bit";
-                so = esWin11 ? `Windows 11 Pro ${bitness}` : `Windows 10 Pro ${bitness}`;
-            }
-            else if (ua.includes("Windows NT 6.3")) so = "Windows 8.1";
-            else if (ua.includes("Windows NT 6.2")) so = "Windows 8";
-            else if (ua.includes("Windows NT 6.1")) so = "Windows 7 SP1";
-            else if (ua.includes("Windows NT 6.0")) so = "Windows Vista";
-            else if (ua.includes("Windows NT 5.1") || ua.includes("Windows XP")) so = "Windows XP";
-            else if (ua.includes("Mac OS X")) so = "macOS";
-            else if (ua.includes("Linux")) so = "Linux / Ubuntu";
-            return so;
-        };
-
-        const so = await detectarSO();
-
-        const ramGB = navigator.deviceMemory || 8;
-        const ramText = `${ramGB} GB RAM`;
+        const ramGB = navigator.deviceMemory || null;
+        const ramText = ramGB ? `${ramGB} GB RAM` : 'RAM no disponible en este navegador';
 
         const cores = navigator.hardwareConcurrency || 8;
         const cpuName = `Procesador Multinúcleo (${cores} Núcleos Lógicos / Hilos)`;
 
-        let gpuText = "Gráficos Integrados Direct3D11";
+        let gpuText = 'GPU Genérica';
         try {
             const canvas = document.createElement('canvas');
             const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
@@ -633,74 +622,44 @@
                 }
             }
         } catch(e) {}
+        const monitorText = `PANTALLA: ${window.screen.width || 0}x${window.screen.height || 0} Pixel | GPU: ${gpuText}`;
 
-        const w = window.screen.width || 1920;
-        const h = window.screen.height || 1080;
-        const monitorText = `PANTALLA: ${w}x${h} Pixel | TARJETA GRÁFICA: ${gpuText}`;
-
-        let tipoRed = "WI-FI";
-        let velRed = "100 Mbps";
+        let tipoRed = 'WI-FI';
+        let velRed = '100 Mbps';
         const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
         if (conn) {
-            if (conn.type === 'ethernet') tipoRed = "CABLE (ETHERNET)";
+            if (conn.type === 'cellular') tipoRed = 'DATOS MÓVILES';
             if (conn.downlink) velRed = `${Math.round(conn.downlink * 10)} Mbps`;
         }
 
-        // Deteccion de laptop vs PC de escritorio: el navegador no expone el
-        // tipo de chasis real, asi que se combinan tres señales imperfectas
-        // por orden de confiabilidad. La resolucion de pantalla sola (usada
-        // antes) daba muchos falsos positivos/negativos porque hoy es comun
-        // que tanto laptops como monitores de escritorio sean 1920x1080+.
-        let isLaptop = navigator.maxTouchPoints > 0; // pantallas tactiles / 2-en-1
-        if (!isLaptop && navigator.getBattery) {
-            try {
-                const battery = await navigator.getBattery();
-                // Una PC de escritorio sin bateria real reporta "cargada al
-                // 100% y sin tiempo de carga/descarga" de forma constante;
-                // cualquier otro valor indica una bateria de verdad.
-                if (battery && (battery.level < 1 || battery.chargingTime !== 0 || battery.dischargingTime !== Infinity)) {
-                    isLaptop = true;
-                }
-            } catch (e) {}
-        }
-        if (!isLaptop && screen.width <= 1366) {
-            isLaptop = true; // resolucion tipica de laptops economicas
-        }
-        const marcaModeloDetectado = isLaptop ? 'Laptop Portátil' : 'PC de Escritorio';
-
-        // Detectar cámaras web disponibles desde el navegador
+        // Cámaras: en celular/tablet siempre van integradas (frontal/trasera).
         let camarasDetectadas = [];
         if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(d => d.kind === 'videoinput');
                 videoDevices.forEach((v, idx) => {
-                    const label = v.label || (idx === 0 && isLaptop ? 'Cámara Web Integrada' : `Cámara Web USB ${idx + 1}`);
-                    const esIntegrada = (idx === 0 && isLaptop) || /integrated|hp fhd|internal|front|rear|facetime|wide vision/i.test(label);
-                    camarasDetectadas.push({
-                        nombre: label,
-                        tipo: esIntegrada ? 'INTEGRADA' : 'USB EXTERNA',
-                        es_integrada: esIntegrada
-                    });
+                    const label = v.label || (idx === 0 ? 'Cámara Trasera' : 'Cámara Frontal');
+                    camarasDetectadas.push({ nombre: label, tipo: 'INTEGRADA', es_integrada: true });
                 });
             } catch(e) {}
         }
 
         const hw = {
             status: 'completed',
-            is_laptop: isLaptop,
-            tipo: isLaptop ? 'LAPTOP' : 'CPU',
+            is_laptop: false,
+            tipo: esTablet ? 'TABLET' : 'CELULAR',
             marca_modelo: marcaModeloDetectado,
             procesador_nombre: cpuName,
             so: so,
             ram: ramText,
-            disco: '512 GB SSD',
+            disco: 'Almacenamiento interno',
             gpu: gpuText,
             monitor: monitorText,
-            teclado: isLaptop ? 'NO' : 'SI',
-            teclados_lista: isLaptop ? [] : ['TECLADO ESTÁNDAR USB'],
-            mouse: 'SI',
-            mouses_lista: ['MOUSE ÓPTICO / INALÁMBRICO USB'],
+            teclado: 'NO',
+            teclados_lista: [],
+            mouse: 'NO',
+            mouses_lista: [],
             impresora: 'NO',
             impresoras_lista: [],
             camara: camarasDetectadas.length > 0 ? camarasDetectadas.map(c => c.nombre).join(', ') : 'NO',
@@ -763,20 +722,27 @@
             if (matchGpu) gpuNombre = matchGpu[1].trim();
         }
 
-        // Detección reforzada de All-in-One, Laptop o CPU por tipo, booleano o modelo
+        // Detección reforzada de All-in-One, Laptop, Celular/Tablet o CPU por tipo, booleano o modelo
         const textoCompletoModelo = (marcaModelo + ' ' + (hw.so || '') + ' ' + (hw.tipo || '')).toLowerCase();
-        const esAIO = /all.in.one|aio|todo en uno/i.test(textoCompletoModelo);
-        const esLaptop = !esAIO && (hw.is_laptop === true || hw.is_laptop === 'true' || hw.tipo === 'LAPTOP' ||
+        const esTablet = hw.tipo === 'TABLET';
+        const esCelular = hw.tipo === 'CELULAR';
+        const esMobile = esTablet || esCelular;
+        const esAIO = !esMobile && /all.in.one|aio|todo en uno/i.test(textoCompletoModelo);
+        const esLaptop = !esAIO && !esMobile && (hw.is_laptop === true || hw.is_laptop === 'true' || hw.tipo === 'LAPTOP' ||
             /notebook|laptop|book|pad|surface|pavilion|envy|latitude|thinkpad|ideapad|zenbook|vivobook|gram|macbook|elitebook/i.test(textoCompletoModelo));
 
         let descPrincipal = 'CPU';
-        if (esAIO) {
+        if (esTablet) {
+            descPrincipal = 'TABLET';
+        } else if (esCelular) {
+            descPrincipal = 'CELULAR';
+        } else if (esAIO) {
             descPrincipal = 'ALL-IN-ONE';
         } else if (esLaptop) {
             descPrincipal = 'LAPTOP';
         }
 
-        if (!marcaModelo) marcaModelo = esLaptop ? 'Laptop Portátil' : (esAIO ? 'PC All-in-One' : 'PC de Escritorio');
+        if (!marcaModelo) marcaModelo = esLaptop ? 'Laptop Portátil' : (esAIO ? 'PC All-in-One' : (esMobile ? 'Dispositivo Móvil' : 'PC de Escritorio'));
         marcaModelo = marcaModelo.replace(/^([a-z0-9]+)\s+\1\b/i, '$1').trim();
         if (!cpuNombre) cpuNombre = (hw.procesador || 'Procesador Genérico').replace(/^PROCESADOR:\s*/i, '');
         if (!gpuNombre) gpuNombre = 'Intel(R) Graphics';
@@ -797,19 +763,19 @@
         const obsPrincipal = `MARCA/MODELO: ${marcaModelo}`;
         window.agregarFilaConDatos(modulo, descPrincipal, obsPrincipal, 'OPERATIVO', 'EXCLUSIVO', specsDiagnostico);
 
-        // 2. Monitor (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP O ALL-IN-ONE LA PANTALLA ES INTEGRADA)
-        if (!esLaptop && !esAIO) {
+        // 2. Monitor (SOLO SI ES PC DE ESCRITORIO CPU - EN LAPTOP, ALL-IN-ONE, CELULAR O TABLET LA PANTALLA ES INTEGRADA)
+        if (!esLaptop && !esAIO && !esMobile) {
             if (hw.monitor && hw.monitor !== 'NO' && hw.monitor !== 'INTEGRADO') {
                 window.agregarFilaConDatos(modulo, 'MONITOR', hw.monitor, 'OPERATIVO', 'EXCLUSIVO');
             }
         }
 
-        // 3. Teclados (SOLO TECLADOS EXTERNOS FÍSICAMENTE CONECTADOS - NUNCA EL TECLADO INTEGRADO DE LAPTOP)
+        // 3. Teclados (SOLO TECLADOS EXTERNOS FÍSICAMENTE CONECTADOS - NUNCA EL TECLADO INTEGRADO/TÁCTIL)
         if (Array.isArray(hw.teclados_lista) && hw.teclados_lista.length > 0) {
             hw.teclados_lista.forEach(t => {
                 window.agregarFilaConDatos(modulo, 'TECLADO', t || 'TECLADO ESTÁNDAR USB', 'OPERATIVO', 'EXCLUSIVO');
             });
-        } else if (!esLaptop && !esAIO) {
+        } else if (!esLaptop && !esAIO && !esMobile) {
             // En PC de escritorio CPU siempre se requiere teclado externo
             window.agregarFilaConDatos(modulo, 'TECLADO', 'TECLADO ESTÁNDAR USB', 'OPERATIVO', 'EXCLUSIVO');
         }
@@ -829,8 +795,8 @@
                 const nombreCam = typeof c === 'object' ? (c.nombre || 'CÁMARA WEB') : c;
                 const esIntegrada = typeof c === 'object' && (c.es_integrada === true || c.tipo === 'INTEGRADA' || /integrated|hp fhd|internal|front|rear|facetime|wide vision/i.test(nombreCam));
 
-                // Omitir cámara integrada en Laptop o All-in-One
-                if ((esLaptop || esAIO) && esIntegrada) {
+                // Omitir cámara integrada en Laptop, All-in-One, Celular o Tablet
+                if ((esLaptop || esAIO || esMobile) && esIntegrada) {
                     return;
                 }
                 const descObs = /^CÁMARA WEB/i.test(nombreCam) ? nombreCam : `CÁMARA WEB USB: ${nombreCam}`;
@@ -839,7 +805,7 @@
         } else if (hw.camara && hw.camara !== 'NO' && hw.camara !== 'INTEGRADO') {
             const cams = hw.camara.split(',').map(s => s.trim()).filter(Boolean);
             cams.forEach(cName => {
-                if ((esLaptop || esAIO) && /integrated|hp fhd|internal|front|rear|facetime|wide vision/i.test(cName)) {
+                if ((esLaptop || esAIO || esMobile) && /integrated|hp fhd|internal|front|rear|facetime|wide vision/i.test(cName)) {
                     return;
                 }
                 const descObs = /^CÁMARA WEB/i.test(cName) ? cName : `CÁMARA WEB USB: ${cName}`;
