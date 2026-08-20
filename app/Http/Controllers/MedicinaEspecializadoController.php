@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\CabeceraMonitoreo;
 use App\Models\MonitoreoModulos;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MedicinaEspecializadoController extends Controller
 {
@@ -53,21 +54,28 @@ class MedicinaEspecializadoController extends Controller
             $contenidoRaw['comentarios']['texto'] = $request->input('comentario_esp');
         }
 
+        $anterior = MonitoreoModulos::where('cabecera_monitoreo_id', $actaId)
+            ->where('modulo_nombre', 'sm_medicina_general')->first();
+        $fotoAnterior = null;
+        if ($anterior) {
+            if (isset($anterior->contenido['comentarios_y_evidencias']['foto_evidencia'][0])) {
+                $fotoAnterior = $anterior->contenido['comentarios_y_evidencias']['foto_evidencia'][0];
+            } elseif (isset($anterior->contenido['comentarios']['foto'])) {
+                $fotoAnterior = $anterior->contenido['comentarios']['foto'];
+            }
+        }
+
         if ($request->hasFile('foto_esp_file')) {
-            $path = $request->file('foto_esp_file')->store('evidencias_monitoreo', 'public');
+            if ($fotoAnterior && Storage::disk('public')->exists($fotoAnterior)) {
+                Storage::disk('public')->delete($fotoAnterior);
+            }
+            $file = $request->file('foto_esp_file');
+            $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+            $nombreArchivo = "evidencia_acta_{$actaId}_sm_medicina_general_".date('Ymd_His').'.'.$ext;
+            $path = $file->storeAs('evidencias_monitoreo', $nombreArchivo, 'public');
             $contenidoRaw['comentarios']['foto'] = $path;
         } else {
-            // Recuperar foto anterior buscando en ambos formatos
-            $anterior = MonitoreoModulos::where('cabecera_monitoreo_id', $actaId)
-                ->where('modulo_nombre', 'sm_medicina_general')->first();
-
-            if ($anterior) {
-                if (isset($anterior->contenido['comentarios_y_evidencias']['foto_evidencia'][0])) {
-                    $contenidoRaw['comentarios']['foto'] = $anterior->contenido['comentarios_y_evidencias']['foto_evidencia'][0];
-                } elseif (isset($anterior->contenido['comentarios']['foto'])) {
-                    $contenidoRaw['comentarios']['foto'] = $anterior->contenido['comentarios']['foto'];
-                }
-            }
+            $contenidoRaw['comentarios']['foto'] = $fotoAnterior;
         }
 
         // 4. TRADUCCIÓN A NUEVO FORMATO
@@ -77,10 +85,10 @@ class MedicinaEspecializadoController extends Controller
         MonitoreoModulos::updateOrCreate(
             [
                 'cabecera_monitoreo_id' => $actaId,
-                'modulo_nombre' => 'sm_medicina_general'
+                'modulo_nombre' => 'sm_medicina_general',
             ],
             [
-                'contenido' => $contenidoNuevo
+                'contenido' => $contenidoNuevo,
             ]
         );
 
@@ -100,40 +108,40 @@ class MedicinaEspecializadoController extends Controller
         $medioUtiliza = $old['dificultades']['medio'] ?? null;
 
         // Si no está ahí, buscamos en 'soporte' por si acaso
-        if (!$instComunica) {
+        if (! $instComunica) {
             $instComunica = $old['soporte']['inst_a_quien_comunica'] ?? null;
         }
-        if (!$medioUtiliza) {
+        if (! $medioUtiliza) {
             $medioUtiliza = $old['soporte']['medio_que_utiliza'] ?? null;
         }
 
         return [
             'detalle_del_consultorio' => [
                 'fecha_monitoreo' => $old['fecha'] ?? null,
-                'turno'           => $old['turno'] ?? null,
+                'turno' => $old['turno'] ?? null,
                 'num_consultorios' => $old['num_ambientes'] ?? null,
-                'denominacion'    => $old['denominacion_ambiente'] ?? null,
+                'denominacion' => $old['denominacion_ambiente'] ?? null,
             ],
             'datos_del_profesional' => [
-                'doc'              => $old['profesional']['doc'] ?? null,
-                'tipo_doc'         => $old['profesional']['tipo_doc'] ?? null,
-                'nombres'          => $old['profesional']['nombres'] ?? null,
+                'doc' => $old['profesional']['doc'] ?? null,
+                'tipo_doc' => $old['profesional']['tipo_doc'] ?? null,
+                'nombres' => $old['profesional']['nombres'] ?? null,
                 'apellido_paterno' => $old['profesional']['apellido_paterno'] ?? null,
                 'apellido_materno' => $old['profesional']['apellido_materno'] ?? null,
-                'email'            => $old['profesional']['email'] ?? null,
-                'telefono'         => $old['profesional']['telefono'] ?? null,
-                'cargo'            => $old['profesional']['cargo'] ?? null,
+                'email' => $old['profesional']['email'] ?? null,
+                'telefono' => $old['profesional']['telefono'] ?? null,
+                'cargo' => $old['profesional']['cargo'] ?? null,
             ],
             'documentacion_administrativa' => [
-                'utiliza_sihce'          => $old['doc_administrativo']['cuenta_sihce'] ?? null,
-                'firmo_dj'               => $old['doc_administrativo']['firmo_dj'] ?? null,
+                'utiliza_sihce' => $old['doc_administrativo']['cuenta_sihce'] ?? null,
+                'firmo_dj' => $old['doc_administrativo']['firmo_dj'] ?? null,
                 'firmo_confidencialidad' => $old['doc_administrativo']['firmo_confidencialidad'] ?? null,
             ],
             'detalle_de_dni_y_firma_digital' => [
-                'tipo_dni'            => $old['tipo_dni_fisico'] ?? null,
-                'version_dnie'        => $old['dnie_version'] ?? null,
+                'tipo_dni' => $old['tipo_dni_fisico'] ?? null,
+                'version_dnie' => $old['dnie_version'] ?? null,
                 'firma_digital_sihce' => $old['dnie_firma_sihce'] ?? null,
-                'observaciones_dni'   => $old['dni_observacion'] ?? null,
+                'observaciones_dni' => $old['dni_observacion'] ?? null,
             ],
             'detalles_de_capacitacion' => [
                 'recibio_capacitacion' => $old['capacitacion']['recibieron_cap'] ?? null,
@@ -142,17 +150,17 @@ class MedicinaEspecializadoController extends Controller
             // AQUÍ GUARDAMOS EN EL NUEVO FORMATO
             'soporte' => [
                 'inst_a_quien_comunica' => $instComunica,
-                'medio_que_utiliza'     => $medioUtiliza,
+                'medio_que_utiliza' => $medioUtiliza,
             ],
             'equipos_de_computo' => $old['equipos'] ?? [],
             'materiales' => [
-                'fua'       => $old['materiales']['fua'] ?? null,
+                'fua' => $old['materiales']['fua'] ?? null,
                 'referencia' => $old['materiales']['referencia'] ?? null,
-                'receta'    => $old['materiales']['receta'] ?? null,
+                'receta' => $old['materiales']['receta'] ?? null,
                 'orden_lab' => $old['materiales']['orden_lab'] ?? null,
             ],
             'comentarios_y_evidencias' => [
-                'comentarios'    => $old['comentarios']['texto'] ?? null,
+                'comentarios' => $old['comentarios']['texto'] ?? null,
                 'foto_evidencia' => isset($old['comentarios']['foto']) ? [$old['comentarios']['foto']] : [],
             ],
         ];
@@ -161,33 +169,33 @@ class MedicinaEspecializadoController extends Controller
     private function mapToOldFormat($new)
     {
         return [
-            'fecha'                 => $new['detalle_del_consultorio']['fecha_monitoreo'] ?? null,
-            'turno'                 => $new['detalle_del_consultorio']['turno'] ?? null,
-            'num_ambientes'         => $new['detalle_del_consultorio']['num_consultorios'] ?? null,
+            'fecha' => $new['detalle_del_consultorio']['fecha_monitoreo'] ?? null,
+            'turno' => $new['detalle_del_consultorio']['turno'] ?? null,
+            'num_ambientes' => $new['detalle_del_consultorio']['num_consultorios'] ?? null,
             'denominacion_ambiente' => $new['detalle_del_consultorio']['denominacion'] ?? null,
 
             'profesional' => $new['datos_del_profesional'] ?? [],
 
             'doc_administrativo' => [
-                'cuenta_sihce'           => $new['documentacion_administrativa']['utiliza_sihce'] ?? null,
-                'firmo_dj'               => $new['documentacion_administrativa']['firmo_dj'] ?? null,
+                'cuenta_sihce' => $new['documentacion_administrativa']['utiliza_sihce'] ?? null,
+                'firmo_dj' => $new['documentacion_administrativa']['firmo_dj'] ?? null,
                 'firmo_confidencialidad' => $new['documentacion_administrativa']['firmo_confidencialidad'] ?? null,
             ],
 
-            'tipo_dni_fisico'   => $new['detalle_de_dni_y_firma_digital']['tipo_dni'] ?? null,
-            'dnie_version'      => $new['detalle_de_dni_y_firma_digital']['version_dnie'] ?? null,
-            'dnie_firma_sihce'  => $new['detalle_de_dni_y_firma_digital']['firma_digital_sihce'] ?? null,
-            'dni_observacion'   => $new['detalle_de_dni_y_firma_digital']['observaciones_dni'] ?? null,
+            'tipo_dni_fisico' => $new['detalle_de_dni_y_firma_digital']['tipo_dni'] ?? null,
+            'dnie_version' => $new['detalle_de_dni_y_firma_digital']['version_dnie'] ?? null,
+            'dnie_firma_sihce' => $new['detalle_de_dni_y_firma_digital']['firma_digital_sihce'] ?? null,
+            'dni_observacion' => $new['detalle_de_dni_y_firma_digital']['observaciones_dni'] ?? null,
 
             'capacitacion' => [
-                'recibieron_cap'  => $new['detalles_de_capacitacion']['recibio_capacitacion'] ?? null,
+                'recibieron_cap' => $new['detalles_de_capacitacion']['recibio_capacitacion'] ?? null,
                 'institucion_cap' => $new['detalles_de_capacitacion']['inst_que_lo_capacito'] ?? null,
             ],
 
             // AQUÍ RESTAURAMOS 'dificultades' PARA QUE LA VISTA LO RECONOZCA
             'dificultades' => [
                 'comunica' => $new['soporte']['inst_a_quien_comunica'] ?? null,
-                'medio'    => $new['soporte']['medio_que_utiliza'] ?? null,
+                'medio' => $new['soporte']['medio_que_utiliza'] ?? null,
             ],
 
             // Mantenemos 'soporte' vacío o duplicado por si acaso algún otro componente lo usa
@@ -199,7 +207,7 @@ class MedicinaEspecializadoController extends Controller
 
             'comentarios' => [
                 'texto' => $new['comentarios_y_evidencias']['comentarios'] ?? null,
-                'foto'  => $new['comentarios_y_evidencias']['foto_evidencia'][0] ?? null,
+                'foto' => $new['comentarios_y_evidencias']['foto_evidencia'][0] ?? null,
             ],
         ];
     }
@@ -211,7 +219,7 @@ class MedicinaEspecializadoController extends Controller
             ->where('modulo_nombre', 'sm_medicina_general')
             ->first();
 
-        if (!$detalle) {
+        if (! $detalle) {
             return back()->with('error', 'Primero debe guardar la ficha.');
         }
 
@@ -227,11 +235,11 @@ class MedicinaEspecializadoController extends Controller
             if ($isFullUrl) {
                 $imagenesData[] = $rutaFoto;
             } else {
-                $path = public_path('storage/' . $rutaFoto);
+                $path = public_path('storage/'.$rutaFoto);
                 if (file_exists($path)) {
                     $type = pathinfo($path, PATHINFO_EXTENSION);
                     $data = file_get_contents($path);
-                    $imagenesData[] = 'data:image/' . $type . ';base64,' . base64_encode($data);
+                    $imagenesData[] = 'data:image/'.$type.';base64,'.base64_encode($data);
                 }
             }
         }
@@ -239,7 +247,7 @@ class MedicinaEspecializadoController extends Controller
         $pdf = Pdf::loadView('usuario.monitoreo.pdf_especializados.medicina_especializado_pdf', [
             'acta' => $acta,
             'detalle' => $detalle,
-            'imagenesData' => $imagenesData
+            'imagenesData' => $imagenesData,
         ]);
 
         $pdf->setPaper('A4', 'portrait');
@@ -250,7 +258,7 @@ class MedicinaEspecializadoController extends Controller
 
         // Configuración de fuente
         $fontMetrics = $dom_pdf->getFontMetrics();
-        $font = $fontMetrics->get_font("Helvetica", "bold");
+        $font = $fontMetrics->get_font('Helvetica', 'bold');
 
         // --- CAMBIOS DE AJUSTE FINO ---
         $size = 8; // Igualamos a 8pt del CSS para que se vean idénticos
@@ -267,8 +275,8 @@ class MedicinaEspecializadoController extends Controller
         // lo que hace que el texto SUBA unos milímetros en la hoja.
         $y = $h - 49;
 
-        $canvas->page_text($x, $y, "PAG. {PAGE_NUM} / {PAGE_COUNT}", $font, $size, $color);
+        $canvas->page_text($x, $y, 'PAG. {PAGE_NUM} / {PAGE_COUNT}', $font, $size, $color);
 
-        return $pdf->stream('04.1_Medicina_Acta_ESP_' . $acta->numero_acta . '.pdf');
+        return $pdf->stream('04.1_Medicina_Acta_ESP_'.$acta->numero_acta.'.pdf');
     }
 }

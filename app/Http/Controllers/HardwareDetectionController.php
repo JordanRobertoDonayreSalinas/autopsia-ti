@@ -15,48 +15,59 @@ class HardwareDetectionController extends Controller
      */
     public function deteccionDirecta(Request $request)
     {
+        set_time_limit(35);
+        ini_set('max_execution_time', 35);
+
         if (ob_get_length()) {
             @ob_clean();
         }
 
-        // 1. Ejecutar escaneo directo EN VIVO para capturar cambios en tiempo real
-        $hardware = $this->obtenerHardwareDirectoServidor();
-        if ($hardware) {
-            $tempFile = sys_get_temp_dir() . '/hw_detection.json';
-            @file_put_contents($tempFile, json_encode($hardware, JSON_UNESCAPED_UNICODE));
-            Cache::put("hw_last_detected", $hardware, now()->addHours(2));
+        $resultFile = sys_get_temp_dir() . '/hw_detection.json';
+
+        // 1. Ejecutar escaneo directo instantáneo del servidor
+        $data = $this->obtenerHardwareDirectoServidor();
+        if ($data && ($data['status'] ?? '') === 'completed') {
+            @file_put_contents($resultFile, json_encode($data, JSON_UNESCAPED_UNICODE));
+            Cache::put("hw_last_detected", $data, now()->addHours(2));
 
             return response()->json([
                 'success'  => true,
                 'status'   => 'completed',
-                'hardware' => $hardware,
+                'hardware' => $data,
             ]);
         }
 
-        // 2. Si la app corre en un servidor web separado/remoto, consultar el archivo de puente local guardado por el .bat
-        $tempFile = sys_get_temp_dir() . '/hw_detection.json';
-        if (file_exists($tempFile)) {
-            $raw = file_get_contents($tempFile);
-            $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-            $raw = trim($raw);
-            $data = json_decode($raw, true);
+        // 2. Si falló la ejecución directa, revisar si hay resultado previo reciente (< 60s)
+        if (file_exists($resultFile)) {
+            $age = time() - filemtime($resultFile);
+            if ($age <= 60) {
+                $raw = @file_get_contents($resultFile);
+                $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+                $raw = trim($raw);
+                $cachedData = json_decode($raw, true);
 
-            if ($data && ($data['status'] ?? '') === 'completed') {
-                if (empty($data['proveedor_internet']) || $data['proveedor_internet'] === 'No Identificado') {
-                    $data['proveedor_internet'] = $this->obtenerProveedorISP($data['tipo_red'] ?? '');
+                if ($cachedData && ($cachedData['status'] ?? '') === 'completed') {
+                    if (empty($cachedData['proveedor_internet']) || $cachedData['proveedor_internet'] === 'No Identificado') {
+                        $cachedData['proveedor_internet'] = $this->obtenerProveedorISP($cachedData['tipo_red'] ?? '');
+                    }
+                    if (empty($cachedData['velocidad_descarga'])) {
+                        $speeds = $this->medirVelocidadInternetReal();
+                        $cachedData['velocidad_descarga'] = $speeds['descarga'];
+                        $cachedData['velocidad_subida']   = $speeds['subida'];
+                    }
+
+                    return response()->json([
+                        'success'  => true,
+                        'status'   => 'completed',
+                        'hardware' => $cachedData,
+                    ]);
                 }
-
-                return response()->json([
-                    'success'  => true,
-                    'status'   => 'completed',
-                    'hardware' => $data,
-                ]);
             }
         }
 
         // 3. Revisar Caché guardado recientemente
         $last = Cache::get("hw_last_detected");
-        if ($last && ($last['status'] ?? '') === 'completed' && (time() - ($last['timestamp'] ?? 0)) <= 300) {
+        if ($last && ($last['status'] ?? '') === 'completed' && (time() - ($last['timestamp'] ?? 0)) <= 60) {
             return response()->json([
                 'success'  => true,
                 'status'   => 'completed',
@@ -85,7 +96,7 @@ class HardwareDetectionController extends Controller
     }
 
     /**
-     * Descarga un ejecutable .bat de un solo clic que lanza PowerShell (dxdiag style) y envía los datos
+     * Descarga un ejecutable .bat de un solo clic que lanza PowerShell y envía los datos
      */
     public function descargarBat($token)
     {
@@ -95,204 +106,57 @@ class HardwareDetectionController extends Controller
         }
 
         $endpointUrl = $serverUrl . '/usuario/ajax/guardar-deteccion-hardware';
+        $psDetection = $this->generarScriptPowerShell();
 
-        $vbsScript = <<<'VBS'
-On Error Resume Next
-Set wmi = GetObject("winmgmts:\\.\root\cimv2")
+        $psBatchScript = $psDetection . "\r\n" . <<<POWERSHELL_POST
+\$payload['token'] = '{$token}'
+\$jsonResult = \$payload | ConvertTo-Json -Depth 5 -Compress
 
-' 1. Sistema u OS
-Set osSet = wmi.ExecQuery("Select Caption from Win32_OperatingSystem")
-soName = "Windows"
-For Each o In osSet
-    soName = Trim(o.Caption)
-Next
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+try {
+    \$res = Invoke-RestMethod -Uri "{$endpointUrl}" -Method Post -Body \$jsonResult -ContentType "application/json; charset=utf-8" -TimeoutSec 15
+    Write-Host "   [OK] Diagnostico completo enviado con exito al servidor!" -ForegroundColor Green
+} catch {
+    try {
+        \$wc = New-Object System.Net.WebClient
+        \$wc.Headers.Add("Content-Type", "application/json; charset=utf-8")
+        \$null = \$wc.UploadString("{$endpointUrl}", \$jsonResult)
+        Write-Host "   [OK] Diagnostico enviado con exito (WebClient)!" -ForegroundColor Green
+    } catch {
+        Write-Host "   [ERROR] No se pudo enviar el reporte al servidor: \$_" -ForegroundColor Red
+    }
+}
+POWERSHELL_POST;
 
-' 2. CPU y Laptop/Desktop
-Set sysSet = wmi.ExecQuery("Select TotalPhysicalMemory, Manufacturer, Model from Win32_ComputerSystem")
-ramText = "8 GB RAM"
-marcaModelo = ""
-For Each s In sysSet
-    ramGB = Round(s.TotalPhysicalMemory / (1024*1024*1024))
-    If ramGB > 0 Then ramText = ramGB & " GB RAM"
-    maker = Trim(s.Manufacturer)
-    model = Trim(s.Model)
-    If maker <> "" And model <> "" Then
-        marcaModelo = maker & " " & model
-    ElseIf model <> "" Then
-        marcaModelo = model
-    Else
-        marcaModelo = maker
-    End If
-Next
-
-Set batterySet = wmi.ExecQuery("Select DeviceID from Win32_Battery")
-isLaptop = False
-For Each b In batterySet
-    isLaptop = True
-Next
-
-Set chassisSet = wmi.ExecQuery("Select ChassisTypes from Win32_SystemEnclosure")
-For Each c In chassisSet
-    If Not IsNull(c.ChassisTypes) Then
-        For Each ct In c.ChassisTypes
-            If ct = 8 Or ct = 9 Or ct = 10 Or ct = 11 Or ct = 12 Or ct = 14 Or ct = 30 Or ct = 31 Or ct = 32 Then
-                isLaptop = True
-            End If
-        Next
-    End If
-Next
-
-If InStr(1, marcaModelo, "Notebook", 1) > 0 Or InStr(1, marcaModelo, "Laptop", 1) > 0 Or InStr(1, marcaModelo, "Book", 1) > 0 Or InStr(1, marcaModelo, "Pad", 1) > 0 Or InStr(1, marcaModelo, "Surface", 1) > 0 Or InStr(1, marcaModelo, "EliteBook", 1) > 0 Then
-    isLaptop = True
-End If
-
-tipoEquipo = "CPU"
-If isLaptop Then tipoEquipo = "LAPTOP"
-
-Set cpuSet = wmi.ExecQuery("Select Name from Win32_Processor")
-cpuName = "Procesador Genérico"
-For Each c In cpuSet
-    cpuName = Trim(c.Name)
-Next
-
-' 3. Discos
-Set diskSet = wmi.ExecQuery("Select Model, Size from Win32_DiskDrive")
-discoText = ""
-For Each d In diskSet
-    If d.Size > 0 Then
-        gb = Round(d.Size / (1024*1024*1024))
-        If discoText <> "" Then discoText = discoText & ", "
-        discoText = discoText & d.Model & " (" & gb & " GB)"
-    End If
-Next
-
-' 4. GPU
-Set gpuSet = wmi.ExecQuery("Select Name from Win32_VideoController")
-gpuName = ""
-For Each g In gpuSet
-    If g.Name <> "" Then
-        gpuName = Trim(g.Name)
-        Exit For
-    End If
-Next
-If gpuName = "" Then gpuName = "Gráficos Integrados"
-
-monitorObs = "PANTALLA: Monitor Estándar"
-If isLaptop Then
-    monitorObs = "INTEGRADO"
-ElseIf gpuName <> "" Then
-    monitorObs = "PANTALLA: Monitor Estándar | TARJETA GRÁFICA: " & gpuName
-End If
-
-' 5. Impresoras Online
-Set prnSet = wmi.ExecQuery("Select Name from Win32_Printer Where WorkOffline=False And Status='OK'")
-impresoraText = "NO"
-prnList = ""
-For Each p In prnSet
-    If p.Name <> "" And InStr(1, p.Name, "Fax", 1) = 0 And InStr(1, p.Name, "PDF", 1) = 0 And InStr(1, p.Name, "XPS", 1) = 0 And InStr(1, p.Name, "OneNote", 1) = 0 Then
-        If prnList <> "" Then prnList = prnList & ", "
-        prnList = prnList & p.Name
-    End If
-Next
-If prnList <> "" Then impresoraText = prnList
-
-' 6. Mouse USB o Integrado
-Set mouseSet = wmi.ExecQuery("Select Description, PNPDeviceID from Win32_PointingDevice")
-hasMouse = "SI"
-If isLaptop Then
-    hasMouse = "NO"
-    For Each m In mouseSet
-        If InStr(1, m.PNPDeviceID, "USB", 1) > 0 Then
-            hasMouse = "SI"
-            Exit For
-        End If
-    Next
-End If
-
-' 7. Conectividad de Red
-Set netSet = wmi.ExecQuery("Select Name, Speed from Win32_NetworkAdapter Where Speed > 0")
-tipoRed = "CABLE (ETHERNET)"
-velRed = "100 Mbps"
-For Each n In netSet
-    sMbps = Round(n.Speed / 1000000)
-    If sMbps > 0 Then velRed = sMbps & " Mbps"
-    If InStr(1, n.Name, "Wi-Fi", 1) > 0 Or InStr(1, n.Name, "Wireless", 1) > 0 Or InStr(1, n.Name, "802.11", 1) > 0 Then
-        tipoRed = "WI-FI"
-    End If
-Next
-
-' Sanitizar strings para JSON
-soName = Replace(soName, "\", "\\"): soName = Replace(soName, """", "\""")
-cpuName = Replace(cpuName, "\", "\\"): cpuName = Replace(cpuName, """", "\""")
-marcaModelo = Replace(marcaModelo, "\", "\\"): marcaModelo = Replace(marcaModelo, """", "\""")
-discoText = Replace(discoText, "\", "\\"): discoText = Replace(discoText, """", "\""")
-gpuName = Replace(gpuName, "\", "\\"): gpuName = Replace(gpuName, """", "\""")
-monitorObs = Replace(monitorObs, "\", "\\"): monitorObs = Replace(monitorObs, """", "\""")
-impresoraText = Replace(impresoraText, "\", "\\"): impresoraText = Replace(impresoraText, """", "\""")
-
-json = "{" & _
-    """token"":""TOKEN_PLACEHOLDER""," & _
-    """status"":""completed""," & _
-    """is_laptop"":" & LCase(isLaptop) & "," & _
-    """tipo"":""" & tipoEquipo & """," & _
-    """marca_modelo"":""" & marcaModelo & """," & _
-    """procesador_nombre"":""" & cpuName & """," & _
-    """so"":""" & soName & """," & _
-    """ram"":""" & ramText & """," & _
-    """disco"":""" & discoText & """," & _
-    """gpu"":""" & gpuName & """," & _
-    """monitor"":""" & monitorObs & """," & _
-    """teclado"":""" & IIf(isLaptop, "INTEGRADO", "SI") & """," & _
-    """mouse"":""" & hasMouse & """," & _
-    """impresora"":""" & impresoraText & """," & _
-    """tipo_red"":""" & tipoRed & """," & _
-    """velocidad_red"":""" & velRed & """" & _
-"}"
-
-Function IIf(cond, vTrue, vFalse)
-    If cond Then IIf = vTrue Else IIf = vFalse
-End Function
-
-' Envío vía MSXML2 (Nativo en Windows XP, 7, 8, 8.1, 10, 11)
-Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
-If http Is Nothing Then Set http = CreateObject("MSXML2.ServerXMLHTTP")
-If http Is Nothing Then Set http = CreateObject("Microsoft.XMLHTTP")
-
-http.open "POST", "ENDPOINT_URL_PLACEHOLDER", False
-http.setRequestHeader "Content-Type", "application/json"
-http.setRequestHeader "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-http.send json
-
-If http.status = 200 Then
-    WScript.Echo "   [OK] Diagnostico completo enviado con exito al servidor!"
-Else
-    WScript.Echo "   [INFO] Estado del servidor: " & http.status
-End If
-VBS;
-
-        $vbsScript = str_replace('TOKEN_PLACEHOLDER', $token, $vbsScript);
-        $vbsScript = str_replace('ENDPOINT_URL_PLACEHOLDER', $endpointUrl, $vbsScript);
-
-        $vbsFileB64 = base64_encode($vbsScript);
+        // El script de PowerShell (deteccion + envio) puede superar los 8191
+        // caracteres que soporta una sola linea de comando en cmd.exe. Antes
+        // se pasaba entero en base64 dentro de un solo -Command, lo que
+        // truncaba/corrompia la linea en equipos con hardware mas detallado
+        // (mas impresoras, camaras, etc.) y el .bat fallaba con un error de
+        // comillas sin enviar nunca los datos. Ahora el .bat se autolee: el
+        // -Command que invoca PowerShell es corto y fijo (no depende del
+        // tamano del payload), y el script real vive como texto plano mas
+        // abajo en el mismo archivo, despues de un `exit` que cmd.exe nunca
+        // llega a ejecutar.
+        $extractorCmd = '$__l=Get-Content -LiteralPath \'%~f0\' -Encoding UTF8; '
+            . '$__i=($__l | Select-String -Pattern \'^:::PS1_START:::\').LineNumber; '
+            . 'Invoke-Expression (($__l[$__i..($__l.Count-1)]) -join [Environment]::NewLine)';
 
         $batContent = "@echo off\r\n" .
-            "title Escaneando Hardware (DxDiag)... \r\n" .
+            "chcp 65001 >nul\r\n" .
+            "title Escaneando Hardware y Perifericos...\r\n" .
             "color 0A\r\n" .
             "echo ========================================================\r\n" .
             "echo   Obteniendo diagnostico completo de hardware (WMI)...\r\n" .
             "echo ========================================================\r\n" .
             "echo.\r\n" .
-            "set VBS_PATH=%TEMP%\\hw_scan_%RANDOM%.vbs\r\n" .
-            "powershell -NoProfile -ExecutionPolicy Bypass -Command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('" . $vbsFileB64 . "')) | Out-File -FilePath '%VBS_PATH%' -Encoding UTF8\" 2>nul\r\n" .
-            "if not exist \"%VBS_PATH%\" (\r\n" .
-            "  echo Set h = CreateObject(\"MSXML2.ServerXMLHTTP\"): h.open \"POST\", \"" . $endpointUrl . "\", False: h.setRequestHeader \"Content-Type\", \"application/json\": h.send \"{\"\"token\"\":\"\"" . $token . "\"\",\"\"status\"\":\"\"completed\"\"}\" > \"%VBS_PATH%\"\r\n" .
-            ")\r\n" .
-            "cscript //nologo \"%VBS_PATH%\"\r\n" .
-            "del /f /q \"%VBS_PATH%\" 2>nul\r\n" .
+            "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"" . $extractorCmd . "\"\r\n" .
             "echo.\r\n" .
-            "echo Finalizado. Esta ventana se cerrara automaticamente.\r\n" .
-            "ping 127.0.0.1 -n 3 >nul\r\n" .
-            "exit\r\n";
+            "echo Finalizado. Esta ventana se cerrara automaticamente en 3 segundos.\r\n" .
+            "ping 127.0.0.1 -n 4 >nul\r\n" .
+            "exit\r\n" .
+            ":::PS1_START:::\r\n" .
+            $psBatchScript . "\r\n";
 
         return response($batContent, 200, [
             'Content-Type'        => 'application/x-bat',
@@ -324,15 +188,48 @@ VBS;
             $gpu               = $jsonData['gpu'] ?? '';
             $monitor           = $jsonData['monitor'] ?? 'Monitor Estándar';
             $teclado           = $jsonData['teclado'] ?? 'SI';
+            $tecladosLista     = $jsonData['teclados_lista'] ?? [];
             $mouse             = $jsonData['mouse'] ?? 'SI';
+            $mousesLista       = $jsonData['mouses_lista'] ?? [];
             $impresora         = $jsonData['impresora'] ?? 'NO';
+            $impresorasLista   = $jsonData['impresoras_lista'] ?? [];
+            $camara            = $jsonData['camara'] ?? 'NO';
+            $camarasLista      = $jsonData['camaras_lista'] ?? [];
             $isLaptop          = $jsonData['is_laptop'] ?? false;
             $tipo              = $jsonData['tipo'] ?? ($isLaptop ? 'LAPTOP' : 'CPU');
             $tipoRed           = $jsonData['tipo_red'] ?? 'SIN CONEXIÓN';
             $velocidadRed      = $jsonData['velocidad_red'] ?? '0 Mbps';
-            $velocidadDescarga = $jsonData['velocidad_descarga'] ?? 33.92;
-            $velocidadSubida   = $jsonData['velocidad_subida']   ?? 262.02;
-            $proveedorInternet = $jsonData['proveedor_internet'] ?? 'WOW';
+            $velocidadDescarga = $jsonData['velocidad_descarga'] ?? null;
+            $velocidadSubida   = $jsonData['velocidad_subida']   ?? null;
+            $proveedorInternet = $jsonData['proveedor_internet'] ?? null;
+
+            if (empty($proveedorInternet) || $proveedorInternet === 'No Identificado') {
+                $proveedorInternet = $this->obtenerProveedorISP($tipoRed);
+            }
+            if (empty($velocidadDescarga)) {
+                $speeds = $this->medirVelocidadInternetReal();
+                $velocidadDescarga = $speeds['descarga'];
+                $velocidadSubida   = $speeds['subida'];
+            }
+
+            // Normalización de listas
+            if (empty($mousesLista) && ($mouse === 'SI' || $mouse === true)) {
+                $mousesLista = ['MOUSE ÓPTICO / INALÁMBRICO USB'];
+            }
+            if (empty($camarasLista) && $camara && $camara !== 'NO') {
+                $cams = explode(',', $camara);
+                foreach ($cams as $cName) {
+                    $cName = trim($cName);
+                    if ($cName) {
+                        $isIntegrated = (bool)preg_match('/integrated|hp fhd|internal|front|rear|facetime|wide vision/i', $cName);
+                        $camarasLista[] = [
+                            'nombre' => $cName,
+                            'tipo' => $isIntegrated ? 'INTEGRADA' : 'USB EXTERNA',
+                            'es_integrada' => $isIntegrated,
+                        ];
+                    }
+                }
+            }
 
             $data = [
                 'status'             => 'completed',
@@ -347,8 +244,13 @@ VBS;
                 'gpu'                => $gpu,
                 'monitor'            => $monitor,
                 'teclado'            => $teclado,
+                'teclados_lista'     => $tecladosLista,
                 'mouse'              => $mouse,
+                'mouses_lista'       => $mousesLista,
                 'impresora'          => $impresora,
+                'impresoras_lista'   => $impresorasLista,
+                'camara'             => $camara,
+                'camaras_lista'      => $camarasLista,
                 'tipo_red'           => $tipoRed,
                 'velocidad_red'      => $velocidadRed,
                 'velocidad_descarga' => $velocidadDescarga,
@@ -381,7 +283,7 @@ VBS;
         $tempFile = sys_get_temp_dir() . '/hw_detection.json';
 
         if (file_exists($tempFile)) {
-            $raw = file_get_contents($tempFile);
+            $raw = @file_get_contents($tempFile);
             $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
             $raw = trim($raw);
             $data = json_decode($raw, true);
@@ -434,47 +336,49 @@ VBS;
 
     private function medirVelocidadInternetReal()
     {
-        $downloadMbps = 0;
-        $uploadMbps   = 0;
+        return Cache::remember('hw_net_speeds', 300, function () {
+            $downloadMbps = 0;
+            $uploadMbps   = 0;
 
-        try {
-            $ctx = stream_context_create([
-                'http' => [
-                    'timeout' => 2,
-                    'header'  => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n"
-                ]
-            ]);
+            try {
+                $ctx = stream_context_create([
+                    'http' => [
+                        'timeout' => 1.2,
+                        'header'  => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\n"
+                    ]
+                ]);
 
-            $start = microtime(true);
-            $data = @file_get_contents('https://speed.cloudflare.com/__down?bytes=2000000', false, $ctx);
-            $elapsed = microtime(true) - $start;
+                $start = microtime(true);
+                $data = @file_get_contents('https://speed.cloudflare.com/__down?bytes=500000', false, $ctx);
+                $elapsed = microtime(true) - $start;
 
-            if ($data && $elapsed > 0) {
-                $downloadMbps = round((strlen($data) * 8 / $elapsed) / 1000000, 2);
-            }
+                if ($data && $elapsed > 0) {
+                    $downloadMbps = round((strlen($data) * 8 / $elapsed) / 1000000, 2);
+                }
 
-            $startUp = microtime(true);
-            $payload = str_repeat('Z', 800000);
-            $ctxUp = stream_context_create([
-                'http' => [
-                    'timeout' => 2,
-                    'method'  => 'POST',
-                    'header'  => "Content-Type: application/octet-stream\r\n",
-                    'content' => $payload
-                ]
-            ]);
-            $resUp = @file_get_contents('https://speed.cloudflare.com/__up', false, $ctxUp);
-            $elapsedUp = microtime(true) - $startUp;
+                $startUp = microtime(true);
+                $payload = str_repeat('Z', 200000);
+                $ctxUp = stream_context_create([
+                    'http' => [
+                        'timeout' => 1.2,
+                        'method'  => 'POST',
+                        'header'  => "Content-Type: application/octet-stream\r\n",
+                        'content' => $payload
+                    ]
+                ]);
+                $resUp = @file_get_contents('https://speed.cloudflare.com/__up', false, $ctxUp);
+                $elapsedUp = microtime(true) - $startUp;
 
-            if ($elapsedUp > 0) {
-                $uploadMbps = round((strlen($payload) * 8 / $elapsedUp) / 1000000, 2);
-            }
-        } catch (\Throwable $e) {}
+                if ($elapsedUp > 0) {
+                    $uploadMbps = round((strlen($payload) * 8 / $elapsedUp) / 1000000, 2);
+                }
+            } catch (\Throwable $e) {}
 
-        return [
-            'descarga' => $downloadMbps > 0 ? $downloadMbps : 33.92,
-            'subida'   => $uploadMbps > 0 ? $uploadMbps : 262.02
-        ];
+            return [
+                'descarga' => $downloadMbps > 0 ? $downloadMbps : 33.92,
+                'subida'   => $uploadMbps > 0 ? $uploadMbps : 262.02
+            ];
+        });
     }
 
     private function obtenerProveedorISP($tipoRed)
@@ -483,57 +387,68 @@ VBS;
             return 'Sin Acceso a Internet';
         }
 
-        try {
-            $ctx = stream_context_create(['http' => ['timeout' => 3]]);
-            $jsonRaw = @file_get_contents('http://ip-api.com/json/?fields=status,isp,org,as', false, $ctx);
-            if ($jsonRaw) {
-                $ipData = json_decode($jsonRaw, true);
-                if (($ipData['status'] ?? '') === 'success') {
-                    $rawIsp = $ipData['isp'] ?? ($ipData['org'] ?? '');
-                    $as = $ipData['as'] ?? '';
-                    $fullText = $rawIsp . ' ' . $as;
-                    
-                    if (preg_match('/desarrollo de infraestructura|infratel|wow/i', $fullText)) return 'WOW';
-                    if (preg_match('/telefonica|movistar/i', $fullText)) return 'MOVISTAR';
-                    if (preg_match('/america movil|claro/i', $fullText)) return 'CLARO';
-                    if (preg_match('/optical|win\b/i', $fullText)) return 'WIN';
-                    if (preg_match('/entel/i', $fullText)) return 'ENTEL';
-                    if (preg_match('/bitel|viettel/i', $fullText)) return 'BITEL';
-                    if (preg_match('/fiber/i', $fullText)) return 'FIBERPRO';
-                    if (preg_match('/nubyx/i', $fullText)) return 'NUBYX';
-                    if (preg_match('/tictel/i', $fullText)) return 'TICTEL';
-                    if (preg_match('/gilat/i', $fullText)) return 'GILAT';
-                    if (preg_match('/altinet/i', $fullText)) return 'ALTINET';
-                    if (preg_match('/delafiber/i', $fullText)) return 'DELAFIBER';
-                    if (preg_match('/compuivan/i', $fullText)) return 'COMPUIVAN';
+        return Cache::remember('hw_isp_provider', 600, function () {
+            try {
+                $ctx = stream_context_create(['http' => ['timeout' => 1.5]]);
+                $jsonRaw = @file_get_contents('http://ip-api.com/json/?fields=status,isp,org,as', false, $ctx);
+                if ($jsonRaw) {
+                    $ipData = json_decode($jsonRaw, true);
+                    if (($ipData['status'] ?? '') === 'success') {
+                        $rawIsp = $ipData['isp'] ?? ($ipData['org'] ?? '');
+                        $as = $ipData['as'] ?? '';
+                        $fullText = $rawIsp . ' ' . $as;
+                        
+                        if (preg_match('/desarrollo de infraestructura|infratel|wow/i', $fullText)) return 'WOW';
+                        if (preg_match('/telefonica|movistar/i', $fullText)) return 'MOVISTAR';
+                        if (preg_match('/america movil|claro/i', $fullText)) return 'CLARO';
+                        if (preg_match('/optical|win\b/i', $fullText)) return 'WIN';
+                        if (preg_match('/entel/i', $fullText)) return 'ENTEL';
+                        if (preg_match('/bitel|viettel/i', $fullText)) return 'BITEL';
+                        if (preg_match('/fiber/i', $fullText)) return 'FIBERPRO';
+                        if (preg_match('/nubyx/i', $fullText)) return 'NUBYX';
+                        if (preg_match('/tictel/i', $fullText)) return 'TICTEL';
+                        if (preg_match('/gilat/i', $fullText)) return 'GILAT';
+                        if (preg_match('/altinet/i', $fullText)) return 'ALTINET';
+                        if (preg_match('/delafiber/i', $fullText)) return 'DELAFIBER';
+                        if (preg_match('/compuivan/i', $fullText)) return 'COMPUIVAN';
 
-                    return 'OTROS';
+                        return 'OTROS';
+                    }
                 }
-            }
-        } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {}
 
-        return 'OTROS';
+            return 'OTROS';
+        });
     }
 
-    private function obtenerHardwareDirectoServidor()
+    /**
+     * Genera el script PowerShell de escaneo de hardware.
+     */
+    private function generarScriptPowerShell(): string
     {
-        if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
-            return null;
-        }
-
-        $psScript = <<<'POWERSHELL'
+        return <<<'POWERSHELL'
 $ProgressPreference = 'SilentlyContinue'
 $InformationPreference = 'SilentlyContinue'
 $WarningPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'SilentlyContinue'
 
 try {
-    # 1. Detectar Laptop por batería o ChassisType
+    # 1. Detectar Laptop por bateria, PCSystemType o ChassisType (tres señales
+    # independientes porque cada una puede fallar/venir vacia segun el
+    # fabricante: hay laptops que no exponen Win32_Battery via WMI, y otras
+    # que reportan un ChassisType generico/incorrecto desde su BIOS).
     $isLaptop = $false
     $battery = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
     if ($battery) {
         $isLaptop = $true
-    } else {
+    }
+    if (-not $isLaptop) {
+        $sysType = Get-CimInstance Win32_ComputerSystem -Property PCSystemType -ErrorAction SilentlyContinue
+        if ($sysType -and $sysType.PCSystemType -eq 2) {
+            $isLaptop = $true
+        }
+    }
+    if (-not $isLaptop) {
         $chassis = Get-CimInstance Win32_SystemEnclosure -Property ChassisTypes -ErrorAction SilentlyContinue
         if ($chassis) {
             foreach ($c in $chassis.ChassisTypes) {
@@ -572,57 +487,110 @@ try {
     if ($disks) {
         foreach ($d in $disks) {
             if ($d.Model) {
-                $gb = [math]::round($d.Size / 1GB)
-                $discoList += "$($d.Model) ($gb GB)"
+                $sizeGB = if ($d.Size -and $d.Size -gt 0) { [math]::round($d.Size / 1GB) } else { 0 }
+                $discoList += "$($d.Model.Trim()) ($sizeGB GB)"
             }
         }
     }
-    $discoText = if ($discoList.Count -gt 0) { $discoList -join ", " } else { "" }
+    $discoText = if ($discoList.Count -gt 0) { $discoList -join " + " } else { "Disco no identificado" }
 
-    # Tarjeta de Video / Gráfica (DxDiag Pantalla)
     $gpuObj = Get-CimInstance Win32_VideoController -Property Name, AdapterRAM | Select-Object -First 1
-    $gpuName = if ($gpuObj -and $gpuObj.Name) { $gpuObj.Name } else { "" }
+    $gpuName = if ($gpuObj -and $gpuObj.Name) { $gpuObj.Name.Trim() } else { "GPU Genérica" }
     $gpuVram = if ($gpuObj -and $gpuObj.AdapterRAM -and $gpuObj.AdapterRAM -gt 0) { [math]::round($gpuObj.AdapterRAM / 1MB) } else { 0 }
-    $gpuText = if ($gpuName) {
-        if ($gpuVram -gt 0) { "$gpuName (${gpuVram} MB VRAM)" } else { $gpuName }
-    } else { "" }
+    $gpuText = if ($gpuVram -gt 0) { "$gpuName ($gpuVram MB VRAM)" } else { $gpuName }
 
     $tipoEquipo = if ($isLaptop) { "LAPTOP" } else { "CPU" }
-    $monitorObs = if ($gpuText) { "PANTALLA: Monitor Estándar | TARJETA GRÁFICA: $gpuText" } else { "PANTALLA: Monitor Estándar" }
+    $monitorObs = "MONITOR EXTERNO"
 
-    # 3. Detectar Impresoras FÍSICAMENTE CONECTADAS Y ONLINE (WorkOffline eq $false y Status eq 'OK')
-    $printers = Get-CimInstance Win32_Printer -Property Name, WorkOffline, PrinterStatus, Status, Local -ErrorAction SilentlyContinue | Where-Object { 
+    # 3. Impresoras reales (USB, Red, Wi-Fi) excluyendo virtuales
+    $printers = Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue | Where-Object { 
         $_.WorkOffline -eq $false -and 
-        $_.Status -eq "OK" -and 
-        $_.Name -notmatch "Fax|PDF|XPS|OneNote|Microsoft"
+        $_.Name -notmatch "Fax|PDF|XPS|OneNote|Microsoft|AnyDesk|Send To|Root Print"
     }
     $printerList = @()
     if ($printers) {
         foreach ($p in $printers) {
-            if ($p.Name) { $printerList += $p.Name }
+            if ($p.Name) { $printerList += $p.Name.Trim() }
         }
     }
     $impresora = if ($printerList.Count -gt 0) { $printerList -join ", " } else { "NO" }
 
-    # 4. Mouse Externo USB (en Laptop se omiten los Touchpads/Trackpads integrados)
-    $extMice = Get-CimInstance Win32_PointingDevice -ErrorAction SilentlyContinue | Where-Object {
-        ($_.PNPDeviceID -match "^USB\\" -or $_.Description -match "USB") -and
-        $_.PNPDeviceID -notmatch "ELAN|SYN|ALPS|ACPI" -and
-        $_.Description -notmatch "Touchpad|Trackpad|GlidePoint|Synaptics|ELAN|ALPS"
+    # 4. Cámaras Web (Detección avanzada de cámaras USB y cámaras integradas)
+    $cams = Get-CimInstance Win32_PnPEntity -Filter "PNPClass='Camera' or PNPClass='Image'" -ErrorAction SilentlyContinue | Where-Object {
+        $_.Status -eq 'OK' -and $_.Name -and $_.Name -notmatch "Smart Tank|LaserJet|Epson|Brother|Canon|Printer|Scan|Fax|Virtual|SoftwareComponent"
     }
-
-    $hasMouse = if ($isLaptop) {
-        if ($extMice) { "SI" } else { "NO" }
-    } else {
-        if ($extMice -or (Get-CimInstance Win32_PointingDevice)) { "SI" } else { "NO" }
+    $cameraList = @()
+    if ($cams) {
+        foreach ($c in $cams) {
+            $camName = $c.Name.Trim()
+            $pnp = if ($c.PNPDeviceID) { $c.PNPDeviceID } else { "" }
+            $isIntegrated = ($pnp -match "VID_04F2|ACPI|INTC|ROOT\\" -or $camName -match "Integrated|HP FHD|Internal|Front|Rear|Facetime|Wide Vision")
+            $cameraList += @{
+                nombre = $camName
+                tipo = if ($isIntegrated) { "INTEGRADA" } else { "USB EXTERNA" }
+                es_integrada = [bool]$isIntegrated
+            }
+        }
     }
+    $camara = if ($cameraList.Count -gt 0) { ($cameraList | ForEach-Object { $_.nombre }) -join ", " } else { "NO" }
 
-    # 5. Conectividad de Red, Tipo y Velocidad de Enlace (Adaptador Activo)
+    # 5. Mouse USB e Inalámbrico (Receptor Dongle RF / Bluetooth)
+    $extMice = Get-CimInstance Win32_PnPEntity -Filter "PNPClass='Mouse'" -ErrorAction SilentlyContinue | Where-Object {
+        $_.Status -eq 'OK' -and
+        $_.PNPDeviceID -notmatch 'ELAN0|ELAN1|SYN|ALPS|ACPI\\|ETD|FOCAL' -and
+        $_.Name -notmatch 'Touchpad|Trackpad|GlidePoint'
+    }
+    $mouseList = @()
+    if ($extMice) {
+        foreach ($m in $extMice) {
+            $pnp = if ($m.PNPDeviceID) { $m.PNPDeviceID } else { "" }
+            $mDesc = "MOUSE ÓPTICO / INALÁMBRICO USB"
+            if ($pnp -match "VID_046D") { $mDesc = "MOUSE INALÁMBRICO LOGITECH USB" }
+            elseif ($pnp -match "VID_045E") { $mDesc = "MOUSE MICROSOFT USB" }
+            elseif ($pnp -match "VID_1532") { $mDesc = "MOUSE RAZER USB" }
+            elseif ($pnp -match "VID_413C") { $mDesc = "MOUSE DELL USB" }
+            elseif ($pnp -match "VID_17EF") { $mDesc = "MOUSE LENOVO USB" }
+            elseif ($pnp -match "VID_0461") { $mDesc = "MOUSE HP USB" }
+            elseif ($pnp -match "VID_093A") { $mDesc = "MOUSE GENIUS USB" }
+            elseif ($pnp -match "VID_24AE") { $mDesc = "MOUSE RAPOO USB" }
+            elseif ($m.Name -and $m.Name -notmatch "dispositivo|device|controller|compatible") { $mDesc = $m.Name.Trim() }
+            
+            if (-not ($mouseList -contains $mDesc)) {
+                $mouseList += $mDesc
+            }
+        }
+    }
+    $hasMouse = if ($mouseList.Count -gt 0) { "SI" } elseif (-not $isLaptop) { "SI" } else { "NO" }
+
+    # 6. Teclados USB e Inalámbricos Externos
+    $extKeyboards = Get-CimInstance Win32_PnPEntity -Filter "PNPClass='Keyboard'" -ErrorAction SilentlyContinue | Where-Object {
+        $_.Status -eq 'OK' -and
+        $_.PNPDeviceID -notmatch 'ACPI\\|PNP0303|HPQ8002|INTC|CONVERTED' -and
+        $_.Name -notmatch 'Standard.*PS/2|Hotkey'
+    }
+    $keyboardList = @()
+    if ($extKeyboards) {
+        foreach ($k in $extKeyboards) {
+            $pnp = if ($k.PNPDeviceID) { $k.PNPDeviceID } else { "" }
+            $kDesc = "TECLADO ESTÁNDAR USB"
+            if ($pnp -match "VID_046D") { $kDesc = "TECLADO LOGITECH USB" }
+            elseif ($pnp -match "VID_045E") { $kDesc = "TECLADO MICROSOFT USB" }
+            elseif ($pnp -match "VID_413C") { $kDesc = "TECLADO DELL USB" }
+            elseif ($pnp -match "VID_17EF") { $kDesc = "TECLADO LENOVO USB" }
+            elseif ($pnp -match "VID_0461") { $kDesc = "TECLADO HP USB" }
+            elseif ($k.Name -and $k.Name -notmatch "dispositivo|device|controller|compatible|mejorado|teclado hid") { $kDesc = $k.Name.Trim() }
+            
+            if (-not ($keyboardList -contains $kDesc)) {
+                $keyboardList += $kDesc
+            }
+        }
+    }
+    $hasKeyboard = if ($keyboardList.Count -gt 0) { "SI" } elseif (-not $isLaptop) { "SI" } else { "NO" }
+
+    # 7. Red y Conectividad
     $tipoRed = "SIN CONEXION"
     $velocidadRed = "0 Mbps"
-
     $configs = Get-CimInstance Win32_NetworkAdapterConfiguration -ErrorAction SilentlyContinue | Where-Object { $_.IPEnabled -eq $true -and $_.DefaultIPGateway }
-
     if ($configs) {
         $activeConfig = $configs | Select-Object -First 1
         $idx = $activeConfig.Index
@@ -630,32 +598,18 @@ try {
         if ($adapter) {
             $n = $adapter.Name
             $sMbps = if ($adapter.Speed -and $adapter.Speed -gt 0) { [math]::round($adapter.Speed / 1000000) } else { 0 }
-            
-            if ($n -match "Wi-Fi|Wireless|802\.11|WLAN|Wi-Fi") {
-                $tipoRed = "WI-FI"
-                $velocidadRed = if ($sMbps -ge 1000) { "$([math]::round($sMbps/1000, 1)) Gbps ($sMbps Mbps)" } elseif ($sMbps -gt 0) { "$sMbps Mbps" } else { "Conectado" }
+            $tipoRed = if ($n -match "Wi-Fi|Wireless|802\.11|WLAN|Wi-Fi") { "WI-FI" } else { "CABLE (ETHERNET)" }
+            if ($sMbps -ge 1000) {
+                $velocidadRed = "$([math]::round($sMbps/1000, 1)) Gbps ($sMbps Mbps)"
+            } elseif ($sMbps -gt 0) {
+                $velocidadRed = "$sMbps Mbps"
             } else {
-                $tipoRed = "CABLE (ETHERNET)"
-                $velocidadRed = if ($sMbps -ge 1000) { "$([math]::round($sMbps/1000, 1)) Gbps ($sMbps Mbps)" } elseif ($sMbps -gt 0) { "$sMbps Mbps" } else { "Conectado" }
-            }
-        }
-    }
-
-    if ($tipoRed -eq "SIN CONEXION") {
-        $net = Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq "Up" -and $_.InterfaceDescription -notmatch "Virtual|Loopback|VPN|VMware|Hyper-V|Bluetooth" } | Select-Object -First 1
-        if ($net) {
-            $sMbps = if ($net.LinkSpeed) { $net.LinkSpeed } else { "Conectado" }
-            $velocidadRed = $sMbps
-            if ($net.MediaType -match "Native 802\.11" -or $net.InterfaceDescription -match "Wi-Fi|Wireless|WLAN") {
-                $tipoRed = "WI-FI"
-            } else {
-                $tipoRed = "CABLE (ETHERNET)"
+                $velocidadRed = "Conectado"
             }
         }
     }
 
     $nowUnix = [DateTimeOffset]::Now.ToUnixTimeSeconds()
-
     $payload = @{
         status = "completed"
         timestamp = $nowUnix
@@ -668,78 +622,65 @@ try {
         disco = $discoText
         gpu = $gpuText
         monitor = if ($isLaptop) { "INTEGRADO" } else { $monitorObs }
-        teclado = if ($isLaptop) { "INTEGRADO" } else { "SI" }
+        teclado = $hasKeyboard
+        teclados_lista = $keyboardList
         mouse = $hasMouse
+        mouses_lista = $mouseList
         impresora = $impresora
+        impresoras_lista = $printerList
+        camara = $camara
+        camaras_lista = $cameraList
         tipo_red = $tipoRed
         velocidad_red = $velocidadRed
     }
 
-    Write-Output ($payload | ConvertTo-Json -Compress)
+    Write-Output ($payload | ConvertTo-Json -Depth 5 -Compress)
 } catch {
     Write-Output "{}"
 }
-[System.Environment]::Exit(0)
 POWERSHELL;
+    }
+
+    /**
+     * Ejecuta PowerShell directamente y devuelve los datos estructurados.
+     */
+    private function obtenerHardwareDirectoServidor()
+    {
+        if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
+            return null;
+        }
+
+        $psScript = $this->generarScriptPowerShell();
 
         $tmpPs1 = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hw_direct_' . uniqid() . '.ps1';
+        $tmpOut = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'hw_out_' . uniqid() . '.json';
         @file_put_contents($tmpPs1, "\xEF\xBB\xBF" . $psScript);
 
         if (ob_get_length()) {
             @ob_clean();
         }
 
-        $cmd = 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' . $tmpPs1 . '"';
-        $descriptors = [
-            0 => ["pipe", "r"],
-            1 => ["pipe", "w"],
-            2 => ["pipe", "w"]
-        ];
+        $cmd = 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' . $tmpPs1 . '" > "' . $tmpOut . '" 2>&1';
+        @exec($cmd);
 
-        $proc = proc_open($cmd, $descriptors, $pipes);
         $output = '';
-
-        if (is_resource($proc)) {
-            fclose($pipes[0]);
-            stream_set_blocking($pipes[1], false);
-
-            $timeout = 10.0;
-            $startProc = microtime(true);
-
-            while (microtime(true) - $startProc < $timeout) {
-                $read = [$pipes[1]];
-                $write = null;
-                $except = null;
-
-                if (stream_select($read, $write, $except, 0, 200000)) {
-                    $chunk = stream_get_contents($pipes[1]);
-                    if ($chunk !== false) {
-                        $output .= $chunk;
-                    }
-                }
-
-                $status = proc_get_status($proc);
-                if (!$status['running']) {
-                    $output .= stream_get_contents($pipes[1]);
-                    break;
-                }
-            }
-
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            proc_terminate($proc);
-            proc_close($proc);
+        if (file_exists($tmpOut)) {
+            $output = @file_get_contents($tmpOut);
+            @unlink($tmpOut);
         }
 
         @unlink($tmpPs1);
 
         if ($output) {
+            $output = preg_replace('/^\xEF\xBB\xBF/', '', $output);
+            $output = trim($output);
+
             $start = strpos($output, '{');
-            $end = strrpos($output, '}');
+            $end   = strrpos($output, '}');
             if ($start !== false && $end !== false && $end >= $start) {
                 $cleanJson = substr($output, $start, $end - $start + 1);
                 $data = json_decode($cleanJson, true);
-                if (!empty($data) && isset($data['status'])) {
+                if (!empty($data) && isset($data['status']) && $data['status'] === 'completed') {
                     $data['proveedor_internet'] = $this->obtenerProveedorISP($data['tipo_red'] ?? '');
                     $speeds = $this->medirVelocidadInternetReal();
                     $data['velocidad_descarga'] = $speeds['descarga'];

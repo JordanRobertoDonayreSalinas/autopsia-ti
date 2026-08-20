@@ -127,6 +127,31 @@
                         </div>
                     </div>
 
+                    {{-- AIRE ACONDICIONADO --}}
+                    @php $aireAcondicionado = strtoupper($contenido['aire_acondicionado'] ?? 'NO'); @endphp
+                    <div class="mt-5 bg-slate-50/70 border border-slate-200 rounded-2xl p-5">
+                        <div class="flex items-center gap-2.5 mb-3">
+                            <div class="w-8 h-8 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="wind" class="w-4 h-4"></i>
+                            </div>
+                            <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                ¿El consultorio cuenta con aire acondicionado?
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 max-w-xs">
+                            <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $aireAcondicionado === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                <input type="radio" name="contenido[aire_acondicionado]" value="SI" {{ $aireAcondicionado === 'SI' ? 'checked' : '' }} class="sr-only"
+                                    onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'shadow-sm');">
+                                <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> SÍ</span>
+                            </label>
+                            <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $aireAcondicionado === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                <input type="radio" name="contenido[aire_acondicionado]" value="NO" {{ $aireAcondicionado === 'NO' ? 'checked' : '' }} class="sr-only"
+                                    onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm');">
+                                <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i> NO</span>
+                            </label>
+                        </div>
+                    </div>
+
                     {{-- CONDICIONES BÁSICAS DE RED Y ENERGÍA --}}
                     <div class="mt-7 pt-6 border-t border-slate-100">
                         <label class="block text-slate-800 text-xs font-black uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -170,11 +195,11 @@
                                 <div class="grid grid-cols-2 gap-3">
                                     @php $puntoRed = strtoupper($contenido['cuenta_punto_red'] ?? 'SI'); @endphp
                                     <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'shadow-sm');">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="SI" {{ $puntoRed === 'SI' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'shadow-sm'); document.getElementById('container_cantidad_puntos_red').classList.remove('hidden');">
                                         <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> SÍ (HABILITADO)</span>
                                     </label>
                                     <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $puntoRed === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
-                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm');">
+                                        <input type="radio" name="contenido[cuenta_punto_red]" value="NO" {{ $puntoRed === 'NO' ? 'checked' : '' }} class="sr-only" onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); document.getElementById('container_cantidad_puntos_red').classList.add('hidden');">
                                         <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i> NO CUENTA</span>
                                     </label>
                                 </div>
@@ -286,15 +311,21 @@
                             @php
                                 $evidenciaPath = $detalle->contenido['evidencia_path'] ?? $contenido['evidencia_path'] ?? '';
                             @endphp
+                            <input type="hidden" name="eliminar_evidencia" id="input_eliminar_evidencia" value="0">
                             <div id="container_preview_evidencia" class="mt-4 {{ empty($evidenciaPath) ? 'hidden' : '' }}">
-                                <div class="relative inline-block bg-slate-100 p-2.5 rounded-2xl border-2 border-indigo-200 shadow-md">
+                                <div class="relative inline-block bg-slate-100 p-3 rounded-2xl border-2 border-indigo-200 shadow-md group">
                                     <img id="img_preview_evidencia" 
                                          src="{{ !empty($evidenciaPath) ? asset('storage/' . $evidenciaPath) : '' }}" 
                                          alt="Previsualización Evidencia" 
                                          class="max-h-64 max-w-full rounded-xl object-contain shadow-inner bg-white">
-                                    <div class="mt-2 text-center text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                                        <span id="text_preview_evidencia_name">{{ !empty($evidenciaPath) ? basename($evidenciaPath) : 'Evidencia Adjunta' }}</span>
+                                    <button type="button" onclick="eliminarEvidenciaActual()"
+                                        class="absolute top-5 right-5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider" title="Quitar fotografía">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        <span>Quitar</span>
+                                    </button>
+                                    <div class="mt-2.5 text-center text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                        <i data-lucide="camera" class="w-3.5 h-3.5 text-indigo-500"></i>
+                                        <span id="text_preview_evidencia_name">EVIDENCIA: {{ $tituloConsultorio }} (ACTA #{{ str_pad($acta->numero_acta ?? $acta->id, 5, '0', STR_PAD_LEFT) }})</span>
                                     </div>
                                 </div>
                             </div>
@@ -320,16 +351,28 @@
             const container = document.getElementById('container_preview_evidencia');
             const img = document.getElementById('img_preview_evidencia');
             const txtName = document.getElementById('text_preview_evidencia_name');
+            const inputEliminar = document.getElementById('input_eliminar_evidencia');
 
             if (input.files && input.files[0]) {
+                if (inputEliminar) inputEliminar.value = '0';
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     img.src = e.target.result;
                     if (container) container.classList.remove('hidden');
                     if (txtName) txtName.innerText = "NUEVA: " + input.files[0].name.toUpperCase();
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
                 };
                 reader.readAsDataURL(input.files[0]);
             }
+        }
+
+        function eliminarEvidenciaActual() {
+            const inputEliminar = document.getElementById('input_eliminar_evidencia');
+            const container = document.getElementById('container_preview_evidencia');
+            const inputFoto = document.getElementById('input_evidencia_foto');
+            if (inputEliminar) inputEliminar.value = '1';
+            if (inputFoto) inputFoto.value = '';
+            if (container) container.classList.add('hidden');
         }
 
         function toggleSihceAndDocs(val) {

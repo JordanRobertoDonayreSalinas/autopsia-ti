@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\CabeceraMonitoreo;
 use App\Models\MonitoreoModulos;
 use App\Models\Profesional;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class RecursosHumanosController extends Controller
 {
@@ -34,7 +34,7 @@ class RecursosHumanosController extends Controller
             'INMUNIZACIONES',
             'ADMISIÓN Y ARCHIVO',
             'GESTIÓN ADMINISTRATIVA',
-            'OTROS'
+            'OTROS',
         ];
     }
 
@@ -56,28 +56,34 @@ class RecursosHumanosController extends Controller
             'TÉCNICO(A) EN FARMACIA',
             'TÉCNICO(A) EN LABORATORIO',
             'PERSONAL ADMINISTRATIVO',
-            'OTROS'
+            'OTROS',
         ];
     }
 
     /**
-     * Genera lista de periodos SERUMS basados en el año actual
-     * Ejemplo para 2026: ['2025-2', '2026-1', '2026-2', '2027-1']
+     * Genera lista de periodos SERUMS basados en el año y mes actual.
+     * Según el cronograma SERUMS (exactamente 3 opciones activas):
+     * - De Enero a Septiembre (mes < 10): (Año-1)-1, (Año-1)-2 y Año-1 (Ej: en 2026 -> 2025-1, 2025-2, 2026-1).
+     * - De Octubre a Diciembre (mes >= 10): se activa el nuevo periodo y se desactiva el primero: (Año-1)-2, Año-1 y Año-2 (Ej: en 2026 -> 2025-2, 2026-1, 2026-2).
      */
     private function getPeriodosSerums(): array
     {
-        $currentYear = (int) date('Y');
-        $periodos = [];
+        $year = (int) date('Y');
+        $month = (int) date('n');
 
-        // Año anterior semestre 2
-        $periodos[] = ($currentYear - 1) . '-2';
-        // Año actual semestre 1 y 2
-        $periodos[] = $currentYear . '-1';
-        $periodos[] = $currentYear . '-2';
-        // Siguiente año semestre 1
-        $periodos[] = ($currentYear + 1) . '-1';
+        if ($month < 10) {
+            return [
+                ($year - 1).'-1',
+                ($year - 1).'-2',
+                $year.'-1',
+            ];
+        }
 
-        return $periodos;
+        return [
+            ($year - 1).'-2',
+            $year.'-1',
+            $year.'-2',
+        ];
     }
 
     /**
@@ -90,13 +96,13 @@ class RecursosHumanosController extends Controller
         $detalle = MonitoreoModulos::firstOrCreate(
             [
                 'cabecera_monitoreo_id' => $id,
-                'modulo_nombre'         => 'rrhh',
+                'modulo_nombre' => 'rrhh',
             ],
             [
                 'contenido' => [
                     'trabajadores' => [],
                     'observaciones' => '',
-                ]
+                ],
             ]
         );
 
@@ -149,7 +155,7 @@ class RecursosHumanosController extends Controller
                 $colegioProfesional = mb_strtoupper(trim($t['colegio_profesional'] ?? ''));
                 $rawColegiatura = trim($t['colegiatura'] ?? '');
                 $colegiaturaDigits = preg_replace('/\D/', '', $rawColegiatura);
-                $colegiatura = !empty($colegiaturaDigits) ? str_pad(substr($colegiaturaDigits, 0, 6), 6, '0', STR_PAD_LEFT) : '';
+                $colegiatura = ! empty($colegiaturaDigits) ? str_pad(substr($colegiaturaDigits, 0, 6), 6, '0', STR_PAD_LEFT) : '';
 
                 // Fallback para colegio_profesional si está vacío
                 if (empty($colegioProfesional)) {
@@ -157,15 +163,15 @@ class RecursosHumanosController extends Controller
                         $colegioProfesional = mb_strtoupper(trim($matches[1]));
                     } else {
                         $mapaPrefijos = [
-                            'MÉDICO CIRUJANO'                    => 'CMP',
+                            'MÉDICO CIRUJANO' => 'CMP',
                             'CIRUJANO DENTISTA / ODONTÓLOGO(A)' => 'COP',
-                            'LIC. EN ENFERMERÍA'                 => 'CEP',
-                            'LIC. EN OBSTETRICIA'                => 'COP',
-                            'LIC. EN PSICOLOGÍA'                 => 'C.Ps.P',
-                            'LIC. EN NUTRICIÓN'                  => 'CNP',
-                            'QUÍMICO FARMACÉUTICO(A)'           => 'CQFP',
-                            'LIC. TECNOLOGÍA MÉDICA'             => 'CTMP',
-                            'BIÓLOGO(A)'                         => 'CBP'
+                            'LIC. EN ENFERMERÍA' => 'CEP',
+                            'LIC. EN OBSTETRICIA' => 'COP',
+                            'LIC. EN PSICOLOGÍA' => 'C.Ps.P',
+                            'LIC. EN NUTRICIÓN' => 'CNP',
+                            'QUÍMICO FARMACÉUTICO(A)' => 'CQFP',
+                            'LIC. TECNOLOGÍA MÉDICA' => 'CTMP',
+                            'BIÓLOGO(A)' => 'CBP',
                         ];
                         $colegioProfesional = $mapaPrefijos[$profesion] ?? '';
                     }
@@ -180,14 +186,14 @@ class RecursosHumanosController extends Controller
                 $periodoSerums = $esSerums === 'SI' ? trim($t['periodo_serums'] ?? '') : '';
 
                 $trabajadorData = [
-                    'id'                  => $t['id'] ?? ('tr_' . time() . '_' . $index),
-                    'servicio'            => $servicio,
-                    'tipo_doc'            => $tipoDoc,
-                    'doc'                 => $doc,
-                    'apellido_paterno'    => $paterno,
-                    'apellido_materno'    => $materno,
-                    'nombres'             => $nombres,
-                    'profesion'           => $profesion,
+                    'id' => $t['id'] ?? ('tr_'.time().'_'.$index),
+                    'servicio' => $servicio,
+                    'tipo_doc' => $tipoDoc,
+                    'doc' => $doc,
+                    'apellido_paterno' => $paterno,
+                    'apellido_materno' => $materno,
+                    'nombres' => $nombres,
+                    'profesion' => $profesion,
                     'colegio_profesional' => $colegioProfesional,
                     'colegiatura'         => $colegiatura,
                     'correo'              => $correo,
@@ -202,17 +208,17 @@ class RecursosHumanosController extends Controller
                 $trabajadoresNormalizados[] = $trabajadorData;
 
                 // Sincronizar en maestro global de profesionales si tiene documento
-                if (!empty($doc)) {
+                if (! empty($doc)) {
                     Profesional::updateOrCreate(
                         ['doc' => $doc],
                         [
-                            'tipo_doc'         => $tipoDoc,
-                            'nombres'          => $nombres,
+                            'tipo_doc' => $tipoDoc,
+                            'nombres' => $nombres,
                             'apellido_paterno' => $paterno,
                             'apellido_materno' => $materno,
-                            'cargo'            => $profesion,
-                            'email'            => $correo,
-                            'telefono'         => $celular,
+                            'cargo' => $profesion,
+                            'email' => $correo,
+                            'telefono' => $celular,
                         ]
                     );
                 }
@@ -229,7 +235,10 @@ class RecursosHumanosController extends Controller
                 if ($foto1Anterior && Storage::disk('public')->exists($foto1Anterior)) {
                     Storage::disk('public')->delete($foto1Anterior);
                 }
-                $path1 = $request->file('foto_1')->store('evidencias_rrhh', 'public');
+                $file1 = $request->file('foto_1');
+                $ext1 = strtolower($file1->getClientOriginalExtension() ?: 'jpg');
+                $nombreFoto1 = "evidencia_acta_{$id}_rrhh_foto1_".date('Ymd_His').'.'.$ext1;
+                $path1 = $file1->storeAs('evidencias_rrhh', $nombreFoto1, 'public');
                 $contenido['foto_1'] = $path1;
             } else {
                 $foto1Actual = $request->input('foto_1_actual');
@@ -249,7 +258,10 @@ class RecursosHumanosController extends Controller
                 if ($foto2Anterior && Storage::disk('public')->exists($foto2Anterior)) {
                     Storage::disk('public')->delete($foto2Anterior);
                 }
-                $path2 = $request->file('foto_2')->store('evidencias_rrhh', 'public');
+                $file2 = $request->file('foto_2');
+                $ext2 = strtolower($file2->getClientOriginalExtension() ?: 'jpg');
+                $nombreFoto2 = "evidencia_acta_{$id}_rrhh_foto2_".date('Ymd_His').'.'.$ext2;
+                $path2 = $file2->storeAs('evidencias_rrhh', $nombreFoto2, 'public');
                 $contenido['foto_2'] = $path2;
             } else {
                 $foto2Actual = $request->input('foto_2_actual');
@@ -268,13 +280,14 @@ class RecursosHumanosController extends Controller
             DB::commit();
 
             return redirect()->route('usuario.monitoreo.rrhh.index', $id)
-                ->with('success', 'Padrón de RR.HH guardado correctamente con ' . count($trabajadoresNormalizados) . ' trabajador(es).');
+                ->with('success', 'Padrón de RR.HH guardado correctamente con '.count($trabajadoresNormalizados).' trabajador(es).');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al guardar RR.HH: ' . $e->getMessage());
+            Log::error('Error al guardar RR.HH: '.$e->getMessage());
+
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Error al guardar los datos de RR.HH: ' . $e->getMessage());
+                ->with('error', 'Error al guardar los datos de RR.HH: '.$e->getMessage());
         }
     }
 
@@ -296,18 +309,18 @@ class RecursosHumanosController extends Controller
         $trabajadores = $contenido['trabajadores'] ?? [];
 
         $pdf = Pdf::setOptions([
-            'isPhpEnabled'         => true,
-            'isRemoteEnabled'      => true,
+            'isPhpEnabled' => true,
+            'isRemoteEnabled' => true,
             'isHtml5ParserEnabled' => true,
         ])->loadView('usuario.monitoreo.pdf.rrhh_pdf', compact('acta', 'detalle', 'contenido', 'trabajadores'));
         $pdf->setPaper('a4', 'landscape');
 
         return response($pdf->output(), 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Reporte_RRHH_Acta_' . $acta->numero_acta . '.pdf"',
-            'Cache-Control'       => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
-            'Pragma'              => 'no-cache',
-            'Expires'             => 'Sun, 02 Jan 1990 00:00:00 GMT',
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Reporte_RRHH_Acta_'.$acta->numero_acta.'.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
         ]);
     }
 }

@@ -190,8 +190,13 @@ class _TrabajadorFormDialogState extends State<_TrabajadorFormDialog> {
   final _rneCtrl = TextEditingController();
 
   List<String> get _periodosDisponibles {
-    final y = DateTime.now().year;
-    return ['${y - 1}-2', '$y-1', '$y-2', '${y + 1}-1'];
+    final now = DateTime.now();
+    final y = now.year;
+    final m = now.month;
+    if (m < 10) {
+      return ['${y - 1}-1', '${y - 1}-2', '$y-1'];
+    }
+    return ['${y - 1}-2', '$y-1', '$y-2'];
   }
 
   @override
