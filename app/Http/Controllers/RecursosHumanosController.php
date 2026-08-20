@@ -180,6 +180,8 @@ class RecursosHumanosController extends Controller
                 $correo = strtolower(trim($t['correo'] ?? ''));
                 $celular = trim($t['celular'] ?? '');
                 $rne = trim($t['rne'] ?? '');
+                $tieneDnie = strtoupper(trim($t['tiene_dnie'] ?? 'NO')) === 'SI' ? 'SI' : 'NO';
+                $versionDnie = $tieneDnie === 'SI' ? trim($t['version_dnie'] ?? 'v2.0') : '';
                 $esSerums = strtoupper(trim($t['es_serums'] ?? 'NO')) === 'SI' ? 'SI' : 'NO';
                 $periodoSerums = $esSerums === 'SI' ? trim($t['periodo_serums'] ?? '') : '';
 
@@ -193,12 +195,14 @@ class RecursosHumanosController extends Controller
                     'nombres' => $nombres,
                     'profesion' => $profesion,
                     'colegio_profesional' => $colegioProfesional,
-                    'colegiatura' => $colegiatura,
-                    'correo' => $correo,
-                    'celular' => $celular,
-                    'rne' => $rne,
-                    'es_serums' => $esSerums,
-                    'periodo_serums' => $periodoSerums,
+                    'colegiatura'         => $colegiatura,
+                    'correo'              => $correo,
+                    'celular'             => $celular,
+                    'rne'                 => $rne,
+                    'tiene_dnie'          => $tieneDnie,
+                    'version_dnie'        => $versionDnie,
+                    'es_serums'           => $esSerums,
+                    'periodo_serums'      => $periodoSerums,
                 ];
 
                 $trabajadoresNormalizados[] = $trabajadorData;

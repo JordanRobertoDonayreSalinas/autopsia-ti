@@ -206,7 +206,7 @@
                     </div>
 
                     {{-- 10. CORREO --}}
-                    <div class="md:col-span-4">
+                    <div class="md:col-span-6">
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
                             <i data-lucide="mail" class="w-3.5 h-3.5 text-violet-500"></i> Correo Electrónico
                         </label>
@@ -215,7 +215,7 @@
                     </div>
 
                     {{-- 11. CELULAR --}}
-                    <div class="md:col-span-4">
+                    <div class="md:col-span-6">
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
                             <i data-lucide="phone" class="w-3.5 h-3.5 text-violet-500"></i> Celular de Contacto
                         </label>
@@ -223,8 +223,57 @@
                             class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-sm text-slate-800 outline-none focus:border-violet-500 transition-all">
                     </div>
 
-                    {{-- 12. ¿ES SERUMS? Y 13. PERIODO --}}
-                    <div class="md:col-span-4 bg-violet-50/50 border-2 border-violet-100 rounded-2xl p-4 flex flex-col justify-between">
+                    {{-- 12. ¿TIENE DNI ELECTRÓNICO (DNIe)? Y VERSIÓN --}}
+                    <div class="md:col-span-6 bg-blue-50/50 border-2 border-blue-100 rounded-2xl p-4 flex flex-col justify-between">
+                        <div>
+                            <label class="block text-[10px] font-black text-blue-900 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                <i data-lucide="credit-card" class="w-3.5 h-3.5 text-blue-600"></i> ¿Tiene DNI Electrónico (DNIe)?
+                            </label>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button type="button" @click="form.tiene_dnie = 'SI'"
+                                    :class="form.tiene_dnie === 'SI' ? 'bg-blue-600 text-white font-black shadow-md' : 'bg-white text-slate-600 font-bold hover:bg-slate-50 border border-slate-200'"
+                                    class="py-2 rounded-xl text-xs uppercase transition-all flex items-center justify-center gap-1">
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i> SÍ
+                                </button>
+                                <button type="button" @click="form.tiene_dnie = 'NO'"
+                                    :class="form.tiene_dnie === 'NO' ? 'bg-slate-700 text-white font-black shadow-md' : 'bg-white text-slate-600 font-bold hover:bg-slate-50 border border-slate-200'"
+                                    class="py-2 rounded-xl text-xs uppercase transition-all flex items-center justify-center gap-1">
+                                    <i data-lucide="x" class="w-3.5 h-3.5"></i> NO
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- VERSIÓN DNI ELECTRÓNICO (SOLO SI TIENE DNIe) --}}
+                        <div x-show="form.tiene_dnie === 'SI'" x-transition class="pt-2 border-t border-blue-200/50">
+                            <label class="block text-[9px] font-black text-blue-800 uppercase tracking-wider mb-1 flex items-center justify-between">
+                                <span>Versión del DNI Electrónico</span>
+                                <span class="text-[9px] font-bold text-blue-600 lowercase tracking-normal">Seleccione la versión</span>
+                            </label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" @click="form.version_dnie = 'v1.0'"
+                                    :class="form.version_dnie === 'v1.0' ? 'bg-blue-700 text-white font-black shadow-sm ring-2 ring-blue-400' : 'bg-white text-slate-700 font-bold hover:bg-blue-50/50 border border-blue-200'"
+                                    class="py-2 px-1 rounded-xl text-xs uppercase transition-all flex flex-col items-center justify-center">
+                                    <span class="font-black text-xs">v1.0</span>
+                                    <span class="text-[8px] opacity-75 font-normal">(2013)</span>
+                                </button>
+                                <button type="button" @click="form.version_dnie = 'v2.0'"
+                                    :class="form.version_dnie === 'v2.0' ? 'bg-blue-700 text-white font-black shadow-sm ring-2 ring-blue-400' : 'bg-white text-slate-700 font-bold hover:bg-blue-50/50 border border-blue-200'"
+                                    class="py-2 px-1 rounded-xl text-xs uppercase transition-all flex flex-col items-center justify-center">
+                                    <span class="font-black text-xs">v2.0</span>
+                                    <span class="text-[8px] opacity-75 font-normal">(2020)</span>
+                                </button>
+                                <button type="button" @click="form.version_dnie = 'v3.0'"
+                                    :class="form.version_dnie === 'v3.0' ? 'bg-blue-700 text-white font-black shadow-sm ring-2 ring-blue-400' : 'bg-white text-slate-700 font-bold hover:bg-blue-50/50 border border-blue-200'"
+                                    class="py-2 px-1 rounded-xl text-xs uppercase transition-all flex flex-col items-center justify-center">
+                                    <span class="font-black text-xs">v3.0</span>
+                                    <span class="text-[8px] opacity-75 font-normal">(2025)</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 13. ¿ES SERUMS? Y PERIODO --}}
+                    <div class="md:col-span-6 bg-violet-50/50 border-2 border-violet-100 rounded-2xl p-4 flex flex-col justify-between">
                         <div>
                             <label class="block text-[10px] font-black text-violet-900 uppercase tracking-widest mb-2 flex items-center gap-1">
                                 <i data-lucide="graduation-cap" class="w-3.5 h-3.5 text-violet-600"></i> ¿Es SERUMS?
@@ -312,6 +361,7 @@
                                 <th class="py-3 px-4">Apellidos y Nombres</th>
                                 <th class="py-3 px-4">Profesión / Colegiatura</th>
                                 <th class="py-3 px-4">Contacto</th>
+                                <th class="py-3 px-4 text-center">DNI Electrónico</th>
                                 <th class="py-3 px-4 text-center">SERUMS / Periodo</th>
                                 <th class="py-3 px-4 text-center w-28">Acciones</th>
                             </tr>
@@ -356,6 +406,19 @@
                                         </div>
                                     </td>
 
+                                    {{-- DNI ELECTRÓNICO --}}
+                                    <td class="py-3 px-4 text-center">
+                                        <template x-if="t.tiene_dnie === 'SI'">
+                                            <div>
+                                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-md uppercase">DNIe</span>
+                                                <span class="block text-[10px] font-black text-blue-900 mt-0.5" x-text="t.version_dnie || 'v2.0'"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="t.tiene_dnie !== 'SI'">
+                                            <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-md uppercase">NO</span>
+                                        </template>
+                                    </td>
+
                                     {{-- SERUMS --}}
                                     <td class="py-3 px-4 text-center">
                                         <template x-if="t.es_serums === 'SI'">
@@ -387,7 +450,7 @@
 
                             <template x-if="trabajadores.length === 0">
                                 <tr>
-                                    <td colspan="8" class="py-12 text-center text-slate-400">
+                                    <td colspan="9" class="py-12 text-center text-slate-400">
                                         <i data-lucide="user-x" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
                                         <p class="font-bold uppercase text-xs">No hay trabajadores registrados en este padrón.</p>
                                         <p class="text-[10px] text-slate-400">Complete el formulario superior y presione "Agregar Trabajador al Padrón".</p>
@@ -415,6 +478,8 @@
                             <input type="hidden" :name="'trabajadores[' + idx + '][correo]'" :value="t.correo">
                             <input type="hidden" :name="'trabajadores[' + idx + '][celular]'" :value="t.celular">
                             <input type="hidden" :name="'trabajadores[' + idx + '][rne]'" :value="t.rne">
+                            <input type="hidden" :name="'trabajadores[' + idx + '][tiene_dnie]'" :value="t.tiene_dnie">
+                            <input type="hidden" :name="'trabajadores[' + idx + '][version_dnie]'" :value="t.version_dnie">
                             <input type="hidden" :name="'trabajadores[' + idx + '][es_serums]'" :value="t.es_serums">
                             <input type="hidden" :name="'trabajadores[' + idx + '][periodo_serums]'" :value="t.periodo_serums">
                         </div>
@@ -574,7 +639,9 @@ function rrhhManager() {
             return {
                 ...t,
                 colegio_profesional: colProf,
-                colegiatura: colNum
+                colegiatura: colNum,
+                tiene_dnie: t.tiene_dnie || 'NO',
+                version_dnie: t.version_dnie || 'v2.0'
             };
         }),
         serviciosCatalogo: serviciosLista,
@@ -614,6 +681,8 @@ function rrhhManager() {
             correo: '',
             celular: '',
             rne: '',
+            tiene_dnie: 'NO',
+            version_dnie: 'v2.0',
             es_serums: 'NO',
             periodo_serums: '{{ end($periodosSerums) }}'
         },
@@ -808,6 +877,8 @@ function rrhhManager() {
                 correo: this.form.correo.trim().toLowerCase(),
                 celular: this.form.celular.trim(),
                 rne: this.form.rne.trim().toUpperCase(),
+                tiene_dnie: this.form.tiene_dnie,
+                version_dnie: this.form.tiene_dnie === 'SI' ? (this.form.version_dnie || 'v2.0') : '',
                 es_serums: this.form.es_serums,
                 periodo_serums: this.form.es_serums === 'SI' ? this.form.periodo_serums : ''
             };
@@ -903,6 +974,8 @@ function rrhhManager() {
                 correo: t.correo || '',
                 celular: t.celular || '',
                 rne: t.rne || '',
+                tiene_dnie: t.tiene_dnie || 'NO',
+                version_dnie: t.version_dnie || 'v2.0',
                 es_serums: t.es_serums || 'NO',
                 periodo_serums: t.periodo_serums || '{{ end($periodosSerums) }}'
             };
@@ -950,6 +1023,8 @@ function rrhhManager() {
                 correo: '',
                 celular: '',
                 rne: '',
+                tiene_dnie: 'NO',
+                version_dnie: 'v2.0',
                 es_serums: 'NO',
                 periodo_serums: '{{ end($periodosSerums) }}'
             };
