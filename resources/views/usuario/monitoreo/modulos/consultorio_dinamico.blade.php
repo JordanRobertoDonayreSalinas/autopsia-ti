@@ -624,32 +624,39 @@
                 }
             });
 
-            // 3. TIPO DE CONECTIVIDAD
-            const tipoConectividad = document.getElementById('tipo_conectividad_input')?.value;
-            if (!tipoConectividad || !tipoConectividad.trim()) {
-                faltantes.push("TIPO DE CONECTIVIDAD: Seleccione opción (WIFI, CABLEADO o SIN CONECTIVIDAD)");
-            } else {
-                if (tipoConectividad === 'WIFI') {
-                    const wifiFuente = document.getElementById('wifi_fuente_input')?.value;
-                    if (!wifiFuente || !wifiFuente.trim()) {
-                        faltantes.push("TIPO DE CONECTIVIDAD: Procedencia de WiFi (Establecimiento o Personal)");
-                    }
-                }
+            // 3. TIPO DE CONECTIVIDAD (solo obligatorio si la sección está visible,
+            // es decir, si hay al menos un equipo de cómputo real cargado — un
+            // simple requerimiento/necesidad no cuenta, ver checkComputoEquipos())
+            const containerConectividadValidacion = document.getElementById('container_tipo_conectividad');
+            const conectividadEsRequerida = containerConectividadValidacion && !containerConectividadValidacion.classList.contains('hidden');
 
-                if (tipoConectividad === 'WIFI' || tipoConectividad === 'CABLEADO') {
-                    const operador = document.getElementById('operador_servicio_select')?.value;
-                    if (!operador || !operador.trim()) {
-                        faltantes.push("TIPO DE CONECTIVIDAD: Operador de Servicio de Internet");
-                    }
-
-                    const velDescarga = document.getElementById('velocidad_descarga_input')?.value;
-                    if (!velDescarga || !velDescarga.trim()) {
-                        faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Descarga");
+            if (conectividadEsRequerida) {
+                const tipoConectividad = document.getElementById('tipo_conectividad_input')?.value;
+                if (!tipoConectividad || !tipoConectividad.trim()) {
+                    faltantes.push("TIPO DE CONECTIVIDAD: Seleccione opción (WIFI, CABLEADO o SIN CONECTIVIDAD)");
+                } else {
+                    if (tipoConectividad === 'WIFI') {
+                        const wifiFuente = document.getElementById('wifi_fuente_input')?.value;
+                        if (!wifiFuente || !wifiFuente.trim()) {
+                            faltantes.push("TIPO DE CONECTIVIDAD: Procedencia de WiFi (Establecimiento o Personal)");
+                        }
                     }
 
-                    const velSubida = document.getElementById('velocidad_subida_input')?.value;
-                    if (!velSubida || !velSubida.trim()) {
-                        faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Subida");
+                    if (tipoConectividad === 'WIFI' || tipoConectividad === 'CABLEADO') {
+                        const operador = document.getElementById('operador_servicio_select')?.value;
+                        if (!operador || !operador.trim()) {
+                            faltantes.push("TIPO DE CONECTIVIDAD: Operador de Servicio de Internet");
+                        }
+
+                        const velDescarga = document.getElementById('velocidad_descarga_input')?.value;
+                        if (!velDescarga || !velDescarga.trim()) {
+                            faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Descarga");
+                        }
+
+                        const velSubida = document.getElementById('velocidad_subida_input')?.value;
+                        if (!velSubida || !velSubida.trim()) {
+                            faltantes.push("TIPO DE CONECTIVIDAD: Velocidad de Subida");
+                        }
                     }
                 }
             }
