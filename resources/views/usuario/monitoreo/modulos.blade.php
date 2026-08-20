@@ -69,7 +69,50 @@
             </div>
         @endif
 
+        {{-- REPORTES CONSOLIDADOS POR SERVICIO --}}
+        @php
+            $serviciosDetectados = [];
+            foreach($consultoriosDinamicos as $c) {
+                $cc = is_array($c->contenido) ? $c->contenido : (json_decode($c->contenido, true) ?? []);
+                $svc = mb_strtoupper(trim($cc['servicio_asociado'] ?? ''));
+                if ($svc !== '') {
+                    $serviciosDetectados[$svc] = ($serviciosDetectados[$svc] ?? 0) + 1;
+                }
+            }
+            ksort($serviciosDetectados);
+        @endphp
+
+        @if(count($serviciosDetectados) > 0)
+        <div class="mb-10 bg-white rounded-[2rem] border border-indigo-100 shadow-lg overflow-hidden">
+            <div class="flex items-center gap-4 px-7 py-5 border-b border-indigo-50 bg-gradient-to-r from-indigo-50 to-white">
+                <div class="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-slate-900 font-black text-sm uppercase tracking-tight">Reportes Consolidados por Servicio</h3>
+                    <p class="text-slate-400 text-[11px] font-semibold mt-0.5">
+                        {{ count($serviciosDetectados) }} {{ count($serviciosDetectados) === 1 ? 'servicio detectado' : 'servicios detectados' }} en esta acta — un PDF por servicio, agrupa todos sus consultorios
+                    </p>
+                </div>
+            </div>
+            <div class="px-7 py-5 flex flex-wrap gap-3">
+                @foreach($serviciosDetectados as $svcNombre => $svcCount)
+                    <a href="{{ route('usuario.monitoreo.consultorio.pdf-servicio', [$acta->id, urlencode($svcNombre)]) }}?v={{ time() }}"
+                       target="_blank"
+                       class="group inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] uppercase tracking-wide shadow-md hover:shadow-indigo-200 transition-all hover:scale-105">
+                        <i data-lucide="file-down" class="w-4 h-4 opacity-80 group-hover:opacity-100"></i>
+                        <span>{{ $svcNombre }}</span>
+                        <span class="bg-white/20 rounded-lg px-2 py-0.5 text-[10px] font-black">
+                            {{ $svcCount }} {{ $svcCount === 1 ? 'consultorio' : 'consultorios' }}
+                        </span>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         {{-- GRID DE MÓDULOS Y CONSULTORIOS --}}
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
             {{-- 1. MÓDULO FIJO: INFRAESTRUCTURA Y CROQUIS 2D --}}

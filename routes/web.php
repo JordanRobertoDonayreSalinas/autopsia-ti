@@ -1,37 +1,36 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-
-// --- IMPORTACIÓN DE CONTROLADORES ACTIVOS ---
-use App\Http\Controllers\OfflineSyncController;
-use App\Http\Controllers\LoginController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AttendanceController;
+// --- IMPORTACIÓN DE CONTROLADORES ACTIVOS ---
 use App\Http\Controllers\AuditoriaController;
-use App\Http\Controllers\AuditoriaEquiposController;
 use App\Http\Controllers\AuditoriaDuplicidadEquiposController;
-use App\Http\Controllers\MonitoreoController;
-use App\Http\Controllers\EditMonitoreoController;
-use App\Http\Controllers\FirmasMonitoreoController;
-use App\Http\Controllers\EstablecimientoController;
-use App\Http\Controllers\ConsolidadoPdfController;
+use App\Http\Controllers\AuditoriaEquiposController;
 use App\Http\Controllers\ConsolidadoESPPdfController;
-use App\Http\Controllers\UsuarioController;
-use App\Http\Controllers\ReporteEquiposController;
-use App\Http\Controllers\ReporteConsultoriosMedicinaController;
-use App\Http\Controllers\ReporteMonitoreoController;
-use App\Http\Controllers\ReporteDnieController;
+use App\Http\Controllers\ConsolidadoPdfController;
 use App\Http\Controllers\CronogramaActividadesController;
+use App\Http\Controllers\DnieVerificadorController;
+use App\Http\Controllers\EditMonitoreoController;
+use App\Http\Controllers\EstablecimientoController;
+use App\Http\Controllers\FirmaMovilController;
+use App\Http\Controllers\FirmasMonitoreoController;
 use App\Http\Controllers\Infraestructura2DController;
 use App\Http\Controllers\Infraestructura2DPdfController;
+use App\Http\Controllers\LoginController;
+use App\Http\Controllers\MonitoreoController;
 use App\Http\Controllers\MonitoreoModuloGenericController;
+use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\RecursosHumanosController;
-use App\Http\Controllers\SignatureBankController;
+use App\Http\Controllers\ReporteConsultoriosMedicinaController;
+use App\Http\Controllers\ReporteDnieController;
+use App\Http\Controllers\ReporteEquiposController;
+use App\Http\Controllers\ReporteMonitoreoController;
 use App\Http\Controllers\ReunionController;
-use App\Http\Controllers\DnieVerificadorController;
+use App\Http\Controllers\SignatureBankController;
 use App\Http\Controllers\SuneduTestController;
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\FirmaMovilController;
+use App\Http\Controllers\UsuarioController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 // --- CONFIGURACIÓN DE VERBOS ---
 Route::resourceVerbs([
@@ -63,11 +62,11 @@ Route::match(['get', 'post'], '/usuario/ajax/guardar-deteccion-hardware', [\App\
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', function () {
-        return match(Auth::user()->role) {
-            'admin'              => redirect()->route('usuario.dashboard.general'),
-            'operador'           => redirect()->route('usuario.monitoreo.index'),
-            'visor_cronograma'   => redirect()->route('usuario.reportes.cronograma'),
-            default              => redirect()->route('usuario.perfil'),
+        return match (Auth::user()->role) {
+            'admin' => redirect()->route('usuario.dashboard.general'),
+            'operador' => redirect()->route('usuario.monitoreo.index'),
+            'visor_cronograma' => redirect()->route('usuario.reportes.cronograma'),
+            default => redirect()->route('usuario.perfil'),
         };
     });
 
@@ -212,8 +211,6 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{id}/actualizar', [EditMonitoreoController::class, 'update'])->name('update');
             Route::post('/{id}/cambiar-autor', [MonitoreoController::class, 'cambiarAutor'])->name('cambiar-autor');
 
-
-
             Route::get('/{id}/salud-mental-panel', [MonitoreoController::class, 'gestionarSaludMental'])->name('salud_mental_group.index');
 
             // Módulo Infraestructura 2D
@@ -242,6 +239,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'showConsultorio'])->name('consultorio.show');
             Route::post('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'storeConsultorio'])->name('consultorio.store');
             Route::get('/{id}/consultorio/{slug}/pdf', [MonitoreoModuloGenericController::class, 'pdfConsultorio'])->name('consultorio.pdf');
+            Route::get('/{id}/pdf-por-servicio/{servicio}', [MonitoreoModuloGenericController::class, 'pdfPorServicio'])->name('consultorio.pdf-servicio');
             Route::delete('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'destroyConsultorio'])->name('consultorio.destroy');
 
             Route::get('/{id}/pdf-consolidado', [MonitoreoController::class, 'generarPDF'])->name('generarPDF');
