@@ -240,6 +240,67 @@
                     <x-tabla-equipos :prefix="$slug" :modulo="$slug" :equipos="$equipos ?? []" />
                 </div>
 
+                {{-- REQUERIMIENTO DE EQUIPOS (manual, equipos que aun no tiene el consultorio) --}}
+                <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
+                    <div class="flex items-center justify-between gap-3 mb-6 border-b border-slate-100 pb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
+                                0
+                            </div>
+                            <div>
+                                <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
+                                    REQUERIMIENTO DE EQUIPOS
+                                </h3>
+                                <p class="text-xs text-slate-400 font-semibold">Equipos que el consultorio necesita y todavía no tiene</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addRequerimientoRow()"
+                                class="group flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
+                            <i data-lucide="plus-circle" class="w-4 h-4 group-hover:rotate-90 transition-transform duration-300"></i>
+                            Añadir Requerimiento
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scroll">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 bg-slate-50/30">
+                                    <th class="px-6 py-3 text-left">Tipo de Equipo</th>
+                                    <th class="px-2 py-3 text-center">Cant.</th>
+                                    <th class="px-4 py-3 text-left">Observación</th>
+                                    <th class="px-4 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="body_requerimientos">
+                                @forelse (($requerimientos ?? []) as $index => $req)
+                                    <tr class="group/row hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none">
+                                        <td class="px-6 py-4">
+                                            <input type="text" name="requerimientos[{{ $index }}][descripcion]" value="{{ $req->descripcion }}" class="input-table-text" required list="list_equipos_master" placeholder="Seleccione...">
+                                        </td>
+                                        <td class="px-2 py-4 text-center">
+                                            <input type="number" name="requerimientos[{{ $index }}][cantidad]" value="{{ $req->cantidad ?? 1 }}" class="input-table-text text-center font-bold" min="1">
+                                        </td>
+                                        <td class="px-4 py-4">
+                                            <input type="text" name="requerimientos[{{ $index }}][observacion]" value="{{ $req->observacion }}" class="input-table-text" placeholder="Motivo del requerimiento...">
+                                        </td>
+                                        <td class="px-4 py-4 text-center">
+                                            <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover/row:opacity-100">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr id="no_data_requerimientos">
+                                        <td colspan="4" class="px-6 py-8 text-center text-xs font-bold text-slate-400 uppercase">
+                                            Sin requerimientos registrados
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 {{-- 3.- TIPO DE CONECTIVIDAD --}}
                 @php
                     $hasComputo = false;
@@ -606,5 +667,33 @@
             }
             return true;
         };
+
+        function addRequerimientoRow() {
+            const body = document.getElementById('body_requerimientos');
+            const noDataRow = document.getElementById('no_data_requerimientos');
+            if (noDataRow) noDataRow.remove();
+
+            const uniqueId = Date.now();
+            const row = document.createElement('tr');
+            row.className = 'group/row hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none';
+            row.innerHTML = `
+                <td class="px-6 py-4">
+                    <input type="text" name="requerimientos[${uniqueId}][descripcion]" class="input-table-text" required list="list_equipos_master" placeholder="Seleccione...">
+                </td>
+                <td class="px-2 py-4 text-center">
+                    <input type="number" name="requerimientos[${uniqueId}][cantidad]" value="1" class="input-table-text text-center font-bold" min="1">
+                </td>
+                <td class="px-4 py-4">
+                    <input type="text" name="requerimientos[${uniqueId}][observacion]" class="input-table-text" placeholder="Motivo del requerimiento...">
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover/row:opacity-100">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            `;
+            body.appendChild(row);
+            if (window.refreshLucide) window.refreshLucide();
+        }
     </script>
 @endsection

@@ -638,6 +638,45 @@
         @endif
     </div>
 
+    {{-- ═══ REQUERIMIENTO DE EQUIPOS ═══ --}}
+    @if(!empty($requerimientos) && count($requerimientos) > 0)
+        <div class="section-card">
+            <table class="section-header-table">
+                <tr>
+                    <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                    <td><span class="section-title-text">REQUERIMIENTO DE EQUIPOS</span></td>
+                </tr>
+            </table>
+
+            <table class="equipos-table">
+                <thead>
+                    <tr>
+                        <th style="width: 18px; text-align: center;">#</th>
+                        <th style="width: 160px;">Tipo de Equipo</th>
+                        <th style="width: 40px; text-align: center;">Cant.</th>
+                        <th>Observación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($requerimientos as $idx => $req)
+                        <tr>
+                            <td style="text-align: center; font-weight: bold; color: #64748b;">{{ $idx + 1 }}</td>
+                            <td style="font-weight: bold; color: #0f172a; text-transform: uppercase;">
+                                {{ $req->descripcion }}
+                            </td>
+                            <td style="text-align: center; font-weight: bold; color: #1e293b;">
+                                {{ $req->cantidad ?? 1 }}
+                            </td>
+                            <td style="color: #475569; font-size: 7px;">
+                                {{ !empty($req->observacion) ? strtoupper($req->observacion) : '—' }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     {{-- ═══ 3. TIPO DE CONECTIVIDAD ═══ --}}
     @php
         $hasComputoPdf = false;

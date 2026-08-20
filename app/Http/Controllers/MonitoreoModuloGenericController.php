@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CabeceraMonitoreo;
 use App\Models\EquipoComputo;
+use App\Models\EquipoRequerimiento;
 use App\Models\MonitoreoModulos;
 use App\Models\Profesional;
 use Illuminate\Http\Request;
@@ -90,6 +91,10 @@ class MonitoreoModuloGenericController extends Controller
             ->where('modulo', $slug)
             ->get();
 
+        $requerimientos = EquipoRequerimiento::where('cabecera_monitoreo_id', $id)
+            ->where('modulo', $slug)
+            ->get();
+
         // Catálogo de servicios (tabla "ups") para el desplegable de "Servicio
         // del Consultorio". Por ahora sin filtrar por establecimiento: la tabla
         // todavía no tiene una columna que la vincule de forma confiable con
@@ -108,6 +113,7 @@ class MonitoreoModuloGenericController extends Controller
             'slug',
             'tituloConsultorio',
             'equipos',
+            'requerimientos',
             'serviciosUps'
         ));
     }
@@ -226,6 +232,28 @@ class MonitoreoModuloGenericController extends Controller
                 }
             }
 
+            // Sincronizar requerimientos de equipo (equipos que el consultorio
+            // necesita pero todavia no tiene). Mismo criterio de borrar-y-recrear
+            // que EquipoComputo arriba.
+            $requerimientosData = $request->input('requerimientos', []);
+            EquipoRequerimiento::where('cabecera_monitoreo_id', $id)
+                ->where('modulo', $slug)
+                ->delete();
+
+            if (is_array($requerimientosData)) {
+                foreach ($requerimientosData as $req) {
+                    if (!empty($req['descripcion'])) {
+                        EquipoRequerimiento::create([
+                            'cabecera_monitoreo_id' => $id,
+                            'modulo' => $slug,
+                            'descripcion' => mb_strtoupper(trim($req['descripcion'] ?? '')),
+                            'cantidad' => (int) ($req['cantidad'] ?? 1),
+                            'observacion' => mb_strtoupper(trim($req['observacion'] ?? '')),
+                        ]);
+                    }
+                }
+            }
+
             DB::commit();
 
             return redirect()
@@ -262,11 +290,15 @@ class MonitoreoModuloGenericController extends Controller
             ->where('modulo', $slug)
             ->get();
 
+        $requerimientos = EquipoRequerimiento::where('cabecera_monitoreo_id', $id)
+            ->where('modulo', $slug)
+            ->get();
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
             'isPhpEnabled' => true,
             'isRemoteEnabled' => true,
             'isHtml5ParserEnabled' => true,
-        ])->loadView('usuario.monitoreo.pdf.consultorio_pdf', compact('acta', 'detalle', 'contenido', 'equipos', 'slug'));
+        ])->loadView('usuario.monitoreo.pdf.consultorio_pdf', compact('acta', 'detalle', 'contenido', 'equipos', 'requerimientos', 'slug'));
 
         $pdf->setPaper('a4', 'portrait');
 
