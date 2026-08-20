@@ -275,6 +275,72 @@ class MonitoreoModuloGenericController extends Controller
     }
 
     /**
+     * Genera un PDF consolidado con todos los consultorios de un mismo servicio.
+     *
+     * @param  string  $id  ID del acta de monitoreo
+     * @param  string  $servicio  Nombre del servicio (URL-encoded)
+     */
+    public function pdfPorServicio($id, $servicio)
+    {
+        $servicio = mb_strtoupper(trim(urldecode($servicio)));
+
+        $acta = CabeceraMonitoreo::with(['establecimiento', 'equipo'])->findOrFail($id);
+
+        // Recuperar todos los módulos dinámicos del acta
+        $todosModulos = MonitoreoModulos::where('cabecera_monitoreo_id', $id)->get();
+
+        // Filtrar por el servicio solicitado (comparación exacta en mayúsculas)
+        $modulosFiltrados = $todosModulos->filter(function ($modulo) use ($servicio) {
+            $contenido = is_array($modulo->contenido)
+                ? $modulo->contenido
+                : (json_decode($modulo->contenido, true) ?? []);
+
+            $svc = mb_strtoupper(trim($contenido['servicio_asociado'] ?? ''));
+
+            return $svc === $servicio;
+        })->values();
+
+        if ($modulosFiltrados->isEmpty()) {
+            abort(404, "No se encontraron consultorios para el servicio: {$servicio}");
+        }
+
+        // Cargar los equipos de cada módulo y preparar los datos para la vista
+        $consultorios = $modulosFiltrados->map(function ($modulo) use ($id) {
+            $contenido = is_array($modulo->contenido)
+                ? $modulo->contenido
+                : (json_decode($modulo->contenido, true) ?? []);
+
+            $equipos = EquipoComputo::where('cabecera_monitoreo_id', $id)
+                ->where('modulo', $modulo->modulo_nombre)
+                ->get();
+
+            return [
+                'detalle' => $modulo,
+                'contenido' => $contenido,
+                'equipos' => $equipos,
+            ];
+        });
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
+            'isPhpEnabled' => true,
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+        ])->loadView('usuario.monitoreo.pdf.consultorio_servicio_pdf', compact('acta', 'servicio', 'consultorios'));
+
+        $pdf->setPaper('a4', 'portrait');
+
+        $nombreArchivo = 'Servicio_'.\Str::slug($servicio).'_Acta_'.$id.'.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$nombreArchivo.'"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
+        ]);
+    }
+
+    /**
      * Elimina un consultorio dinámico de un acta de monitoreo.
      */
     public function destroyConsultorio($id, $slug)
