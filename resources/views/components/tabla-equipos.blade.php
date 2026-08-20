@@ -40,9 +40,11 @@
         </div>
         
         <div class="flex items-center gap-2">
-            <button type="button" onclick="iniciarDeteccionHardware('{{$modulo}}')" 
-                    class="group flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-md active:scale-95">
-                <i data-lucide="zap" class="w-4 h-4 text-amber-100 group-hover:scale-110 transition-transform"></i> 
+            {{-- Oculto en celular/tablet: el navegador movil no puede describir el
+                 hardware del establecimiento, solo el del propio celular. --}}
+            <button type="button" onclick="iniciarDeteccionHardware('{{$modulo}}')"
+                    class="hidden md:flex group items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-md active:scale-95">
+                <i data-lucide="zap" class="w-4 h-4 text-amber-100 group-hover:scale-110 transition-transform"></i>
                 Auto-detectar Hardware
             </button>
             <button type="button" onclick="addEquipRow('{{$modulo}}')" 
