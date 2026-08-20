@@ -22,56 +22,19 @@ class HardwareDetectionController extends Controller
             @ob_clean();
         }
 
-        $resultFile = sys_get_temp_dir() . '/hw_detection.json';
-
-        // 1. Ejecutar escaneo directo instantáneo del servidor
+        // Unico intento valido: ejecutar PowerShell directamente EN ESTE
+        // MISMO REQUEST (solo aplica si el propio servidor Laravel es
+        // Windows, algo que nunca pasa en produccion sobre cPanel/Linux).
+        // Los fallbacks que habia antes (archivo temporal compartido y cache
+        // global "hw_last_detected") devolvian el ultimo resultado de
+        // CUALQUIER PC/consultorio sin verificar que correspondiera a esta
+        // sesion, mezclando datos de equipos distintos.
         $data = $this->obtenerHardwareDirectoServidor();
         if ($data && ($data['status'] ?? '') === 'completed') {
-            @file_put_contents($resultFile, json_encode($data, JSON_UNESCAPED_UNICODE));
-            Cache::put("hw_last_detected", $data, now()->addHours(2));
-
             return response()->json([
                 'success'  => true,
                 'status'   => 'completed',
                 'hardware' => $data,
-            ]);
-        }
-
-        // 2. Si falló la ejecución directa, revisar si hay resultado previo reciente (< 60s)
-        if (file_exists($resultFile)) {
-            $age = time() - filemtime($resultFile);
-            if ($age <= 60) {
-                $raw = @file_get_contents($resultFile);
-                $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-                $raw = trim($raw);
-                $cachedData = json_decode($raw, true);
-
-                if ($cachedData && ($cachedData['status'] ?? '') === 'completed') {
-                    if (empty($cachedData['proveedor_internet']) || $cachedData['proveedor_internet'] === 'No Identificado') {
-                        $cachedData['proveedor_internet'] = $this->obtenerProveedorISP($cachedData['tipo_red'] ?? '');
-                    }
-                    if (empty($cachedData['velocidad_descarga'])) {
-                        $speeds = $this->medirVelocidadInternetReal();
-                        $cachedData['velocidad_descarga'] = $speeds['descarga'];
-                        $cachedData['velocidad_subida']   = $speeds['subida'];
-                    }
-
-                    return response()->json([
-                        'success'  => true,
-                        'status'   => 'completed',
-                        'hardware' => $cachedData,
-                    ]);
-                }
-            }
-        }
-
-        // 3. Revisar Caché guardado recientemente
-        $last = Cache::get("hw_last_detected");
-        if ($last && ($last['status'] ?? '') === 'completed' && (time() - ($last['timestamp'] ?? 0)) <= 60) {
-            return response()->json([
-                'success'  => true,
-                'status'   => 'completed',
-                'hardware' => $last,
             ]);
         }
 
@@ -262,9 +225,6 @@ POWERSHELL_POST;
                 Cache::put("hw_token_{$token}", $data, now()->addMinutes(10));
             }
 
-            $tempFile = sys_get_temp_dir() . '/hw_detection.json';
-            @file_put_contents($tempFile, json_encode($data, JSON_UNESCAPED_UNICODE));
-            Cache::put("hw_last_detected", $data, now()->addHours(2));
             Log::info("HardwareDetection DxDiag completado", $data);
 
             return response()->json(['success' => true]);
@@ -275,52 +235,30 @@ POWERSHELL_POST;
     }
 
     /**
-     * Endpoint GET consultado mediante polling desde el frontend
+     * Endpoint GET consultado mediante polling desde el frontend.
+     *
+     * Solo debe confiar en la cache propia de ESTE token (hw_token_{token}),
+     * la que escribe guardarDeteccion() cuando el .bat envia sus datos. Antes
+     * tambien revisaba un archivo temporal compartido y la cache global
+     * "hw_last_detected" (usados por el flujo separado de deteccionDirecta())
+     * sin verificar que correspondieran a este token: si CUALQUIER deteccion
+     * reciente habia terminado en cualquier otra PC/consultorio, este
+     * endpoint la devolvia igual, mezclando datos de sesiones distintas.
      */
     public function checkDeteccion($token)
     {
-        // 1. Revisar archivo de puente local instantáneo
-        $tempFile = sys_get_temp_dir() . '/hw_detection.json';
-
-        if (file_exists($tempFile)) {
-            $raw = @file_get_contents($tempFile);
-            $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-            $raw = trim($raw);
-            $data = json_decode($raw, true);
-
-            if ($data && ($data['status'] ?? '') === 'completed') {
-                if (empty($data['proveedor_internet']) || $data['proveedor_internet'] === 'No Identificado' || $data['proveedor_internet'] === 'OTROS') {
-                    $data['proveedor_internet'] = $this->obtenerProveedorISP($data['tipo_red'] ?? '');
-                }
-
-                if (empty($data['velocidad_descarga'])) {
-                    $speeds = $this->medirVelocidadInternetReal();
-                    $data['velocidad_descarga'] = $speeds['descarga'];
-                    $data['velocidad_subida']   = $speeds['subida'];
-                }
-
-                Cache::put("hw_token_{$token}", $data, now()->addMinutes(10));
-                Cache::put("hw_last_detected", $data, now()->addHours(2));
-
-                return response()->json([
-                    'success'  => true,
-                    'status'   => 'completed',
-                    'hardware' => $data,
-                ]);
-            }
-        }
-
-        // 2. Revisar caché en base de datos / memoria
         $data = Cache::get("hw_token_{$token}");
 
-        if (!$data || ($data['status'] ?? '') !== 'completed') {
-            $last = Cache::get("hw_last_detected");
-            if ($last && (time() - ($last['timestamp'] ?? 0)) <= 300) {
-                $data = $last;
-            }
-        }
-
         if ($data && ($data['status'] ?? '') === 'completed') {
+            if (empty($data['proveedor_internet']) || $data['proveedor_internet'] === 'No Identificado' || $data['proveedor_internet'] === 'OTROS') {
+                $data['proveedor_internet'] = $this->obtenerProveedorISP($data['tipo_red'] ?? '');
+            }
+            if (empty($data['velocidad_descarga'])) {
+                $speeds = $this->medirVelocidadInternetReal();
+                $data['velocidad_descarga'] = $speeds['descarga'];
+                $data['velocidad_subida']   = $speeds['subida'];
+            }
+
             return response()->json([
                 'success'  => true,
                 'status'   => 'completed',
