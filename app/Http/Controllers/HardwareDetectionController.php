@@ -128,7 +128,19 @@ try {
 }
 POWERSHELL_POST;
 
-        $psB64 = base64_encode("\xEF\xBB\xBF" . $psBatchScript);
+        // El script de PowerShell (deteccion + envio) puede superar los 8191
+        // caracteres que soporta una sola linea de comando en cmd.exe. Antes
+        // se pasaba entero en base64 dentro de un solo -Command, lo que
+        // truncaba/corrompia la linea en equipos con hardware mas detallado
+        // (mas impresoras, camaras, etc.) y el .bat fallaba con un error de
+        // comillas sin enviar nunca los datos. Ahora el .bat se autolee: el
+        // -Command que invoca PowerShell es corto y fijo (no depende del
+        // tamano del payload), y el script real vive como texto plano mas
+        // abajo en el mismo archivo, despues de un `exit` que cmd.exe nunca
+        // llega a ejecutar.
+        $extractorCmd = '$__l=Get-Content -LiteralPath \'%~f0\' -Encoding UTF8; '
+            . '$__i=($__l | Select-String -Pattern \'^:::PS1_START:::\').LineNumber; '
+            . 'Invoke-Expression (($__l[$__i..($__l.Count-1)]) -join [Environment]::NewLine)';
 
         $batContent = "@echo off\r\n" .
             "chcp 65001 >nul\r\n" .
@@ -138,11 +150,13 @@ POWERSHELL_POST;
             "echo   Obteniendo diagnostico completo de hardware (WMI)...\r\n" .
             "echo ========================================================\r\n" .
             "echo.\r\n" .
-            "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('" . $psB64 . "')) | Invoke-Expression\"\r\n" .
+            "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"" . $extractorCmd . "\"\r\n" .
             "echo.\r\n" .
             "echo Finalizado. Esta ventana se cerrara automaticamente en 3 segundos.\r\n" .
             "ping 127.0.0.1 -n 4 >nul\r\n" .
-            "exit\r\n";
+            "exit\r\n" .
+            ":::PS1_START:::\r\n" .
+            $psBatchScript . "\r\n";
 
         return response($batContent, 200, [
             'Content-Type'        => 'application/x-bat',
