@@ -251,6 +251,9 @@
                                 @foreach($periodosSerums as $per)
                                     <option value="{{ $per }}">{{ $per }}</option>
                                 @endforeach
+                                <template x-if="form.periodo_serums && !@json($periodosSerums).includes(form.periodo_serums)">
+                                    <option :value="form.periodo_serums" x-text="form.periodo_serums"></option>
+                                </template>
                             </select>
                         </div>
                     </div>
@@ -612,7 +615,7 @@ function rrhhManager() {
             celular: '',
             rne: '',
             es_serums: 'NO',
-            periodo_serums: '{{ $periodosSerums[1] ?? '2026-1' }}'
+            periodo_serums: '{{ end($periodosSerums) }}'
         },
         editIndex: -1,
         isSearching: false,
@@ -901,7 +904,7 @@ function rrhhManager() {
                 celular: t.celular || '',
                 rne: t.rne || '',
                 es_serums: t.es_serums || 'NO',
-                periodo_serums: t.periodo_serums || '{{ $periodosSerums[1] ?? '2026-1' }}'
+                periodo_serums: t.periodo_serums || '{{ end($periodosSerums) }}'
             };
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -948,7 +951,7 @@ function rrhhManager() {
                 celular: '',
                 rne: '',
                 es_serums: 'NO',
-                periodo_serums: '{{ $periodosSerums[1] ?? '2026-1' }}'
+                periodo_serums: '{{ end($periodosSerums) }}'
             };
         }
     };
