@@ -127,6 +127,31 @@
                         </div>
                     </div>
 
+                    {{-- AIRE ACONDICIONADO --}}
+                    @php $aireAcondicionado = strtoupper($contenido['aire_acondicionado'] ?? 'NO'); @endphp
+                    <div class="mt-5 bg-slate-50/70 border border-slate-200 rounded-2xl p-5">
+                        <div class="flex items-center gap-2.5 mb-3">
+                            <div class="w-8 h-8 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="wind" class="w-4 h-4"></i>
+                            </div>
+                            <label class="text-xs font-black text-slate-800 uppercase tracking-tight">
+                                ¿El consultorio cuenta con aire acondicionado?
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 max-w-xs">
+                            <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $aireAcondicionado === 'SI' ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                <input type="radio" name="contenido[aire_acondicionado]" value="SI" {{ $aireAcondicionado === 'SI' ? 'checked' : '' }} class="sr-only"
+                                    onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'shadow-sm');">
+                                <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> SÍ</span>
+                            </label>
+                            <label class="relative flex items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all {{ $aireAcondicionado === 'NO' ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                <input type="radio" name="contenido[aire_acondicionado]" value="NO" {{ $aireAcondicionado === 'NO' ? 'checked' : '' }} class="sr-only"
+                                    onchange="this.closest('.grid').querySelectorAll('label').forEach(l => { l.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800', 'border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm'); l.classList.add('border-slate-200', 'bg-white', 'text-slate-600'); }); this.parentElement.classList.remove('border-slate-200', 'bg-white', 'text-slate-600'); this.parentElement.classList.add('border-rose-500', 'bg-rose-50', 'text-rose-800', 'shadow-sm');">
+                                <span class="font-black text-xs uppercase flex items-center gap-1.5"><i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i> NO</span>
+                            </label>
+                        </div>
+                    </div>
+
                     {{-- CONDICIONES BÁSICAS DE RED Y ENERGÍA --}}
                     <div class="mt-7 pt-6 border-t border-slate-100">
                         <label class="block text-slate-800 text-xs font-black uppercase tracking-wider mb-4 flex items-center gap-2">
