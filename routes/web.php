@@ -26,6 +26,7 @@ use App\Http\Controllers\ReporteConsultoriosMedicinaController;
 use App\Http\Controllers\ReporteDnieController;
 use App\Http\Controllers\ReporteEquiposController;
 use App\Http\Controllers\ReporteMonitoreoController;
+use App\Http\Controllers\ReportePersonalSaludController;
 use App\Http\Controllers\ReunionController;
 use App\Http\Controllers\SignatureBankController;
 use App\Http\Controllers\SuneduTestController;
@@ -161,6 +162,11 @@ Route::middleware(['auth'])->group(function () {
 
             Route::get('/dnie', [ReporteDnieController::class, 'index'])->name('dnie');
             Route::post('/dnie/procesar', [ReporteDnieController::class, 'procesar'])->name('dnie.procesar');
+
+            Route::get('/personal-salud', [ReportePersonalSaludController::class, 'index'])->name('personal_salud');
+            Route::post('/personal-salud/excel', [ReportePersonalSaludController::class, 'exportarExcel'])->name('personal_salud.excel');
+            Route::get('/personal-salud/ajax/establecimientos', [ReportePersonalSaludController::class, 'getEstablecimientos'])->name('personal_salud.ajax.establecimientos');
+            Route::get('/personal-salud/ajax/distritos', [ReportePersonalSaludController::class, 'ajaxGetDistritos'])->name('personal_salud.ajax.distritos');
         });
 
         // --- SECCIÓN: CRONOGRAMA DE ACTIVIDADES ---

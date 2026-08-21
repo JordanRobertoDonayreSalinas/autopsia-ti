@@ -45,6 +45,13 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'Vinculado a',
             'Cantidad',
             'Descripción',
+            'Modelo (Especif.)',
+            'Procesador (Especif.)',
+            'RAM (Especif.)',
+            'Disco (Especif.)',
+            'GPU (Especif.)',
+            'S.O. (Especif.)',
+            'Origen Especif.',
             'Propio',
             'N° Serie',
             'Observación',
@@ -76,6 +83,7 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
 
         $fecha = $equipo->cabecera->fecha ? \Carbon\Carbon::parse($equipo->cabecera->fecha) : null;
         $datosConsultorio = \App\Helpers\ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo);
+        $specs = is_array($equipo->especificaciones) ? $equipo->especificaciones : [];
 
         return [
             $fecha ? \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($fecha->toDateTime()) : null,
@@ -91,6 +99,13 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $datosConsultorio['vinculado_a'] ?: '',
             $equipo->cantidad ?? 0,
             $equipo->descripcion ?? 'N/A',
+            $specs['modelo'] ?? '',
+            $specs['procesador'] ?? '',
+            $specs['ram'] ?? '',
+            $specs['disco'] ?? '',
+            $specs['gpu'] ?? '',
+            $specs['so'] ?? '',
+            empty($specs) ? '' : (!empty($specs['autodetectado']) ? 'AUTODETECTADO' : 'MANUAL'),
             $equipo->propio ?? 'N/A',
             $equipo->nro_serie ?: '',
             $equipo->observacion ?: '',
@@ -154,15 +169,22 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'K' => 22,  // Vinculado a
             'L' => 10,  // Cantidad
             'M' => 30,  // Descripción
-            'N' => 12,  // Propio
-            'O' => 16,  // N° Serie
-            'P' => 25,  // Observación
-            'Q' => 12,  // Estado
-            'R' => 15,  // Provincia
-            'S' => 15,  // Distrito
-            'T' => 18,  // Conectividad
-            'U' => 18,  // Fuente WiFi
-            'V' => 18,  // Proveedor
+            'N' => 24,  // Modelo (Especif.)
+            'O' => 30,  // Procesador (Especif.)
+            'P' => 14,  // RAM (Especif.)
+            'Q' => 26,  // Disco (Especif.)
+            'R' => 26,  // GPU (Especif.)
+            'S' => 20,  // S.O. (Especif.)
+            'T' => 16,  // Origen Especif.
+            'U' => 12,  // Propio
+            'V' => 16,  // N° Serie
+            'W' => 25,  // Observación
+            'X' => 12,  // Estado
+            'Y' => 15,  // Provincia
+            'Z' => 15,  // Distrito
+            'AA' => 18, // Conectividad
+            'AB' => 18, // Fuente WiFi
+            'AC' => 18, // Proveedor
         ];
     }
 }

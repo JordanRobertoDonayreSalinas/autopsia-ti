@@ -178,6 +178,7 @@
                                 <th class="px-4 py-3">Consultorio</th>
                                 <th class="px-4 py-3 text-center">Cant.</th>
                                 <th class="px-4 py-3">Descripción</th>
+                                <th class="px-4 py-3">Especificaciones Técnicas</th>
                                 <th class="px-4 py-3">Propiedad</th>
                                 <th class="px-4 py-3">N° Serie</th>
                                 <th class="px-4 py-3">Observación</th>
@@ -226,6 +227,19 @@
                                     </td>
                                     <td class="px-4 py-3 text-center font-bold text-slate-800">{{ $equipo->cantidad ?? 0 }}</td>
                                     <td class="px-4 py-3 text-slate-600">{{ $equipo->descripcion ?? 'N/A' }}</td>
+                                    <td class="px-4 py-3 text-slate-500">
+                                        @php $specs = is_array($equipo->especificaciones) ? $equipo->especificaciones : null; @endphp
+                                        @if($specs && (!empty($specs['modelo']) || !empty($specs['procesador'])))
+                                            <span class="block font-semibold text-slate-700">{{ $specs['modelo'] ?? '—' }}</span>
+                                            <span class="block text-[10px]">{{ $specs['procesador'] ?? '' }}</span>
+                                            <span class="block text-[10px]">{{ $specs['ram'] ?? '' }} @if(!empty($specs['ram']) && !empty($specs['disco']))&bull;@endif {{ $specs['disco'] ?? '' }}</span>
+                                            <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold {{ !empty($specs['autodetectado']) ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600' }}">
+                                                {{ !empty($specs['autodetectado']) ? 'AUTODETECTADO' : 'MANUAL' }}
+                                            </span>
+                                        @else
+                                            <span class="text-slate-300">—</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-slate-500">{{ $equipo->propio ?: '—' }}</td>
                                     <td class="px-4 py-3 text-slate-500 font-mono">{{ $equipo->nro_serie ?: '—' }}</td>
                                     <td class="px-4 py-3 text-slate-500">{{ $equipo->observacion ?: '—' }}</td>

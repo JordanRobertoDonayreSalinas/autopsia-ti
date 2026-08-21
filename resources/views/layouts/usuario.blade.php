@@ -182,6 +182,13 @@
                             <span class="font-medium text-sm">Consultorios</span>
                         </a>
 
+                        {{-- Personal de Salud (RR.HH.) --}}
+                        <a href="{{ route('usuario.reportes.personal_salud') }}"
+                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.reportes.personal_salud') ? 'bg-purple-600/10 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
+                            <i data-lucide="stethoscope" class="w-4 h-4"></i>
+                            <span class="font-medium text-sm">Personal de Salud (RR.HH.)</span>
+                        </a>
+
                         {{-- Cronograma de Actividades --}}
                         <a href="{{ route('usuario.reportes.cronograma') }}"
                             class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.reportes.cronograma') ? 'bg-purple-600/10 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">

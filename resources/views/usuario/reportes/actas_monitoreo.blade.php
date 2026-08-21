@@ -175,6 +175,7 @@
                         <th class="px-3 py-3 font-bold uppercase text-[10px]">Implementador</th>
                         <th class="px-3 py-3 text-center font-bold uppercase text-[10px]">Tipo</th>
                         <th class="px-3 py-3 text-center font-bold uppercase text-[10px]">Progreso</th>
+                        <th class="px-3 py-3 font-bold uppercase text-[10px]">Pozo a Tierra / Panel Solar</th>
                         <th class="px-3 py-3 text-center font-bold uppercase text-[10px]">Estado</th>
                         <th class="px-3 py-3 text-right font-bold uppercase text-[10px]">Acción</th>
                     </tr>
@@ -212,6 +213,22 @@
                                 </div>
                                 <span class="font-bold text-slate-600 text-[10px]">{{ $p }}%</span>
                             </div>
+                        </td>
+                        <td class="px-3 py-3">
+                            @if($acta->pozo_tierra)
+                                <span class="block text-[10px] font-bold text-emerald-600">
+                                    ✓ Pozo: {{ $acta->pozo_tierra_cantidad ?? 0 }} ({{ $acta->pozo_tierra_operativos ?? 0 }} op / {{ $acta->pozo_tierra_inoperativos ?? 0 }} inop)
+                                </span>
+                            @else
+                                <span class="block text-[10px] font-bold text-slate-300">✗ Sin pozo a tierra</span>
+                            @endif
+                            @if($acta->panel_solar)
+                                <span class="block text-[10px] font-bold text-amber-600">
+                                    ✓ Solar: {{ $acta->panel_solar_cantidad ?? 0 }} ({{ $acta->panel_solar_operativos ?? 0 }} op / {{ $acta->panel_solar_inoperativos ?? 0 }} inop)
+                                </span>
+                            @else
+                                <span class="block text-[10px] font-bold text-slate-300">✗ Sin panel solar</span>
+                            @endif
                         </td>
                         <td class="px-3 py-3 text-center">
                             @if($acta->firmado)

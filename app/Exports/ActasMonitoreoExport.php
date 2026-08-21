@@ -61,6 +61,14 @@ class ActasMonitoreoExport implements
             'Implementador',
             'Módulos Monitoreados',
             'Progreso (%)',
+            'Pozo a Tierra',
+            'Pozo Cant.',
+            'Pozo Operativos',
+            'Pozo Inoperativos',
+            'Panel Solar',
+            'Panel Cant.',
+            'Panel Operativos',
+            'Panel Inoperativos',
             'Estado',
         ];
     }
@@ -106,6 +114,14 @@ class ActasMonitoreoExport implements
             $acta->implementador ?? 'N/A',
             $modulosMonitoreados,
             $acta->progreso . '%',
+            $acta->pozo_tierra ? 'SI' : 'NO',
+            $acta->pozo_tierra_cantidad ?? 0,
+            $acta->pozo_tierra_operativos ?? 0,
+            $acta->pozo_tierra_inoperativos ?? 0,
+            $acta->panel_solar ? 'SI' : 'NO',
+            $acta->panel_solar_cantidad ?? 0,
+            $acta->panel_solar_operativos ?? 0,
+            $acta->panel_solar_inoperativos ?? 0,
             $acta->firmado ? 'FIRMADO' : 'PENDIENTE',
         ];
     }
@@ -154,7 +170,15 @@ class ActasMonitoreoExport implements
             'K' => 28,  // Implementador
             'L' => 60,  // Módulos Completados
             'M' => 14,  // Progreso
-            'N' => 12,  // Estado
+            'N' => 14,  // Pozo a Tierra
+            'O' => 12,  // Pozo Cant.
+            'P' => 14,  // Pozo Operativos
+            'Q' => 16,  // Pozo Inoperativos
+            'R' => 14,  // Panel Solar
+            'S' => 12,  // Panel Cant.
+            'T' => 14,  // Panel Operativos
+            'U' => 16,  // Panel Inoperativos
+            'V' => 12,  // Estado
         ];
     }
 }
