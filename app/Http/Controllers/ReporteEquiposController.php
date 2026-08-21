@@ -133,11 +133,41 @@ class ReporteEquiposController extends Controller
 
         // Ordenar por fecha más reciente
         $equipos = $query->orderBy('created_at', 'desc')->paginate(20);
+        $equipos->setCollection($this->expandirPorConsultoriosFuncionales($equipos->getCollection()));
 
         // Obtener descripciones únicas
         $descripciones = EquipoComputo::distinct()->pluck('descripcion')->filter()->sort()->values();
 
         return view('usuario.reportes.equipos', compact('equipos', 'establecimientos', 'distritos', 'provincias', 'modulos', 'descripciones', 'fechaInicio', 'fechaFin'));
+    }
+
+    /**
+     * Expande cada equipo en una o más "filas de reporte": una por el
+     * consultorio donde realmente vive el registro, y una adicional por
+     * cada consultorio FUNCIONAL vinculado que comparte ese mismo equipo
+     * (ver ModuloHelper::getFuncionalesQueComparten). Así, un físico atado a
+     * 2+ funcionales aparece representado en el reporte por cada uno de
+     * ellos, no solo una vez bajo el nombre del físico.
+     *
+     * @return \Illuminate\Support\Collection Colección de objetos
+     *         {equipo: EquipoComputo, modulo_efectivo: string}
+     */
+    private function expandirPorConsultoriosFuncionales($equipos)
+    {
+        $expandido = collect();
+
+        foreach ($equipos as $equipo) {
+            $expandido->push((object) ['equipo' => $equipo, 'modulo_efectivo' => $equipo->modulo]);
+
+            if (!\App\Helpers\ModuloHelper::esModuloFijo($equipo->modulo)) {
+                $funcionales = \App\Helpers\ModuloHelper::getFuncionalesQueComparten($equipo->cabecera, $equipo->modulo);
+                foreach ($funcionales as $slugFuncional) {
+                    $expandido->push((object) ['equipo' => $equipo, 'modulo_efectivo' => $slugFuncional]);
+                }
+            }
+        }
+
+        return $expandido;
     }
 
     /**
@@ -202,10 +232,11 @@ class ReporteEquiposController extends Controller
         }
 
         $equipos = $query->orderBy('created_at', 'desc')->get();
+        $equiposExpandido = $this->expandirPorConsultoriosFuncionales($equipos);
 
         $filename = 'Reporte_Equipos_Computo_' . date('Y-m-d_His') . '.xlsx';
 
-        return Excel::download(new EquiposExport($equipos), $filename);
+        return Excel::download(new EquiposExport($equiposExpandido), $filename);
     }
 
     /**

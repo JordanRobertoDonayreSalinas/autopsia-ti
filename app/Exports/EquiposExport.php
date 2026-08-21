@@ -39,8 +39,8 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'Categoría',
             'Tipo',
             'Módulo',
-            'Servicio',
             'Departamento',
+            'Servicio',
             'Nombre del Consultorio',
             'Tipo Consultorio',
             'Vinculado a',
@@ -65,7 +65,7 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
         ];
     }
 
-    public function map($equipo): array
+    public function map($item): array
     {
         $meses = [
             1 => 'ENERO',
@@ -82,9 +82,16 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             12 => 'DICIEMBRE',
         ];
 
+        // $item puede ser un EquipoComputo directo (compatibilidad) o el
+        // objeto {equipo, modulo_efectivo} que arma el controlador para que
+        // un mismo equipo compartido aparezca también bajo cada consultorio
+        // funcional vinculado (ver ReporteEquiposController::expandirPorConsultoriosFuncionales).
+        $equipo = $item->equipo ?? $item;
+        $moduloEfectivo = $item->modulo_efectivo ?? $equipo->modulo;
+
         $fecha = $equipo->cabecera->fecha ? \Carbon\Carbon::parse($equipo->cabecera->fecha) : null;
-        $datosConsultorio = \App\Helpers\ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo);
-        $esModuloFijo = \App\Helpers\ModuloHelper::esModuloFijo($equipo->modulo);
+        $datosConsultorio = \App\Helpers\ModuloHelper::getDatosConsultorio($equipo->cabecera, $moduloEfectivo);
+        $esModuloFijo = \App\Helpers\ModuloHelper::esModuloFijo($moduloEfectivo);
         $specs = is_array($equipo->especificaciones) ? $equipo->especificaciones : [];
 
         return [
@@ -94,10 +101,10 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $equipo->cabecera->establecimiento->nombre ?? 'N/A',
             $equipo->cabecera->establecimiento->categoria ?? 'N/A',
             \App\Helpers\ModuloHelper::getTipoEstablecimiento($equipo->cabecera->establecimiento),
-            $esModuloFijo ? \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) : '',
-            $datosConsultorio['servicio_asociado'] ?: 'N/A',
+            $esModuloFijo ? \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $moduloEfectivo) : '',
             $datosConsultorio['departamento_asociado'] ?: 'N/A',
-            $esModuloFijo ? '' : \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo),
+            $datosConsultorio['servicio_asociado'] ?: 'N/A',
+            $esModuloFijo ? '' : \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $moduloEfectivo),
             $datosConsultorio['tipo_consultorio'] ?: 'N/A',
             $datosConsultorio['vinculado_a'] ?: '',
             $equipo->cantidad ?? 0,
@@ -115,7 +122,7 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $equipo->estado ?? 'N/A',
             $equipo->cabecera->establecimiento->provincia ?? 'N/A',
             $equipo->cabecera->establecimiento->distrito ?? 'N/A',
-            ($conectividad = \App\Helpers\ModuloHelper::getConectividadActa($equipo->cabecera, $equipo->modulo))['tipo'],
+            ($conectividad = \App\Helpers\ModuloHelper::getConectividadActa($equipo->cabecera, $moduloEfectivo))['tipo'],
             $conectividad['fuente'],
             $conectividad['operador'],
         ];
@@ -166,8 +173,8 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'E' => 12,  // Categoría
             'F' => 18,  // Tipo
             'G' => 30,  // Módulo
-            'H' => 22,  // Servicio
-            'I' => 25,  // Departamento
+            'H' => 25,  // Departamento
+            'I' => 22,  // Servicio
             'J' => 30,  // Nombre del Consultorio
             'K' => 14,  // Tipo Consultorio (FISICO/FUNCIONAL)
             'L' => 22,  // Vinculado a

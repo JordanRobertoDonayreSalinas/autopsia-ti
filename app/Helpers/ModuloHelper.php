@@ -406,4 +406,49 @@ class ModuloHelper
 
         return ($vinculado && $comparte) ? $vinculado : $slugPropio;
     }
+
+    /**
+     * Inversa de getSlugEquiposEfectivo(): dado el slug de un consultorio
+     * FÍSICO (donde realmente viven los registros de EquipoComputo), busca
+     * todos los consultorios FUNCIONALES de la misma acta que están
+     * vinculados a él y comparten su equipo. Un físico puede tener 2 o más
+     * funcionales atados (ej. "Cardiología Pediátrica" y "Endocrinología
+     * Pediátrica" compartiendo el mismo ambiente/PC); como el equipo solo se
+     * guarda una vez bajo el slug del físico, sin esto esos funcionales
+     * nunca aparecerían en los reportes de equipos.
+     *
+     * @return string[] Slugs de los consultorios funcionales vinculados.
+     */
+    public static function getFuncionalesQueComparten($cabecera, string $slugFisico): array
+    {
+        if (!$cabecera || !$cabecera->detalles) {
+            return [];
+        }
+
+        $slugFisicoNormalizado = strtolower(trim($slugFisico));
+        $resultado = [];
+
+        foreach ($cabecera->detalles as $det) {
+            if (!is_array($det->contenido)) {
+                continue;
+            }
+
+            $tipoConsultorio = strtoupper($det->contenido['tipo_consultorio'] ?? '');
+            if ($tipoConsultorio !== 'FUNCIONAL') {
+                continue;
+            }
+
+            $vinculado = strtolower(trim($det->contenido['consultorio_vinculado'] ?? ''));
+            if ($vinculado === '' || $vinculado !== $slugFisicoNormalizado) {
+                continue;
+            }
+
+            $comparte = strtoupper($det->contenido['comparte_equipo_con_fisico'] ?? 'NO') === 'SI';
+            if ($comparte) {
+                $resultado[] = $det->modulo_nombre;
+            }
+        }
+
+        return $resultado;
+    }
 }
