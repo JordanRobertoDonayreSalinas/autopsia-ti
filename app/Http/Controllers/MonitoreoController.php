@@ -427,11 +427,11 @@ class MonitoreoController extends Controller
                 $files = $request->file('imagenes');
                 if (isset($files[0])) {
                     $nombreBase1 = 'acta_nueva_foto1_' . date('Ymd_His') . '_' . uniqid();
-                    $monitoreo->foto1 = \App\Helpers\ImagenHelper::guardarComoWebp($files[0], 'evidencias', $nombreBase1, 'public');
+                    $monitoreo->foto1 = \App\Helpers\ImagenHelper::guardarComprimida($files[0], 'evidencias', $nombreBase1, 'public');
                 }
                 if (isset($files[1])) {
                     $nombreBase2 = 'acta_nueva_foto2_' . date('Ymd_His') . '_' . uniqid();
-                    $monitoreo->foto2 = \App\Helpers\ImagenHelper::guardarComoWebp($files[1], 'evidencias', $nombreBase2, 'public');
+                    $monitoreo->foto2 = \App\Helpers\ImagenHelper::guardarComprimida($files[1], 'evidencias', $nombreBase2, 'public');
                 }
             }
 
@@ -493,13 +493,13 @@ class MonitoreoController extends Controller
                     if ($monitoreo->foto1)
                         Storage::disk('public')->delete($monitoreo->foto1);
                     $nombreBase1 = "acta_{$monitoreo->id}_foto1_" . date('Ymd_His') . '_' . uniqid();
-                    $monitoreo->foto1 = \App\Helpers\ImagenHelper::guardarComoWebp($files[0], 'evidencias', $nombreBase1, 'public');
+                    $monitoreo->foto1 = \App\Helpers\ImagenHelper::guardarComprimida($files[0], 'evidencias', $nombreBase1, 'public');
                 }
                 if (isset($files[1])) {
                     if ($monitoreo->foto2)
                         Storage::disk('public')->delete($monitoreo->foto2);
                     $nombreBase2 = "acta_{$monitoreo->id}_foto2_" . date('Ymd_His') . '_' . uniqid();
-                    $monitoreo->foto2 = \App\Helpers\ImagenHelper::guardarComoWebp($files[1], 'evidencias', $nombreBase2, 'public');
+                    $monitoreo->foto2 = \App\Helpers\ImagenHelper::guardarComprimida($files[1], 'evidencias', $nombreBase2, 'public');
                 }
             }
 

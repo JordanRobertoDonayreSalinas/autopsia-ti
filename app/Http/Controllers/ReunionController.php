@@ -165,7 +165,7 @@ class ReunionController extends Controller
                 for ($i = 0; $i < min(2, count($files)); $i++) {
                     $file = $files[$i];
                     $nombreBase = "reunion_{$reunion->id}_foto" . ($i + 1) . '_' . date('Ymd_His') . '_' . uniqid();
-                    $path = \App\Helpers\ImagenHelper::guardarComoWebp($file, 'reuniones', $nombreBase, 'public');
+                    $path = \App\Helpers\ImagenHelper::guardarComprimida($file, 'reuniones', $nombreBase, 'public');
                     // Retener la ruta relativa para la DB incluyendo 'storage/'
                     $updates['foto_' . ($i + 1)] = 'storage/' . $path;
                 }
@@ -255,17 +255,17 @@ class ReunionController extends Controller
 
                     // Buscar hueco (si foto_1 esta vacia o se la acaba de vaciar)
                     if (empty($data['foto_1']) && empty($reunion->foto_1)) {
-                        $path = \App\Helpers\ImagenHelper::guardarComoWebp($file, 'reuniones', $nombreBase, 'public');
+                        $path = \App\Helpers\ImagenHelper::guardarComprimida($file, 'reuniones', $nombreBase, 'public');
                         $data['foto_1'] = 'storage/' . $path;
                     } else if (empty($data['foto_2']) && empty($reunion->foto_2)) {
-                        $path = \App\Helpers\ImagenHelper::guardarComoWebp($file, 'reuniones', $nombreBase, 'public');
+                        $path = \App\Helpers\ImagenHelper::guardarComprimida($file, 'reuniones', $nombreBase, 'public');
                         $data['foto_2'] = 'storage/' . $path;
                     } else if (isset($data['foto_1']) && empty($data['foto_1'])) {
                         // Si decidio quitar la foto 1, podemos llenarlo aqui
-                        $path = \App\Helpers\ImagenHelper::guardarComoWebp($file, 'reuniones', $nombreBase, 'public');
+                        $path = \App\Helpers\ImagenHelper::guardarComprimida($file, 'reuniones', $nombreBase, 'public');
                         $data['foto_1'] = 'storage/' . $path;
                     } else if (isset($data['foto_2']) && empty($data['foto_2'])) {
-                        $path = \App\Helpers\ImagenHelper::guardarComoWebp($file, 'reuniones', $nombreBase, 'public');
+                        $path = \App\Helpers\ImagenHelper::guardarComprimida($file, 'reuniones', $nombreBase, 'public');
                         $data['foto_2'] = 'storage/' . $path;
                     } else {
                         // Si ambas estan llenas y manda nuevas, podemos omitir o sobreescribir. Sobreescribamos la 1 y 2
@@ -273,13 +273,13 @@ class ReunionController extends Controller
                             if (!empty($reunion->foto_1)) {
                                 Storage::disk('public')->delete(str_replace('storage/', '', $reunion->foto_1));
                             }
-                            $path = \App\Helpers\ImagenHelper::guardarComoWebp($file, 'reuniones', $nombreBase, 'public');
+                            $path = \App\Helpers\ImagenHelper::guardarComprimida($file, 'reuniones', $nombreBase, 'public');
                             $data['foto_1'] = 'storage/' . $path;
                         } else {
                             if (!empty($reunion->foto_2)) {
                                 Storage::disk('public')->delete(str_replace('storage/', '', $reunion->foto_2));
                             }
-                            $path = \App\Helpers\ImagenHelper::guardarComoWebp($file, 'reuniones', $nombreBase, 'public');
+                            $path = \App\Helpers\ImagenHelper::guardarComprimida($file, 'reuniones', $nombreBase, 'public');
                             $data['foto_2'] = 'storage/' . $path;
                         }
                     }

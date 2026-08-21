@@ -282,7 +282,7 @@ class RecursosHumanosController extends Controller
                         }
                         $numFoto = count($evidenciasFinal) + 1;
                         $nombreBase = "evidencia_acta_{$id}_rrhh_{$numFoto}_".date('Ymd_His').'_'.uniqid();
-                        $path = \App\Helpers\ImagenHelper::guardarComoWebp($archivoNuevo, 'evidencias_rrhh', $nombreBase, 'public');
+                        $path = \App\Helpers\ImagenHelper::guardarComprimida($archivoNuevo, 'evidencias_rrhh', $nombreBase, 'public');
                         $evidenciasFinal[] = ['path' => $path, 'descripcion' => $descripcion];
                     } elseif ($pathExistente) {
                         $evidenciasFinal[] = ['path' => $pathExistente, 'descripcion' => $descripcion];

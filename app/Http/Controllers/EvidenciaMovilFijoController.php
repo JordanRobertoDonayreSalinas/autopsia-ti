@@ -179,7 +179,7 @@ class EvidenciaMovilFijoController extends Controller
         }
 
         $nombreBase = "evidencia_{$datos['tipo']}_{$datos['id']}_".($totalActual + 1).'_'.date('Ymd_His').'_'.uniqid();
-        $path = \App\Helpers\ImagenHelper::guardarComoWebp($request->file('foto'), $cfg['carpeta'], $nombreBase, 'public');
+        $path = \App\Helpers\ImagenHelper::guardarComprimida($request->file('foto'), $cfg['carpeta'], $nombreBase, 'public');
 
         $pendientes[] = ['path' => $path];
         Cache::put($this->clavePendientes($token), $pendientes, now()->addMinutes(self::MINUTOS_VIGENCIA));

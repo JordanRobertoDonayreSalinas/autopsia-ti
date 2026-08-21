@@ -66,7 +66,7 @@ class EditMonitoreoController extends Controller
                         Storage::disk('public')->delete($monitoreo->foto1);
                     }
                     $nombreBase1 = "acta_{$id}_foto1_" . date('Ymd_His') . '_' . uniqid();
-                    $monitoreo->foto1 = \App\Helpers\ImagenHelper::guardarComoWebp($files[0], 'evidencias', $nombreBase1, 'public');
+                    $monitoreo->foto1 = \App\Helpers\ImagenHelper::guardarComprimida($files[0], 'evidencias', $nombreBase1, 'public');
                 }
 
                 // Procesar Foto 2
@@ -76,7 +76,7 @@ class EditMonitoreoController extends Controller
                         Storage::disk('public')->delete($monitoreo->foto2);
                     }
                     $nombreBase2 = "acta_{$id}_foto2_" . date('Ymd_His') . '_' . uniqid();
-                    $monitoreo->foto2 = \App\Helpers\ImagenHelper::guardarComoWebp($files[1], 'evidencias', $nombreBase2, 'public');
+                    $monitoreo->foto2 = \App\Helpers\ImagenHelper::guardarComprimida($files[1], 'evidencias', $nombreBase2, 'public');
                 }
             }
 

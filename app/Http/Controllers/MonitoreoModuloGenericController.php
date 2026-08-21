@@ -246,7 +246,7 @@ class MonitoreoModuloGenericController extends Controller
                         }
                         $numFoto = count($evidenciasFinal) + 1;
                         $nombreBase = "evidencia_acta_{$id}_{$slugLimpio}_{$numFoto}_".date('Ymd_His').'_'.uniqid();
-                        $path = \App\Helpers\ImagenHelper::guardarComoWebp($archivoNuevo, 'evidencias_monitoreo', $nombreBase, 'public');
+                        $path = \App\Helpers\ImagenHelper::guardarComprimida($archivoNuevo, 'evidencias_monitoreo', $nombreBase, 'public');
                         $evidenciasFinal[] = ['path' => $path, 'descripcion' => $descripcion];
                     } elseif ($pathExistente) {
                         $evidenciasFinal[] = ['path' => $pathExistente, 'descripcion' => $descripcion];

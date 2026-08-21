@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Storage;
  * esto, las fotos de celular (varios MB cada una, JPEG sin comprimir)
  * acumulan varios GB rápido y sobrecargan el hosting compartido (cPanel).
  *
+ * Estas mismas fotos se embeben en los PDF de los reportes (DomPDF):
+ * verificado que esta versión de DomPDF sí decodifica WebP correctamente
+ * (una prueba anterior con file:// daba un falso negativo por un bug de
+ * formato de ruta en Windows, no por WebP en sí).
+ *
  * Si por cualquier motivo la conversión no se puede hacer (GD no disponible
  * en el servidor, archivo corrupto, formato no soportado), se guarda el
  * archivo original tal cual, sin recomprimir: nunca se debe bloquear ni
@@ -19,21 +24,23 @@ use Illuminate\Support\Facades\Storage;
  */
 class ImagenHelper
 {
-    private const CALIDAD_WEBP = 78;
+    private const CALIDAD = 78;
     private const ANCHO_MAXIMO = 1920;
 
     /**
-     * Guarda la imagen subida como WebP (o, si no es posible, tal cual la
-     * subieron) y devuelve la ruta relativa final dentro del disco indicado.
-     * $nombreBase va SIN extensión: esta función le pone la que corresponda.
+     * Guarda la imagen subida recomprimida como WebP (o, si no es posible,
+     * tal cual la subieron) y devuelve la ruta relativa final dentro del
+     * disco indicado. $nombreBase va SIN extensión: esta función le pone la
+     * que corresponda.
      */
-    public static function guardarComoWebp(UploadedFile $archivo, string $carpeta, string $nombreBase, string $disco = 'public'): string
+    public static function guardarComprimida(UploadedFile $archivo, string $carpeta, string $nombreBase, string $disco = 'public'): string
     {
         if (!extension_loaded('gd') || !function_exists('imagewebp')) {
             return self::guardarOriginal($archivo, $carpeta, $nombreBase, $disco);
         }
 
         $origen = null;
+        $lienzo = null;
 
         try {
             $contenido = file_get_contents($archivo->getRealPath());
@@ -44,10 +51,11 @@ class ImagenHelper
             }
 
             $origen = self::corregirOrientacion($archivo, $origen);
-            $origen = self::redimensionarSiExcede($origen);
+            $lienzo = self::prepararLienzo($origen);
+            $origen = null; // prepararLienzo ya liberó $origen
 
-            $tmpPath = tempnam(sys_get_temp_dir(), 'webp_');
-            $ok = imagewebp($origen, $tmpPath, self::CALIDAD_WEBP);
+            $tmpPath = tempnam(sys_get_temp_dir(), 'foto_');
+            $ok = imagewebp($lienzo, $tmpPath, self::CALIDAD);
 
             if (!$ok || !file_exists($tmpPath) || filesize($tmpPath) === 0) {
                 @unlink($tmpPath);
@@ -61,12 +69,15 @@ class ImagenHelper
 
             return $rutaFinal;
         } catch (\Throwable $e) {
-            Log::warning('No se pudo convertir una imagen a WebP, se guardó el archivo original: '.$e->getMessage());
+            Log::warning('No se pudo recomprimir una imagen, se guardó el archivo original: '.$e->getMessage());
 
             return self::guardarOriginal($archivo, $carpeta, $nombreBase, $disco);
         } finally {
             if ($origen instanceof \GdImage) {
                 imagedestroy($origen);
+            }
+            if ($lienzo instanceof \GdImage) {
+                imagedestroy($lienzo);
             }
         }
     }
@@ -74,7 +85,7 @@ class ImagenHelper
     /**
      * Las fotos de celular en portrait suelen venir "acostadas" con una
      * etiqueta EXIF de orientación (el navegador/la app de fotos la rota al
-     * mostrarla, pero GD no la lee sola): sin esto, el WebP resultante
+     * mostrarla, pero GD no la lee sola): sin esto, la foto resultante
      * quedaría de lado.
      */
     private static function corregirOrientacion(UploadedFile $archivo, \GdImage $imagen): \GdImage
@@ -106,24 +117,35 @@ class ImagenHelper
         return $imagen;
     }
 
-    /** Achica proporcionalmente si el ancho excede el máximo: menos peso sin perder nitidez útil. */
-    private static function redimensionarSiExcede(\GdImage $imagen): \GdImage
+    /**
+     * Prepara el lienzo final en un solo paso: conserva transparencia (WebP
+     * sí soporta canal alfa, a diferencia de JPEG) y, si el ancho excede el
+     * máximo, redimensiona proporcionalmente. Destruye $imagen y devuelve un
+     * lienzo nuevo — el llamador no debe volver a liberarla.
+     */
+    private static function prepararLienzo(\GdImage $imagen): \GdImage
     {
-        $ancho = imagesx($imagen);
-        $alto = imagesy($imagen);
+        $anchoOrigen = imagesx($imagen);
+        $altoOrigen = imagesy($imagen);
 
-        if ($ancho <= self::ANCHO_MAXIMO) {
+        if ($anchoOrigen <= self::ANCHO_MAXIMO) {
+            imagesavealpha($imagen, true);
+
             return $imagen;
         }
 
-        $altoNuevo = (int) round($alto * (self::ANCHO_MAXIMO / $ancho));
-        $redimensionada = imagecreatetruecolor(self::ANCHO_MAXIMO, $altoNuevo);
-        imagealphablending($redimensionada, false);
-        imagesavealpha($redimensionada, true);
-        imagecopyresampled($redimensionada, $imagen, 0, 0, 0, 0, self::ANCHO_MAXIMO, $altoNuevo, $ancho, $alto);
+        $anchoFinal = self::ANCHO_MAXIMO;
+        $altoFinal = (int) round($altoOrigen * (self::ANCHO_MAXIMO / $anchoOrigen));
+
+        $lienzo = imagecreatetruecolor($anchoFinal, $altoFinal);
+        imagealphablending($lienzo, false);
+        imagesavealpha($lienzo, true);
+        $transparente = imagecolorallocatealpha($lienzo, 0, 0, 0, 127);
+        imagefill($lienzo, 0, 0, $transparente);
+        imagecopyresampled($lienzo, $imagen, 0, 0, 0, 0, $anchoFinal, $altoFinal, $anchoOrigen, $altoOrigen);
         imagedestroy($imagen);
 
-        return $redimensionada;
+        return $lienzo;
     }
 
     private static function guardarOriginal(UploadedFile $archivo, string $carpeta, string $nombreBase, string $disco): string
