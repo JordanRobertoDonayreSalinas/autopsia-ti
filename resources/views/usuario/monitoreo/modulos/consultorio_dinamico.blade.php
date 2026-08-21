@@ -512,7 +512,7 @@
                     <option value="SISMED">
                     <option value="WAWARED">
                     <option value="RENIPRESS">
-                    <option value="HISTORIA CLÍNICA ELECTRÓNICA (HCE)">
+                    <option value="SIHCE">
                     <option value="NOTISP">
                     <option value="SIGA">
                     <option value="SIAF">
