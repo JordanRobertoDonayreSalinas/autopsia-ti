@@ -543,6 +543,18 @@
                                 Esperando datos...
                             </div>
                         </div>
+
+                        <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200">
+                            <p class="text-amber-800 font-bold text-[11px] mb-2">¿Esta PC no tiene internet?</p>
+                            <p class="text-amber-700 text-[10.5px] leading-relaxed">
+                                El escáner no podrá enviar los datos automáticamente. Use el diagnóstico nativo de Windows, sin descargar nada:
+                            </p>
+                            <ol class="text-amber-700 text-[10.5px] leading-relaxed list-decimal list-inside mt-1.5 space-y-0.5">
+                                <li><strong>Win + R</strong>, escriba <strong>dxdiag</strong> y presione Enter</li>
+                                <li>En la pestaña "Sistema" lea Modelo, Procesador, RAM y Sistema Operativo</li>
+                                <li>Digite esos datos manualmente en los campos de la tabla de abajo</li>
+                            </ol>
+                        </div>
                     </div>
                 `,
                 showCancelButton: true,
