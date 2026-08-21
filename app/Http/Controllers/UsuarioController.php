@@ -127,17 +127,6 @@ class UsuarioController extends Controller
             ->orderBy('nombre')
             ->get();
 
-        // Obtener TODOS los módulos posibles (estándar y especializados)
-        // Esto permite filtrar por módulos incluso si no tienen equipos registrados aún
-        $todosLosModulos = \App\Helpers\ModuloHelper::getTodosLosModulos();
-
-        $modulos = collect($todosLosModulos)->map(function ($nombre, $valor) {
-            return [
-                'valor' => $valor,
-                'nombre' => $nombre
-            ];
-        })->values()->toArray();
-
         // Obtener descripciones (solo las que tienen equipos registrados)
         $descripciones = \App\Models\EquipoComputo::select('descripcion')
             ->distinct()
@@ -160,7 +149,6 @@ class UsuarioController extends Controller
             'tipos',
             'provincias',
             'establecimientos',
-            'modulos',
             'descripciones',
             'totalEquipos'
         ));
@@ -219,7 +207,6 @@ class UsuarioController extends Controller
             $provincia = $request->input('provincia');
             $distrito = $request->input('distrito');
             $establecimientoId = $request->input('establecimiento_id');
-            $modulo = $request->input('modulo');
             $descripcion = $request->input('descripcion');
 
             // Códigos y nombres de establecimientos especializados
@@ -296,12 +283,6 @@ class UsuarioController extends Controller
                 });
             }
 
-            // Filtro por Módulo (puede ser múltiple)
-            $modulos = $request->input('modulos', []);
-            if (!empty($modulos) && is_array($modulos)) {
-                $query->whereIn('modulo', $modulos);
-            }
-
             // Filtro por Descripción
             if ($descripcion) {
                 $query->where('descripcion', $descripcion);
@@ -337,19 +318,6 @@ class UsuarioController extends Controller
                 'ESPECIALIZADO' => $equiposEspecializados,
                 'NO ESPECIALIZADO' => $equiposNoEspecializados
             ];
-
-            // Equipos por Módulo
-            $equiposPorModulo = (clone $query)
-                ->select('modulo', DB::raw('count(*) as total'))
-                ->whereNotNull('modulo')
-                ->groupBy('modulo')
-                ->orderBy('total', 'desc')
-                ->get()
-                ->mapWithKeys(function ($item) {
-                    $nombreAmigable = \App\Helpers\ModuloHelper::getNombreAmigable($item->modulo);
-                    return [($nombreAmigable ?? $item->modulo) => $item->total];
-                })
-                ->toArray();
 
             // Todas las Descripciones (sin límite Top 10)
             $topDescripciones = (clone $query)
@@ -397,11 +365,6 @@ class UsuarioController extends Controller
                 $queryEstablecimientos->where('establecimientos.id', $establecimientoId);
             }
 
-            // Aplicar filtro de módulo
-            if ($modulo) {
-                $queryEstablecimientos->where('mon_equipos_computo.modulo', $modulo);
-            }
-
             // Aplicar filtro de descripción
             if ($descripcion) {
                 $queryEstablecimientos->where('mon_equipos_computo.descripcion', $descripcion);
@@ -415,10 +378,15 @@ class UsuarioController extends Controller
                 ->pluck('total', 'nombre')
                 ->toArray();
 
-            // --- NUEVO: Estadísticas de Conectividad para Gráficos ---
+            // --- Estadísticas de Conectividad y de Consultorio para Gráficos ---
             $equiposPorConectividad = [];
             $equiposPorFuenteWifi = [];
             $equiposPorProveedor = [];
+            // Ya no se recolectan módulos fijos: se agrupa por el nombre real del
+            // consultorio (fijo o dinámico), igual que en el Reporte de Equipos,
+            // en vez del slug crudo de 'modulo' (que para consultorios dinámicos
+            // no dice nada por sí solo).
+            $equiposPorConsultorio = [];
 
             // Obtenemos todos los equipos filtrados con sus cabeceras y detalles
             $equiposParaStats = (clone $query)->with(['cabecera.detalles'])->get();
@@ -441,7 +409,13 @@ class UsuarioController extends Controller
                 if ($operador && $operador !== '---') {
                     $equiposPorProveedor[$operador] = ($equiposPorProveedor[$operador] ?? 0) + ($e->cantidad ?? 1);
                 }
+
+                // Consultorio (fijo o dinámico)
+                $nombreConsultorio = \App\Helpers\ModuloHelper::getNombreModulo($e->cabecera, $e->modulo);
+                $equiposPorConsultorio[$nombreConsultorio] = ($equiposPorConsultorio[$nombreConsultorio] ?? 0) + 1;
             }
+
+            arsort($equiposPorConsultorio);
 
             // Retornar datos
             $response = [
@@ -449,7 +423,7 @@ class UsuarioController extends Controller
                 'periodoTexto' => $periodoTexto,
                 'equiposPorEstado' => $equiposPorEstado,
                 'equiposPorTipo' => $equiposPorTipo,
-                'equiposPorModulo' => $equiposPorModulo,
+                'equiposPorConsultorio' => $equiposPorConsultorio,
                 'topDescripciones' => $topDescripciones,
                 'equiposPorEstablecimiento' => $equiposPorEstablecimiento,
                 'equiposPorConectividad' => $equiposPorConectividad,
@@ -461,7 +435,7 @@ class UsuarioController extends Controller
                 'totalEquipos' => $totalEquipos,
                 'count_estado' => count($equiposPorEstado),
                 'count_tipo' => count($equiposPorTipo),
-                'count_modulo' => count($equiposPorModulo),
+                'count_consultorio' => count($equiposPorConsultorio),
                 'count_desc' => count($topDescripciones),
                 'count_estab' => count($equiposPorEstablecimiento),
                 'sample_estado' => $equiposPorEstado,
@@ -479,7 +453,7 @@ class UsuarioController extends Controller
                 'periodoTexto' => 'Error',
                 'equiposPorEstado' => [],
                 'equiposPorTipo' => ['ESPECIALIZADO' => 0, 'NO ESPECIALIZADO' => 0],
-                'equiposPorModulo' => [],
+                'equiposPorConsultorio' => [],
                 'topDescripciones' => []
             ], 500);
         }
@@ -497,7 +471,6 @@ class UsuarioController extends Controller
             $provincia = $request->input('provincia');
             $distrito = $request->input('distrito');
             $establecimientoId = $request->input('establecimiento_id');
-            $modulos = $request->input('modulos', []);
 
             // Códigos y nombres de establecimientos especializados
             $codigosCSMC = ['25933', '28653', '27197', '34021', '25977', '33478', '27199', '30478'];
@@ -568,11 +541,6 @@ class UsuarioController extends Controller
                 });
             }
 
-            // Aplicar filtro por Módulos
-            if (!empty($modulos) && is_array($modulos)) {
-                $query->whereIn('modulo', $modulos);
-            }
-
             // Obtener IDs de cabeceras y establecimientos con equipos filtrados
             $cabecerasIds = (clone $query)->pluck('cabecera_monitoreo_id')->unique();
             $establecimientosIds = CabeceraMonitoreo::whereIn('id', $cabecerasIds)
@@ -613,21 +581,6 @@ class UsuarioController extends Controller
                 })
                 ->values();
 
-            // Obtener módulos disponibles (de equipos filtrados)
-            $modulosDisponibles = (clone $query)
-                ->select('modulo')
-                ->distinct()
-                ->whereNotNull('modulo')
-                ->orderBy('modulo')
-                ->pluck('modulo')
-                ->map(function ($modulo) {
-                    return [
-                        'valor' => $modulo,
-                        'nombre' => \App\Helpers\ModuloHelper::getNombreAmigable($modulo) ?? $modulo
-                    ];
-                })
-                ->values();
-
             // Obtener descripciones disponibles
             $descripciones = (clone $query)
                 ->select('descripcion')
@@ -642,7 +595,6 @@ class UsuarioController extends Controller
                 'provincias' => $provincias,
                 'distritos' => $distritos,
                 'establecimientos' => $establecimientos,
-                'modulos' => $modulosDisponibles,
                 'descripciones' => $descripciones
             ]);
 

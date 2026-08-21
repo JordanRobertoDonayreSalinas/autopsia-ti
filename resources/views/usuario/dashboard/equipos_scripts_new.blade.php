@@ -8,7 +8,7 @@
     // Variables globales para los gráficos
     let chartEstado = null;
     let chartTipo = null;
-    let chartModulo = null;
+    let chartConsultorio = null;
     let chartDescripcion = null;
     let chartEstablecimiento = null;
     let chartConectividad = null;
@@ -130,16 +130,9 @@
             const establecimientoId = document.getElementById('eq_establecimiento')?.value || '';
             const descripcion = document.getElementById('eq_descripcion')?.value || '';
 
-            const checkboxes = document.querySelectorAll('.eq_modulo_checkbox:checked');
-            const modulosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
-
             const params = new URLSearchParams({
                 mes: mes, anio: anio, tipo: tipo, provincia: provincia, distrito: distrito,
                 establecimiento_id: establecimientoId, descripcion: descripcion
-            });
-
-            modulosSeleccionados.forEach(modulo => {
-                if (modulo) params.append('modulos[]', modulo);
             });
 
             const url = '{{ route("usuario.dashboard.ajax.equipos.stats") }}?' + params.toString();
@@ -188,7 +181,7 @@
         // --- ACTUALIZAR GRÁFICOS ---
         try { renderizarGraficoEstado(data.equiposPorEstado || {}); } catch (e) { console.error(e); }
         try { renderizarGraficoTipo(data.equiposPorTipo || {}); } catch (e) { console.error(e); }
-        try { chartModulo = renderizarBarrasHorizontales('chartModulo', data.equiposPorModulo || {}, chartModulo, THEME.purple); } catch (e) { console.error(e); }
+        try { chartConsultorio = renderizarBarrasHorizontales('chartConsultorio', data.equiposPorConsultorio || {}, chartConsultorio, THEME.purple); } catch (e) { console.error(e); }
         try { chartDescripcion = renderizarBarrasHorizontales('chartDescripcion', data.topDescripciones || {}, chartDescripcion, THEME.warning); } catch (e) { console.error(e); }
         try { renderizarGraficoEstablecimiento(data.equiposPorEstablecimiento || {}); } catch (e) { console.error(e); }
         
@@ -419,11 +412,8 @@
             const provincia = document.getElementById('eq_provincia')?.value || '';
             const distrito = document.getElementById('eq_distrito')?.value || '';
             const establecimientoId = document.getElementById('eq_establecimiento')?.value || '';
-            const checkboxes = document.querySelectorAll('.eq_modulo_checkbox:checked');
-            const modulosSeleccionados = Array.from(checkboxes).map(cb => cb.value);
 
             const params = new URLSearchParams({ mes, anio, tipo, provincia, distrito, establecimiento_id: establecimientoId });
-            modulosSeleccionados.forEach(m => params.append('modulos[]', m));
 
             fetch('{{ route("usuario.dashboard.ajax.equipos.filter-options") }}?' + params.toString())
                 .then(r => r.json())
@@ -432,7 +422,6 @@
                         actualizarSelectProvincias(data.provincias);
                         actualizarSelectDistritos(data.distritos || []);
                         actualizarSelectEstablecimientos(data.establecimientos);
-                        actualizarCheckboxesModulos(data.modulos);
                         actualizarSelectDescripciones(data.descripciones);
                     }
                 });
@@ -478,42 +467,6 @@
         });
     }
 
-    function actualizarCheckboxesModulos(modulos) {
-        const gridContainer = document.querySelector('.eq_modulo_checkbox')?.closest('.grid') || 
-                            document.querySelector('input[name="modulos[]"]')?.closest('.grid');
-        if (!gridContainer) return;
-
-        const seleccionados = Array.from(document.querySelectorAll('.eq_modulo_checkbox:checked')).map(cb => cb.value);
-        gridContainer.innerHTML = '';
-
-        modulos.forEach(mod => {
-            const esEspecializado = mod.valor.endsWith('_esp') || mod.valor.startsWith('sm_');
-            const label = document.createElement('label');
-            label.className = `flex items-center gap-2 p-2 rounded-lg hover:bg-white transition-all cursor-pointer group ${esEspecializado ? 'border-l-2 border-purple-400' : ''}`;
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox'; checkbox.name = 'modulos[]'; checkbox.value = mod.valor;
-            checkbox.className = 'eq_modulo_checkbox w-4 h-4 rounded cursor-pointer ' + (esEspecializado ? 'text-purple-600' : 'text-indigo-600');
-            if (seleccionados.includes(mod.valor)) checkbox.checked = true;
-            checkbox.addEventListener('change', actualizarContador);
-
-            const span = document.createElement('span');
-            span.className = `text-sm transition-colors ${esEspecializado ? 'text-purple-700 font-medium' : 'text-slate-700'}`;
-            span.textContent = mod.nombre;
-
-            label.appendChild(checkbox);
-            label.appendChild(span);
-            if (esEspecializado) {
-                const badge = document.createElement('span');
-                badge.className = 'ml-auto text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-semibold';
-                badge.textContent = 'ESP';
-                label.appendChild(badge);
-            }
-            gridContainer.appendChild(label);
-        });
-        actualizarContador();
-    }
-
     function actualizarSelectDescripciones(descripciones) {
         const select = document.getElementById('eq_descripcion');
         if (!select) return;
@@ -527,33 +480,15 @@
         });
     }
 
-    function actualizarContador() {
-        const count = document.querySelectorAll('.eq_modulo_checkbox:checked').length;
-        const contador = document.getElementById('contadorModulos');
-        if (contador) {
-            contador.textContent = count === 0 ? '0 seleccionados' : count === 1 ? '1 seleccionado' : `${count} seleccionados`;
-        }
-    }
-
     // ============================================
     // INICIALIZACIÓN
     // ============================================
     document.addEventListener('DOMContentLoaded', () => {
         cargarEstadisticas();
-        
+
         document.getElementById('btnAplicarFiltrosEquipos')?.addEventListener('click', (e) => {
             e.preventDefault();
             cargarEstadisticas();
-        });
-
-        document.getElementById('btnSeleccionarTodos')?.addEventListener('click', () => {
-            document.querySelectorAll('.eq_modulo_checkbox').forEach(cb => cb.checked = true);
-            actualizarContador();
-        });
-
-        document.getElementById('btnLimpiarModulos')?.addEventListener('click', () => {
-            document.querySelectorAll('.eq_modulo_checkbox').forEach(cb => cb.checked = false);
-            actualizarContador();
         });
 
         ['eq_mes', 'eq_anio', 'eq_tipo', 'eq_provincia', 'eq_distrito', 'eq_establecimiento'].forEach(id => {

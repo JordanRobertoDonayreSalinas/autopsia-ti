@@ -10,8 +10,8 @@
 
     {{-- FILTROS (Colapsable) --}}
     <div x-show="mostrarFiltros" x-transition.opacity.duration.300ms class="bg-white rounded-2xl shadow-sm p-5 border border-slate-200 mb-6 relative">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+
             <div class="flex flex-col">
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Año y Mes</label>
                 <div class="flex gap-2">
@@ -66,24 +66,6 @@
                         <option value="{{ $est->id }}">{{ $est->nombre }}</option>
                     @endforeach
                 </select>
-            </div>
-
-            <div class="md:col-span-2 lg:col-span-3 flex flex-col">
-                <div class="flex items-center justify-between mb-1">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Filtro por Módulos (Opcional)</label>
-                    <div class="flex gap-2">
-                        <button type="button" id="btnSeleccionarTodos" class="text-[9px] font-bold text-indigo-500 hover:text-indigo-700 uppercase">Seleccionar Todos</button>
-                        <button type="button" id="btnLimpiarModulos" class="text-[9px] font-bold text-slate-400 hover:text-slate-600 uppercase">Limpiar</button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 max-h-32 overflow-y-auto">
-                    @foreach($modulos as $mod)
-                        <label class="flex items-center gap-1.5 cursor-pointer group">
-                            <input type="checkbox" name="modulos[]" value="{{ $mod['valor'] }}" class="eq_modulo_checkbox w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
-                            <span class="text-[10px] text-slate-600 group-hover:text-indigo-600 font-medium truncate" title="{{ $mod['nombre'] }}">{{ $mod['nombre'] }}</span>
-                        </label>
-                    @endforeach
-                </div>
             </div>
 
             <div class="flex flex-col justify-end">
@@ -165,10 +147,10 @@
             {{-- Barras: Módulos y Modelos --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                    <h4 class="text-sm font-extrabold text-slate-800 mb-1 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-purple-500"></i> Uso por Módulo</h4>
-                    <p class="text-[10px] text-slate-400 mb-4">Módulos con mayor cantidad de equipos asignados</p>
+                    <h4 class="text-sm font-extrabold text-slate-800 mb-1 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-purple-500"></i> Uso por Consultorio</h4>
+                    <p class="text-[10px] text-slate-400 mb-4">Consultorios con mayor cantidad de equipos registrados</p>
                     <div class="h-[260px] w-full">
-                        <canvas id="chartModulo"></canvas>
+                        <canvas id="chartConsultorio"></canvas>
                     </div>
                 </div>
                 
