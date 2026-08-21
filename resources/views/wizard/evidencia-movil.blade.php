@@ -27,6 +27,19 @@
         <span id="contador" class="text-sm font-black text-indigo-700">{{ count($evidenciasGuardadas) + count($evidenciasPendientes) }} / {{ $maxEvidencias }}</span>
       </div>
 
+      {{-- Siguiente espacio sugerido (si el consultorio tiene plantilla de fotos pendientes) --}}
+      @if ($proximaEtiqueta)
+        <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3">
+          <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest">📋 Siguiente foto sugerida</p>
+          <p id="proxima_etiqueta_texto" class="text-sm font-black text-amber-700 mt-0.5">{{ $proximaEtiqueta }}</p>
+        </div>
+      @endif
+      @if (count($plantillasPendientes) > 1)
+        <div id="lista_plantillas" class="text-[10px] font-bold text-slate-400">
+          También faltan: {{ collect($plantillasPendientes)->skip(1)->pluck('descripcion')->implode(' · ') }}
+        </div>
+      @endif
+
       {{-- Paso 1: tomar / elegir foto --}}
       <div id="paso_captura" class="{{ (count($evidenciasGuardadas) + count($evidenciasPendientes)) >= $maxEvidencias ? 'hidden' : '' }}">
         <label for="input_foto" class="block cursor-pointer">
@@ -115,6 +128,10 @@
     const MAX_EVIDENCIAS = @json($maxEvidencias);
     let contador = @json(count($evidenciasGuardadas) + count($evidenciasPendientes));
     let archivoActual = null;
+    // Espacios de plantilla (con descripción ya puesta) todavía sin foto, en
+    // orden: se sugiere el primero como descripción por defecto de la
+    // siguiente foto, y se va descontando localmente al subir cada una.
+    let plantillasPendientes = @json($plantillasPendientes);
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     const pasoCaptura = document.getElementById('paso_captura');
@@ -142,10 +159,33 @@
         previewImg.src = e.target.result;
         pasoCaptura.classList.add('hidden');
         pasoDescripcion.classList.remove('hidden');
-        inputDescripcion.value = '';
+        // Se sugiere el siguiente espacio pendiente, pero queda editable por
+        // si esta foto en realidad es para otra cosa.
+        inputDescripcion.value = plantillasPendientes[0]?.descripcion || '';
         inputDescripcion.focus();
+        inputDescripcion.select();
       };
       reader.readAsDataURL(archivoActual);
+    }
+
+    function actualizarSugerenciaPlantilla() {
+      const banner = document.getElementById('proxima_etiqueta_texto');
+      const listaExtra = document.getElementById('lista_plantillas');
+      if (banner) {
+        const contenedor = banner.closest('div.bg-amber-50');
+        if (plantillasPendientes.length === 0) {
+          if (contenedor) contenedor.remove();
+        } else {
+          banner.textContent = plantillasPendientes[0].descripcion;
+        }
+      }
+      if (listaExtra) {
+        if (plantillasPendientes.length > 1) {
+          listaExtra.textContent = 'También faltan: ' + plantillasPendientes.slice(1).map(p => p.descripcion).join(' · ');
+        } else {
+          listaExtra.remove();
+        }
+      }
     }
 
     function cancelarFoto() {
@@ -254,6 +294,14 @@
           contadorEl.textContent = `${contador} / ${MAX_EVIDENCIAS}`;
           agregarAPendientes(data.path, descripcion, previewImg.src);
           mostrarMensaje('¡Foto enviada! Recuerda guardar el formulario en la computadora para que quede guardada.', 'ok');
+
+          // Si la descripción usada coincide con el siguiente espacio sugerido,
+          // se descuenta de la lista local (ya no hace falta volver a sugerirlo).
+          const idx = plantillasPendientes.findIndex(p => p.descripcion.trim().toUpperCase() === descripcion.trim().toUpperCase());
+          if (idx !== -1) {
+            plantillasPendientes.splice(idx, 1);
+            actualizarSugerenciaPlantilla();
+          }
 
           archivoActual = null;
           inputFoto.value = '';

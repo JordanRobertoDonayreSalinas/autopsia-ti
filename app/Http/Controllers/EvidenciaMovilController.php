@@ -95,6 +95,34 @@ class EvidenciaMovilController extends Controller
         return "evidencia_movil_pendientes_{$token}";
     }
 
+    /** Fotos realmente cargadas (con path): excluye los espacios de plantilla vacíos. */
+    private function fotosReales(array $evidencias): array
+    {
+        return array_values(array_filter($evidencias, fn ($e) => !empty($e['path'] ?? null)));
+    }
+
+    /**
+     * Espacios de plantilla (descripción ya puesta, sin foto todavía) que
+     * aún no están cubiertos ni por una foto ya guardada ni por una
+     * pendiente subida desde este mismo celular, en el orden original.
+     */
+    private function plantillasPendientes(array $evidencias, array $pendientes): array
+    {
+        $descripcionesPendientes = array_map(
+            fn ($p) => mb_strtoupper(trim($p['descripcion'] ?? '')),
+            $pendientes
+        );
+
+        return array_values(array_filter($evidencias, function ($e) use ($descripcionesPendientes) {
+            if (!empty($e['path'] ?? null)) {
+                return false;
+            }
+            $descripcion = mb_strtoupper(trim($e['descripcion'] ?? ''));
+
+            return $descripcion !== '' && !in_array($descripcion, $descripcionesPendientes, true);
+        }));
+    }
+
     /**
      * (Público, sin login — accedido por el celular al escanear el QR.)
      * Página móvil: cámara + descripción + subir.
@@ -110,12 +138,17 @@ class EvidenciaMovilController extends Controller
 
         $contenido = $detalle->contenido ?? [];
         $tituloConsultorio = $contenido['titulo_consultorio'] ?? 'Consultorio';
+        $evidencias = $contenido['evidencias'] ?? [];
+        $pendientes = Cache::get($this->clavePendientes($token), []);
+        $plantillas = $this->plantillasPendientes($evidencias, $pendientes);
 
         return view('wizard.evidencia-movil', [
             'token' => $token,
             'tituloConsultorio' => $tituloConsultorio,
-            'evidenciasGuardadas' => $contenido['evidencias'] ?? [],
-            'evidenciasPendientes' => Cache::get($this->clavePendientes($token), []),
+            'evidenciasGuardadas' => $this->fotosReales($evidencias),
+            'evidenciasPendientes' => $pendientes,
+            'plantillasPendientes' => $plantillas,
+            'proximaEtiqueta' => $plantillas[0]['descripcion'] ?? null,
             'maxEvidencias' => self::MAX_EVIDENCIAS,
         ]);
     }
@@ -145,7 +178,7 @@ class EvidenciaMovilController extends Controller
             ->where('modulo_nombre', $slug)
             ->firstOrFail();
 
-        $evidenciasGuardadas = $detalle->contenido['evidencias'] ?? [];
+        $evidenciasGuardadas = $this->fotosReales($detalle->contenido['evidencias'] ?? []);
         $pendientes = Cache::get($this->clavePendientes($token), []);
         $totalActual = count($evidenciasGuardadas) + count($pendientes);
 
@@ -215,7 +248,7 @@ class EvidenciaMovilController extends Controller
         $detalle = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
             ->where('modulo_nombre', $slug)
             ->first();
-        $totalGuardadas = count($detalle->contenido['evidencias'] ?? []);
+        $totalGuardadas = count($this->fotosReales($detalle->contenido['evidencias'] ?? []));
         $totalNuevo = $totalGuardadas + count($pendientesFiltradas);
 
         return response()->json([

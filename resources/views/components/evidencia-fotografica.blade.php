@@ -36,24 +36,53 @@
 
     <div id="container_evidencias" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-count="{{ count($evidencias) }}">
         @foreach ($evidencias as $idx => $ev)
-            <div class="evidencia-card bg-slate-50 rounded-2xl border-2 border-indigo-200 p-3 shadow-sm" data-idx="{{ $idx }}">
-                <input type="hidden" name="evidencias[{{ $idx }}][path_existente]" value="{{ $ev['path'] }}">
-                <div class="relative group">
-                    <img id="img_preview_evidencia_{{ $idx }}"
-                         src="{{ asset('storage/' . $ev['path']) }}"
-                         alt="Evidencia {{ $idx + 1 }}"
-                         class="h-40 w-full rounded-xl object-cover shadow-inner bg-white">
-                    <input type="file" name="evidencias[{{ $idx }}][foto]" accept="image/*" onchange="previewEvidenciaImage({{ $idx }}, this)"
-                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" title="Reemplazar fotografía">
-                    <button type="button" onclick="removeEvidenciaRow({{ $idx }})"
-                        class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 z-30" title="Quitar fotografía">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                    </button>
+            @if (empty($ev['path']))
+                {{-- Espacio predefinido (ej. plantilla del consultorio): ya tiene
+                     descripción puesta, solo falta la foto. Se puede completar
+                     desde aquí o desde el celular (se acopla automáticamente por
+                     descripción); si no aplica, se borra con la papelera. --}}
+                <div class="evidencia-card bg-amber-50/40 rounded-2xl border-2 border-dashed border-amber-300 p-3 shadow-sm" data-idx="{{ $idx }}">
+                    <input type="hidden" name="evidencias[{{ $idx }}][path_existente]" value="">
+                    <div class="relative">
+                        <div id="dropzone_evidencia_{{ $idx }}" class="h-40 rounded-xl bg-white border border-amber-200 flex flex-col items-center justify-center gap-1.5 text-center px-2">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                            </div>
+                            <p class="text-[10px] font-black text-slate-700 uppercase">Toque para subir</p>
+                            <p class="text-[9px] font-bold text-amber-600 uppercase">Espacio pendiente</p>
+                        </div>
+                        <img id="img_preview_evidencia_{{ $idx }}" class="h-40 w-full rounded-xl object-cover shadow-inner bg-white hidden" alt="Evidencia {{ $idx + 1 }}">
+                        <input type="file" name="evidencias[{{ $idx }}][foto]" accept="image/*" onchange="previewEvidenciaImage({{ $idx }}, this)"
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                        <button type="button" onclick="removeEvidenciaRow({{ $idx }})"
+                            class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 z-30" title="Quitar este espacio">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <input type="text" name="evidencias[{{ $idx }}][descripcion]" value="{{ $ev['descripcion'] ?? '' }}"
+                           placeholder="Descripción de la foto..."
+                           class="w-full mt-2 px-3 py-2 bg-white border-2 border-amber-200 focus:border-amber-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
                 </div>
-                <input type="text" name="evidencias[{{ $idx }}][descripcion]" value="{{ $ev['descripcion'] ?? '' }}"
-                       placeholder="Descripción de la foto..."
-                       class="w-full mt-2 px-3 py-2 bg-white border-2 border-indigo-200 focus:border-indigo-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
-            </div>
+            @else
+                <div class="evidencia-card bg-slate-50 rounded-2xl border-2 border-indigo-200 p-3 shadow-sm" data-idx="{{ $idx }}">
+                    <input type="hidden" name="evidencias[{{ $idx }}][path_existente]" value="{{ $ev['path'] }}">
+                    <div class="relative group">
+                        <img id="img_preview_evidencia_{{ $idx }}"
+                             src="{{ asset('storage/' . $ev['path']) }}"
+                             alt="Evidencia {{ $idx + 1 }}"
+                             class="h-40 w-full rounded-xl object-cover shadow-inner bg-white">
+                        <input type="file" name="evidencias[{{ $idx }}][foto]" accept="image/*" onchange="previewEvidenciaImage({{ $idx }}, this)"
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" title="Reemplazar fotografía">
+                        <button type="button" onclick="removeEvidenciaRow({{ $idx }})"
+                            class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 z-30" title="Quitar fotografía">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <input type="text" name="evidencias[{{ $idx }}][descripcion]" value="{{ $ev['descripcion'] ?? '' }}"
+                           placeholder="Descripción de la foto..."
+                           class="w-full mt-2 px-3 py-2 bg-white border-2 border-indigo-200 focus:border-indigo-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
+                </div>
+            @endif
         @endforeach
     </div>
 </div>
@@ -232,7 +261,9 @@
                 let nuevas = 0;
                 pendientes.forEach(ev => {
                     if (!pathsActuales.has(ev.path) && !evidenciasRemovidasLocalmente.has(ev.path)) {
-                        agregarEvidenciaDesdeMovil(ev.path, ev.descripcion || '');
+                        if (!llenarEspacioExistente(ev.path, ev.descripcion || '')) {
+                            agregarEvidenciaDesdeMovil(ev.path, ev.descripcion || '');
+                        }
                         nuevas++;
                     }
                 });
@@ -256,6 +287,56 @@
                 }
             })
             .catch(() => {});
+    }
+
+    /**
+     * Si hay un espacio ya en pantalla (predefinido, sin foto) cuya
+     * descripción coincide con la de esta foto pendiente, se acopla ahí
+     * mismo en vez de agregar una tarjeta nueva — así la foto cae en el
+     * espacio correcto (ej. "TOMA ESTABILIZADA (BLANCA) INTERNA") aunque el
+     * auditor las haya tomado en otro orden. Si no hay coincidencia (foto
+     * de más, o descripción distinta), devuelve false y se agrega como
+     * tarjeta nueva de la forma habitual.
+     */
+    function llenarEspacioExistente(path, descripcion) {
+        const normalizar = (s) => (s || '').trim().toUpperCase();
+        const objetivo = normalizar(descripcion);
+        if (!objetivo) return false;
+
+        const candidatos = document.querySelectorAll('#container_evidencias .evidencia-card');
+        for (const card of candidatos) {
+            const inputPath = card.querySelector('input[name*="[path_existente]"]');
+            if (!inputPath || inputPath.value) continue; // ya tiene foto: no es un espacio libre
+
+            const inputDesc = card.querySelector('input[name*="[descripcion]"]');
+            if (!inputDesc || normalizar(inputDesc.value) !== objetivo) continue;
+
+            const idx = card.dataset.idx;
+            inputPath.value = path;
+            card.dataset.origen = 'movil';
+            card.classList.remove('bg-amber-50/40', 'border-dashed');
+            card.classList.add('bg-amber-50');
+
+            const dropzone = document.getElementById('dropzone_evidencia_' + idx);
+            const img = document.getElementById('img_preview_evidencia_' + idx);
+            if (dropzone) dropzone.classList.add('hidden');
+            if (img) {
+                img.src = `${STORAGE_BASE}/${path}`;
+                img.classList.remove('hidden');
+            }
+
+            const relativeContainer = card.querySelector('.relative');
+            if (relativeContainer && !relativeContainer.querySelector('.badge-celular')) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-celular absolute top-2 left-2 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black uppercase shadow flex items-center gap-1 z-10';
+                badge.innerHTML = '<i data-lucide="smartphone" class="w-2.5 h-2.5"></i> Celular · sin guardar';
+                relativeContainer.prepend(badge);
+            }
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            return true;
+        }
+        return false;
     }
 
     function agregarEvidenciaDesdeMovil(path, descripcion) {

@@ -16,6 +16,25 @@ use Illuminate\Support\Str;
 class MonitoreoModuloGenericController extends Controller
 {
     /**
+     * Espacios de evidencia fotográfica predefinidos con los que arranca todo
+     * consultorio dinámico nuevo: cada uno es una entrada en
+     * contenido['evidencias'] con su descripción ya puesta pero sin foto
+     * (path vacío). El auditor solo tiene que tomarles la foto (o borrar el
+     * espacio si no aplica en ese consultorio); es opcional completarlos
+     * todos — cualquiera que quede sin foto simplemente no se guarda.
+     */
+    private const PLANTILLA_EVIDENCIAS = [
+        'VISTA GENERAL',
+        'TOMA ESTABILIZADA (BLANCA) INTERNA',
+        'TOMA ESTABILIZADA (ROJA-NARANJA) INTERNA',
+        'TOMA COMERCIAL (BLANCA) EXTERNA',
+        'TOMA COMERCIAL (ROJA-NARANJA) EXTERNA',
+        'PUNTOS DE RED',
+        'AIRE ACONDICIONADO',
+        'EQUIPO DE CÓMPUTO',
+    ];
+
+    /**
      * Crear un nuevo consultorio dinámico para un acta de monitoreo.
      */
     public function crearConsultorio(Request $request, $actaId)
@@ -42,6 +61,10 @@ class MonitoreoModuloGenericController extends Controller
                 'titulo_consultorio' => $titulo,
                 'fecha' => date('Y-m-d'),
                 'turno' => 'MAÑANA',
+                'evidencias' => array_map(
+                    fn ($etiqueta) => ['path' => '', 'descripcion' => $etiqueta],
+                    self::PLANTILLA_EVIDENCIAS
+                ),
             ],
         ]);
 
