@@ -3,6 +3,11 @@
 @section('title', 'Módulo / Consultorio: ' . ($tituloConsultorio ?? 'Evaluación'))
 
 @section('content')
+    @php
+        // Identifica esta instancia de formulario para el aviso de presencia
+        // (otro usuario viendo/editando el mismo consultorio al mismo tiempo).
+        $claveConsultorio = "consultorio_{$acta->id}_{$slug}";
+    @endphp
     <div class="py-10 bg-slate-50/80 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
@@ -46,6 +51,16 @@
                         <span>Volver a Módulos</span>
                     </a>
                 </div>
+            </div>
+
+            {{-- Aviso de presencia: si otro usuario también está viendo este mismo
+                 consultorio ahora mismo, para evitar que uno pise sin darse cuenta
+                 lo que el otro acaba de guardar. --}}
+            <div id="banner_presencia" class="hidden mb-6 bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-3.5 flex items-center gap-3 shadow-sm">
+                <div class="w-9 h-9 rounded-xl bg-amber-400 text-white flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                </div>
+                <p id="banner_presencia_texto" class="text-xs font-bold text-amber-800"></p>
             </div>
 
             <form action="{{ route('usuario.monitoreo.consultorio.store', [$acta->id, $slug]) }}" method="POST"
@@ -1134,6 +1149,90 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
 
+        // ── PRESENCIA: aviso si otro usuario está en este mismo consultorio ──
+        // Sondeo liviano (cada 10s, sin fusionar datos de formulario entre
+        // usuarios): solo informa quién más está viendo/editando este mismo
+        // consultorio ahora mismo, para coordinar y no pisar sin darse cuenta
+        // lo que el otro acaba de guardar.
+        const PRESENCIA_URLS = {
+            sync: @json(route('usuario.presencia.sync', $claveConsultorio)),
+            leave: @json(route('usuario.presencia.leave', $claveConsultorio)),
+        };
+        let pollingPresencia = null;
+        let otrosPresentesActual = [];
+
+        function actualizarBannerPresencia(otros) {
+            const banner = document.getElementById('banner_presencia');
+            const texto = document.getElementById('banner_presencia_texto');
+            if (!banner || !texto) return;
+
+            if (otros.length === 0) {
+                banner.classList.add('hidden');
+                return;
+            }
+
+            const nombres = otros.map(o => o.user_name).join(', ');
+            texto.textContent = otros.length === 1
+                ? `⚠️ ${nombres} también está viendo este consultorio ahora mismo. Coordinen para no sobrescribir los cambios del otro.`
+                : `⚠️ ${nombres} también están viendo este consultorio ahora mismo. Coordinen para no sobrescribir los cambios entre ustedes.`;
+            banner.classList.remove('hidden');
+        }
+
+        function sondearPresencia() {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+            fetch(PRESENCIA_URLS.sync, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            })
+                .then(r => r.json())
+                .then(data => {
+                    const otros = data.otros || [];
+                    const idsAnteriores = new Set(otrosPresentesActual.map(o => o.user_id));
+                    const sonNuevos = otros.filter(o => !idsAnteriores.has(o.user_id));
+
+                    // Alerta interruptiva solo la primera vez que se detecta a alguien
+                    // (no en cada sondeo, para no ser invasivo).
+                    if (sonNuevos.length > 0 && otrosPresentesActual.length === 0) {
+                        const nombres = sonNuevos.map(o => o.user_name).join(', ');
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Otro usuario está aquí',
+                            html: `<p class="text-xs text-slate-600 font-semibold">${nombres} también ${sonNuevos.length === 1 ? 'está' : 'están'} viendo este consultorio ahora mismo. Si ambos guardan, el último en hacerlo sobrescribirá los cambios del otro.</p>`,
+                            confirmButtonText: 'Entendido',
+                            confirmButtonColor: '#f59e0b',
+                            customClass: { popup: 'rounded-[2.5rem] p-6' }
+                        });
+                    }
+
+                    otrosPresentesActual = otros;
+                    actualizarBannerPresencia(otros);
+                })
+                .catch(() => {});
+        }
+
+        function iniciarPresencia() {
+            sondearPresencia();
+            if (pollingPresencia) clearInterval(pollingPresencia);
+            pollingPresencia = setInterval(sondearPresencia, 10000);
+        }
+
+        function salirPresencia() {
+            if (pollingPresencia) clearInterval(pollingPresencia);
+            const fd = new FormData();
+            fd.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}');
+            navigator.sendBeacon(PRESENCIA_URLS.leave, fd);
+        }
+
+        document.addEventListener('DOMContentLoaded', iniciarPresencia);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (pollingPresencia) clearInterval(pollingPresencia);
+            } else {
+                iniciarPresencia();
+            }
+        });
+        window.addEventListener('beforeunload', salirPresencia);
+
         document.getElementById('form-monitoreo-final').onsubmit = function (e) {
             // Al guardar, se corta el sondeo del código QR de evidencia móvil
             // (el servidor también lo cierra) para no seguir consultando de
@@ -1193,18 +1292,19 @@
                 }
             });
 
-            // 2.5. FOTOGRAFÍAS DE EVIDENCIA: cada casilla presente necesita foto
-            // (existente o recien elegida) y descripción, sino no tiene sentido
+            // 2.5. FOTOGRAFÍAS DE EVIDENCIA: una casilla completamente vacía (sin
+            // foto ni descripción tocada) es un espacio opcional sin usar — se
+            // ignora al guardar, igual que ya hace el backend, así que no debe
+            // bloquear el envío. Solo se exige descripción cuando la casilla SÍ
+            // tiene una foto (existente o recién elegida): una foto sin describir
+            // no tiene sentido.
             document.querySelectorAll('#container_evidencias .evidencia-card').forEach((card, i) => {
                 const tienePathExistente = !!card.querySelector('input[name*="[path_existente]"]')?.value;
                 const inputFoto = card.querySelector('input[type="file"][name*="[foto]"]');
                 const tieneFotoNueva = inputFoto && inputFoto.files && inputFoto.files.length > 0;
                 const desc = card.querySelector('input[name*="[descripcion]"]');
 
-                if (!tienePathExistente && !tieneFotoNueva) {
-                    faltantes.push(`FOTOGRAFÍAS: Falta subir la imagen en la foto #${i + 1}`);
-                }
-                if (desc && !desc.value.trim()) {
+                if ((tienePathExistente || tieneFotoNueva) && desc && !desc.value.trim()) {
                     faltantes.push(`FOTOGRAFÍAS: Falta la descripción de la foto #${i + 1}`);
                 }
             });
@@ -1294,6 +1394,40 @@
                 });
                 return false;
             }
+
+            // Último aviso antes de guardar de verdad: si en este momento hay
+            // otro usuario en el mismo consultorio, guardar podría sobrescribir
+            // lo que esa persona acaba de ingresar sin que ninguno de los dos se
+            // entere. Se pide confirmar explícitamente antes de continuar.
+            if (otrosPresentesActual.length > 0 && this.dataset.presenciaConfirmada !== '1') {
+                e.preventDefault();
+                const form = this;
+                const nombres = otrosPresentesActual.map(o => o.user_name).join(', ');
+                const esUno = otrosPresentesActual.length === 1;
+                Swal.fire({
+                    icon: 'warning',
+                    title: '¿Guardar de todos modos?',
+                    html: `<p class="text-xs text-slate-500 font-semibold">${nombres} también ${esUno ? 'está' : 'están'} en este consultorio ahora mismo. Si guarda, sus cambios podrían sobrescribir lo que ${esUno ? 'esa persona' : 'esas personas'} acaba de ingresar.</p>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Guardar de todos modos',
+                    cancelButtonText: 'Esperar / Revisar antes',
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#94a3b8',
+                    customClass: { popup: 'rounded-[2.5rem] p-6' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.dataset.presenciaConfirmada = '1';
+                        if (form.requestSubmit) form.requestSubmit();
+                        else form.submit();
+                    }
+                });
+                return false;
+            }
+
+            // El guardado va a proceder de verdad: se corta el sondeo de
+            // presencia y se libera el puesto (el servidor también lo limpiaría
+            // solo por inactividad, pero no hay que esperar a que expire).
+            salirPresencia();
 
             const btn = document.getElementById('btn-submit-action');
             const icon = document.getElementById('icon-save-loader');

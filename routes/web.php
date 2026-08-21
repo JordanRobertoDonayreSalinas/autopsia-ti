@@ -15,6 +15,7 @@ use App\Http\Controllers\EditMonitoreoController;
 use App\Http\Controllers\EstablecimientoController;
 use App\Http\Controllers\EvidenciaMovilController;
 use App\Http\Controllers\EvidenciaMovilFijoController;
+use App\Http\Controllers\FormPresenceController;
 use App\Http\Controllers\FirmaMovilController;
 use App\Http\Controllers\FirmasMonitoreoController;
 use App\Http\Controllers\Infraestructura2DController;
@@ -130,6 +131,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/ajax/hardware-token', [\App\Http\Controllers\HardwareDetectionController::class, 'generarToken'])->name('ajax.hardware-token');
         Route::get('/ajax/hardware-bat/{token}', [\App\Http\Controllers\HardwareDetectionController::class, 'descargarBat'])->name('ajax.hardware-bat');
         Route::get('/ajax/check-deteccion-hardware/{token}', [\App\Http\Controllers\HardwareDetectionController::class, 'checkDeteccion'])->name('ajax.check-deteccion-hardware');
+
+        // Presencia en formularios compartidos: avisa si otro usuario está viendo
+        // el mismo formulario al mismo tiempo (ej. dos auditores en el mismo
+        // consultorio). Genérico: {clave} identifica la instancia de formulario
+        // (ej. "consultorio_{id}_{slug}"), cualquier pantalla puede usarlo.
+        Route::post('/presencia/{clave}/sync', [FormPresenceController::class, 'sync'])->name('presencia.sync');
+        Route::post('/presencia/{clave}/leave', [FormPresenceController::class, 'leave'])->name('presencia.leave');
 
         // --- SECCIÓN: ACTAS DE REUNIÓN ---
         Route::prefix('actas-reunion')->name('reuniones.')->middleware('is_admin')->group(function () {
