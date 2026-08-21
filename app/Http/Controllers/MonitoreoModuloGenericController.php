@@ -41,9 +41,11 @@ class MonitoreoModuloGenericController extends Controller
     {
         $request->validate([
             'titulo_consultorio' => 'required|string|max:150',
+            'acceso_confirmado' => 'required|in:SI,NO',
         ]);
 
         $titulo = mb_strtoupper(trim($request->input('titulo_consultorio')));
+        $pudoIngresar = $request->input('acceso_confirmado') === 'SI';
         $acta = CabeceraMonitoreo::findOrFail($actaId);
 
         // Generar un slug único basado en el nombre y timestamp
@@ -61,12 +63,22 @@ class MonitoreoModuloGenericController extends Controller
                 'titulo_consultorio' => $titulo,
                 'fecha' => date('Y-m-d'),
                 'turno' => 'MAÑANA',
+                // Si todavía no pudo ingresar, el consultorio queda como
+                // PENDIENTE en la lista (solo con su nombre) en vez de abrir
+                // el formulario de una vez: se le vuelve a preguntar cuando
+                // lo abra más adelante.
+                'estado_acceso' => $pudoIngresar ? 'INGRESADO' : 'PENDIENTE',
                 'evidencias' => array_map(
                     fn ($etiqueta) => ['path' => '', 'descripcion' => $etiqueta],
                     self::PLANTILLA_EVIDENCIAS
                 ),
             ],
         ]);
+
+        if (!$pudoIngresar) {
+            return redirect()->route('usuario.monitoreo.modulos', $actaId)
+                ->with('success', "Consultorio '{$titulo}' guardado como pendiente. Podrá completarlo cuando logre ingresar.");
+        }
 
         // Redirigir inmediatamente al formulario del nuevo consultorio
         return redirect()->route('usuario.monitoreo.consultorio.show', [$actaId, $slug])
@@ -99,7 +111,7 @@ class MonitoreoModuloGenericController extends Controller
     /**
      * Muestra el formulario de evaluación de un consultorio dinámico.
      */
-    public function showConsultorio($id, $slug)
+    public function showConsultorio(Request $request, $id, $slug)
     {
         $acta = CabeceraMonitoreo::with('establecimiento')->findOrFail($id);
 
@@ -108,6 +120,15 @@ class MonitoreoModuloGenericController extends Controller
             ->firstOrFail();
 
         $contenido = $detalle->contenido ?? [];
+
+        // El consultorio estaba PENDIENTE (el auditor no había podido
+        // ingresar) y acaba de confirmar que ahora sí pudo: se marca
+        // INGRESADO para que la próxima vez ya no se le vuelva a preguntar.
+        if ($request->query('confirmar_acceso') === '1' && ($contenido['estado_acceso'] ?? 'INGRESADO') === 'PENDIENTE') {
+            $contenido['estado_acceso'] = 'INGRESADO';
+            $detalle->update(['contenido' => $contenido]);
+        }
+
         $tituloConsultorio = $contenido['titulo_consultorio'] ?? 'CONSULTORIO';
 
         // Otros consultorios de la misma acta, para el selector de
@@ -777,7 +798,7 @@ class MonitoreoModuloGenericController extends Controller
 
     public function show(Request $request, $id, $modulo = null)
     {
-        return $this->showConsultorio($id, $this->resolveModuloSlug($request, $modulo));
+        return $this->showConsultorio($request, $id, $this->resolveModuloSlug($request, $modulo));
     }
 
     public function store(Request $request, $id, $modulo = null)

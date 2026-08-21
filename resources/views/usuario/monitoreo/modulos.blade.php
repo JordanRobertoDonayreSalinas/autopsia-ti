@@ -264,6 +264,11 @@
                     $cContent = is_array($consultorio->contenido) ? $consultorio->contenido : (json_decode($consultorio->contenido, true) ?? []);
                     $cTitulo = $cContent['titulo_consultorio'] ?? ('Consultorio ' . ($index + 1));
                     $isSigned = !empty($consultorio->pdf_firmado_path);
+                    // PENDIENTE: el auditor todavía no había podido ingresar cuando lo
+                    // creó. Se le vuelve a preguntar al intentar abrirlo, en vez de
+                    // llevarlo directo al formulario.
+                    $esPendiente = ($cContent['estado_acceso'] ?? 'INGRESADO') === 'PENDIENTE';
+                    $cShowUrl = route('usuario.monitoreo.consultorio.show', [$acta->id, $cSlug]);
 
                     // Si es FUNCIONAL vinculado a un físico, buscar su título para
                     // mostrarlo como badge (sin consulta extra: ya está en la colección).
@@ -291,18 +296,18 @@
                         : addslashes('¿Estás seguro de eliminar este consultorio de la lista?');
                 @endphp
 
-                <div class="relative bg-white rounded-[2.5rem] border-2 border-emerald-200 shadow-xl transition-all duration-500 group overflow-hidden flex flex-col hover:border-emerald-400">
+                <div class="relative bg-white rounded-[2.5rem] border-2 {{ $esPendiente ? 'border-amber-200 hover:border-amber-400' : 'border-emerald-200 hover:border-emerald-400' }} shadow-xl transition-all duration-500 group overflow-hidden flex flex-col">
                     <div class="p-6 pb-0 flex justify-between items-start z-10">
-                        <div class="h-14 w-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg">
-                            <i data-lucide="stethoscope" class="w-7 h-7"></i>
+                        <div class="h-14 w-14 rounded-2xl {{ $esPendiente ? 'bg-amber-500' : 'bg-emerald-500' }} flex items-center justify-center text-white shadow-lg">
+                            <i data-lucide="{{ $esPendiente ? 'clock' : 'stethoscope' }}" class="w-7 h-7"></i>
                         </div>
-                        
+
                         <div class="flex items-center gap-1.5">
-                            <button type="button" @click="editModalSlug = '{{ $cSlug }}'; editModalTitle = '{{ addslashes($cTitulo) }}'; editModalAction = '{{ route('usuario.monitoreo.consultorio.renombrar', [$acta->id, $cSlug]) }}'; showEditModal = true;" 
+                            <button type="button" @click="editModalSlug = '{{ $cSlug }}'; editModalTitle = '{{ addslashes($cTitulo) }}'; editModalAction = '{{ route('usuario.monitoreo.consultorio.renombrar', [$acta->id, $cSlug]) }}'; showEditModal = true;"
                                     class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-400 hover:text-emerald-600 flex items-center justify-center transition-colors" title="Renombrar Consultorio">
                                 <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                             </button>
-                            
+
                             <form action="{{ route('usuario.monitoreo.consultorio.destroy', [$acta->id, $cSlug]) }}" method="POST" onsubmit="return confirm('{{ $mensajeConfirmarEliminar }}');">
                                 @csrf
                                 @method('DELETE')
@@ -314,13 +319,21 @@
                     </div>
 
                     <div class="flex-1">
-                        <a href="{{ route('usuario.monitoreo.consultorio.show', [$acta->id, $cSlug]) }}" class="block p-6 group/link">
-                            <h3 class="text-slate-800 text-sm font-black uppercase tracking-tight leading-tight mb-2 group-hover/link:text-emerald-600 transition-colors">
+                        <a href="{{ $esPendiente ? 'javascript:void(0)' : $cShowUrl }}"
+                           @if($esPendiente) onclick="confirmarAccesoYAbrir('{{ addslashes($cTitulo) }}', '{{ $cShowUrl }}')" @endif
+                           class="block p-6 group/link">
+                            <h3 class="text-slate-800 text-sm font-black uppercase tracking-tight leading-tight mb-2 group-hover/link:{{ $esPendiente ? 'text-amber-600' : 'text-emerald-600' }} transition-colors">
                                 {{ $cTitulo }}
                             </h3>
-                            <span class="text-[9px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-1">
-                                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Evaluación Registrada
-                            </span>
+                            @if($esPendiente)
+                                <span class="text-[9px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5"></i> Pendiente de Ingreso
+                                </span>
+                            @else
+                                <span class="text-[9px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-1">
+                                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Evaluación Registrada
+                                </span>
+                            @endif
                             @if($cVinculadoTitulo)
                                 <span class="text-[9px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-1 mt-1">
                                     <i data-lucide="link" class="w-3.5 h-3.5"></i> Vinculado a: {{ $cVinculadoTitulo }}
@@ -330,12 +343,13 @@
                     </div>
 
                     <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
-                        <a href="{{ route('usuario.monitoreo.consultorio.show', [$acta->id, $cSlug]) }}" 
-                           class="h-10 w-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-sm" title="Evaluar / Editar Formulario">
-                            <i data-lucide="edit-3" class="w-5 h-5"></i>
+                        <a href="{{ $esPendiente ? 'javascript:void(0)' : $cShowUrl }}"
+                           @if($esPendiente) onclick="confirmarAccesoYAbrir('{{ addslashes($cTitulo) }}', '{{ $cShowUrl }}')" @endif
+                           class="h-10 w-10 {{ $esPendiente ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700' }} text-white rounded-xl flex items-center justify-center transition-all shadow-sm" title="{{ $esPendiente ? '¿Ha podido ingresar?' : 'Evaluar / Editar Formulario' }}">
+                            <i data-lucide="{{ $esPendiente ? 'log-in' : 'edit-3' }}" class="w-5 h-5"></i>
                         </a>
 
-                        <a href="{{ route('usuario.monitoreo.consultorio.pdf', [$acta->id, $cSlug]) }}?v={{ time() }}" target="_blank" 
+                        <a href="{{ route('usuario.monitoreo.consultorio.pdf', [$acta->id, $cSlug]) }}?v={{ time() }}" target="_blank"
                            class="h-10 w-10 bg-white text-slate-600 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="Previsualizar Reporte PDF">
                             <i data-lucide="file-text" class="w-5 h-5"></i>
                         </a>
@@ -363,23 +377,24 @@
                 </div>
             </div>
 
-            <form action="{{ route('usuario.monitoreo.consultorio.crear', $acta->id) }}" method="POST" class="space-y-6">
+            <form id="form-nuevo-consultorio" action="{{ route('usuario.monitoreo.consultorio.crear', $acta->id) }}" method="POST" class="space-y-6">
                 @csrf
+                <input type="hidden" name="acceso_confirmado" value="">
 
                 <div>
                     <label class="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Nombre del Consultorio / Módulo</label>
-                    <input type="text" name="titulo_consultorio" required placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA, TRIAJE..." 
+                    <input type="text" name="titulo_consultorio" required placeholder="EJ: GESTIÓN ADMINISTRATIVA, CONSULTORIO DE MEDICINA, TRIAJE..."
                            class="w-full bg-slate-50 border-2 border-slate-200 focus:border-emerald-500 rounded-2xl p-4 font-bold text-slate-800 uppercase outline-none transition-all">
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4">
-                    <button type="button" @click="showNewModal = false" 
+                    <button type="button" @click="showNewModal = false"
                             class="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black rounded-xl text-xs uppercase tracking-widest transition-all">
                         Cancelar
                     </button>
-                    <button type="submit" 
+                    <button type="submit"
                             class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs uppercase tracking-widest shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2">
-                        <i data-lucide="check" class="w-4 h-4"></i> Crear e Iniciar Evaluación
+                        <i data-lucide="check" class="w-4 h-4"></i> Continuar
                     </button>
                 </div>
             </form>
@@ -433,5 +448,57 @@
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     });
+
+    // Al crear un consultorio nuevo, antes de guardar se pregunta si el
+    // auditor ya pudo ingresar: si dice que no, se guarda solo el nombre
+    // como PENDIENTE (no abre el formulario) en vez de forzarlo a llenar
+    // datos de un ambiente al que todavía no entró.
+    document.getElementById('form-nuevo-consultorio')?.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const form = this;
+        const nombre = form.querySelector('input[name="titulo_consultorio"]').value.trim();
+        if (!nombre) {
+            form.reportValidity();
+            return;
+        }
+
+        Swal.fire({
+            icon: 'question',
+            title: '¿Ha podido ingresar al consultorio?',
+            html: `<p class="text-xs text-slate-500 font-semibold">"${nombre}"</p>`,
+            showCancelButton: true,
+            confirmButtonText: 'Sí, pude ingresar',
+            cancelButtonText: 'Todavía no',
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#f59e0b',
+            customClass: { popup: 'rounded-[2.5rem] p-6' }
+        }).then((result) => {
+            form.querySelector('input[name="acceso_confirmado"]').value = result.isConfirmed ? 'SI' : 'NO';
+            form.submit();
+        });
+    });
+
+    // Consultorio marcado como PENDIENTE (todavía no se pudo ingresar cuando
+    // se creó): se vuelve a preguntar antes de abrir el formulario. Si ahora
+    // sí pudo ingresar, se navega al formulario (y queda marcado como
+    // INGRESADO para no volver a preguntar); si sigue sin poder, se queda en
+    // la lista tal como está.
+    function confirmarAccesoYAbrir(nombre, urlBase) {
+        Swal.fire({
+            icon: 'question',
+            title: '¿Ha podido ingresar al consultorio?',
+            html: `<p class="text-xs text-slate-500 font-semibold">"${nombre}"</p>`,
+            showCancelButton: true,
+            confirmButtonText: 'Sí, pude ingresar',
+            cancelButtonText: 'Todavía no',
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#94a3b8',
+            customClass: { popup: 'rounded-[2.5rem] p-6' }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = urlBase + (urlBase.includes('?') ? '&' : '?') + 'confirmar_acceso=1';
+            }
+        });
+    }
 </script>
 @endsection
