@@ -519,6 +519,8 @@
                     <option value="REFCON (REFERENCIA Y CONTRARREFERENCIA)">
                     <option value="TELESALUD">
                     <option value="SICOVID">
+                    <option value="SIS GALENPLUS">
+                    <option value="EXA PACS">
                     <option value="OTRO">
                 </datalist>
 
