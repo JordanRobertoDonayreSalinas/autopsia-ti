@@ -934,6 +934,19 @@
                 const input = card.querySelector('input[name*="[path_existente]"]');
                 if (input && input.value) {
                     evidenciasRemovidasLocalmente.add(input.value);
+                    // Si vino del celular y todavía está pendiente (sin guardar el
+                    // formulario), se avisa también al servidor para liberar el
+                    // archivo y que no vuelva a contar en el máximo de fotos.
+                    if (card.dataset.origen === 'movil' && tokenEvidenciaMovilActivo) {
+                        fetch(`{{ url('/evidencia-movil') }}/${tokenEvidenciaMovilActivo}/eliminar`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            },
+                            body: JSON.stringify({ path: input.value }),
+                        }).catch(() => {});
+                    }
                 }
                 card.remove();
             }
@@ -953,6 +966,9 @@
             estado: '{{ route('usuario.monitoreo.consultorio.evidencia-movil.estado', [$acta->id, $slug]) }}',
         };
         let pollingEvidenciaMovil = null;
+        // Token del QR activo: se usa para poder avisar al servidor cuando el
+        // auditor quita localmente una foto pendiente subida desde el celular.
+        let tokenEvidenciaMovilActivo = null;
 
         function abrirEvidenciaMovil() {
             Swal.fire({
@@ -991,6 +1007,7 @@
                         cont.innerHTML = `<div class="text-rose-500 text-[11px] text-center">${data.message || 'No se pudo generar el código QR. Intente de nuevo.'}</div>`;
                         return;
                     }
+                    tokenEvidenciaMovilActivo = data.token || null;
                     cont.innerHTML = data.qr_html;
                 })
                 .catch(() => {
@@ -1006,31 +1023,34 @@
             fetch(EVIDENCIA_MOVIL_URLS.estado)
                 .then(r => r.json())
                 .then(data => {
-                    const evidencias = data.evidencias || [];
-                    const pathsServidor = new Set(evidencias.map(ev => ev.path));
-                    const tarjetas = Array.from(document.querySelectorAll('#container_evidencias .evidencia-card'));
+                    const pendientes = data.pendientes || [];
+                    const pathsPendientesServidor = new Set(pendientes.map(ev => ev.path));
+                    // Solo se comparan las tarjetas que vinieron del celular: las
+                    // guardadas server-side al cargar la página no son "pendientes"
+                    // y no deben tocarse aquí (su borrado exige guardar el formulario).
+                    const tarjetasMovil = Array.from(document.querySelectorAll('#container_evidencias .evidencia-card[data-origen="movil"]'));
                     const pathsActuales = new Set(
-                        tarjetas
+                        tarjetasMovil
                             .map(card => card.querySelector('input[name*="[path_existente]"]')?.value)
                             .filter(Boolean)
                     );
 
-                    // 1. Fotos nuevas subidas desde el celular: se insertan aquí,
-                    // salvo las que el auditor ya quitó localmente en esta pantalla.
+                    // 1. Fotos nuevas pendientes subidas desde el celular: se insertan
+                    // aquí, salvo las que el auditor ya quitó localmente en esta pantalla.
                     let nuevas = 0;
-                    evidencias.forEach(ev => {
+                    pendientes.forEach(ev => {
                         if (!pathsActuales.has(ev.path) && !evidenciasRemovidasLocalmente.has(ev.path)) {
                             agregarEvidenciaDesdeMovil(ev.path, ev.descripcion || '');
                             nuevas++;
                         }
                     });
 
-                    // 2. Fotos eliminadas desde el celular: se quitan de aquí también,
-                    // sin duplicar aviso con las que el auditor ya quitó él mismo.
+                    // 2. Fotos pendientes quitadas desde el celular: se quitan de aquí
+                    // también, sin duplicar aviso con las que el auditor ya quitó él mismo.
                     let eliminadas = 0;
-                    tarjetas.forEach(card => {
+                    tarjetasMovil.forEach(card => {
                         const path = card.querySelector('input[name*="[path_existente]"]')?.value;
-                        if (path && !pathsServidor.has(path) && !evidenciasRemovidasLocalmente.has(path)) {
+                        if (path && !pathsPendientesServidor.has(path) && !evidenciasRemovidasLocalmente.has(path)) {
                             card.remove();
                             eliminadas++;
                         }
@@ -1041,8 +1061,8 @@
                     if (statusEl && (nuevas > 0 || eliminadas > 0)) {
                         const partes = [];
                         if (nuevas > 0) partes.push(`+${nuevas} nueva(s)`);
-                        if (eliminadas > 0) partes.push(`${eliminadas} eliminada(s) desde el celular`);
-                        statusEl.innerHTML = `<span class="text-emerald-600">✓ ${partes.join(', ')}</span>`;
+                        if (eliminadas > 0) partes.push(`${eliminadas} quitada(s) desde el celular`);
+                        statusEl.innerHTML = `<span class="text-emerald-600">✓ ${partes.join(', ')} · recuerda guardar el formulario para dejarlas guardadas</span>`;
                     }
                 })
                 .catch(() => {});
@@ -1055,15 +1075,16 @@
             const idx = evidenciaCounter++;
             const container = document.getElementById('container_evidencias');
             const card = document.createElement('div');
-            card.className = 'evidencia-card bg-emerald-50 rounded-2xl border-2 border-emerald-300 p-3 shadow-sm';
+            card.className = 'evidencia-card bg-amber-50 rounded-2xl border-2 border-amber-300 p-3 shadow-sm';
             card.dataset.idx = idx;
+            card.dataset.origen = 'movil';
             const descripcionSegura = (descripcion || '').replace(/"/g, '&quot;');
             card.innerHTML = `
                 <input type="hidden" name="evidencias[${idx}][path_existente]" value="${path}">
                 <div class="relative group">
                     <img src="${STORAGE_BASE}/${path}" alt="Evidencia desde celular" class="h-40 w-full rounded-xl object-cover shadow-inner bg-white">
-                    <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase shadow flex items-center gap-1">
-                        <i data-lucide="smartphone" class="w-2.5 h-2.5"></i> Celular
+                    <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black uppercase shadow flex items-center gap-1">
+                        <i data-lucide="smartphone" class="w-2.5 h-2.5"></i> Celular · sin guardar
                     </span>
                     <button type="button" onclick="removeEvidenciaRow(${idx})"
                         class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 z-30" title="Quitar fotografía">
@@ -1072,7 +1093,7 @@
                 </div>
                 <input type="text" name="evidencias[${idx}][descripcion]" value="${descripcionSegura}"
                        placeholder="Descripción de la foto..."
-                       class="w-full mt-2 px-3 py-2 bg-white border-2 border-emerald-200 focus:border-emerald-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
+                       class="w-full mt-2 px-3 py-2 bg-white border-2 border-amber-200 focus:border-amber-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
             `;
             container.appendChild(card);
             if (typeof lucide !== 'undefined') lucide.createIcons();
