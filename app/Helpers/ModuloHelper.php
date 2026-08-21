@@ -299,4 +299,66 @@ class ModuloHelper
             'vinculado_a' => strtoupper($vinculadoTitulo),
         ];
     }
+
+    /**
+     * Campos de infraestructura del ambiente físico que un consultorio
+     * FUNCIONAL vinculado hereda de su físico en vez de volver a
+     * preguntarlos (ver MonitoreoModuloGenericController::resolverVinculacion,
+     * mismo criterio replicado aquí para reportes).
+     */
+    private const CAMPOS_INFRA_HEREDABLES = [
+        'cuenta_electricidad',
+        'tiene_toma_estabilizada', 'toma_estabilizada_internas', 'toma_estabilizada_externas',
+        'tiene_toma_comercial', 'toma_comercial_internas', 'toma_comercial_externas',
+        'cuenta_punto_red', 'cantidad_puntos_red',
+        'requiere_mas_puntos_red', 'cantidad_puntos_red_requerido', 'observacion_requerimiento_punto_red',
+        'tipo_conectividad', 'wifi_fuente', 'operador_servicio', 'operador_otro',
+        'velocidad_descarga', 'velocidad_descarga_unidad', 'velocidad_subida', 'velocidad_subida_unidad',
+    ];
+
+    /**
+     * Devuelve el contenido "efectivo" de un consultorio: el propio, salvo
+     * los campos de infraestructura (electricidad/tomas/punto de red/
+     * conectividad), que si es FUNCIONAL vinculado se reemplazan por los del
+     * físico. Útil para reportes que necesitan mostrar los datos reales que
+     * aplican al consultorio, no lo que quedó (vacío) en su propio registro.
+     */
+    public static function getContenidoEfectivo($cabecera, ?string $modulo = null): array
+    {
+        if (!$cabecera || !$cabecera->detalles) {
+            return [];
+        }
+
+        $detalles = $cabecera->detalles;
+        $detalle = self::resolverDetalleModulo($detalles, $modulo);
+
+        if (!$detalle || !is_array($detalle->contenido)) {
+            return [];
+        }
+
+        $contenido = $detalle->contenido;
+        $detalleVinculado = self::resolverDetalleVinculado($detalles, $detalle);
+        if ($detalleVinculado && is_array($detalleVinculado->contenido)) {
+            foreach (self::CAMPOS_INFRA_HEREDABLES as $campo) {
+                $contenido[$campo] = $detalleVinculado->contenido[$campo] ?? null;
+            }
+        }
+
+        return $contenido;
+    }
+
+    /**
+     * Slug del módulo del que se deben contar equipos y requerimientos: el
+     * propio, salvo que sea FUNCIONAL vinculado y haya marcado que comparte
+     * equipo con su físico (mismo criterio que
+     * MonitoreoModuloGenericController::resolverSlugEquipos).
+     */
+    public static function getSlugEquiposEfectivo(array $contenido, string $slugPropio): string
+    {
+        $esFuncional = strtoupper($contenido['tipo_consultorio'] ?? '') === 'FUNCIONAL';
+        $vinculado = $esFuncional ? trim($contenido['consultorio_vinculado'] ?? '') : '';
+        $comparte = strtoupper($contenido['comparte_equipo_con_fisico'] ?? 'NO') === 'SI';
+
+        return ($vinculado && $comparte) ? $vinculado : $slugPropio;
+    }
 }

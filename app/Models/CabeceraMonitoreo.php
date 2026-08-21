@@ -83,6 +83,14 @@ class CabeceraMonitoreo extends Model
     }
 
     /**
+     * Requerimientos de equipos (lo que cada consultorio necesita y aún no tiene).
+     */
+    public function requerimientos(): HasMany
+    {
+        return $this->hasMany(EquipoRequerimiento::class, 'cabecera_monitoreo_id');
+    }
+
+    /**
      * Relación con el usuario del sistema que creó el registro.
      */
     public function user(): BelongsTo

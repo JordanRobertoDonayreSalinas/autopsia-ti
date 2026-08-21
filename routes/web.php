@@ -21,6 +21,7 @@ use App\Http\Controllers\MonitoreoController;
 use App\Http\Controllers\MonitoreoModuloGenericController;
 use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\RecursosHumanosController;
+use App\Http\Controllers\ReporteConsultoriosController;
 use App\Http\Controllers\ReporteConsultoriosMedicinaController;
 use App\Http\Controllers\ReporteDnieController;
 use App\Http\Controllers\ReporteEquiposController;
@@ -138,6 +139,12 @@ Route::middleware(['auth'])->group(function () {
 
             Route::get('/consultorios-medicina', [ReporteConsultoriosMedicinaController::class, 'index'])->name('consultorios_medicina');
             Route::post('/consultorios-medicina/excel', [ReporteConsultoriosMedicinaController::class, 'exportarExcel'])->name('consultorios_medicina.excel');
+
+            Route::get('/consultorios', [ReporteConsultoriosController::class, 'index'])->name('consultorios');
+            Route::post('/consultorios/excel', [ReporteConsultoriosController::class, 'exportarExcel'])->name('consultorios.excel');
+            Route::post('/consultorios/requerimientos/excel', [ReporteConsultoriosController::class, 'exportarRequerimientosExcel'])->name('consultorios.requerimientos.excel');
+            Route::get('/consultorios/ajax/establecimientos', [ReporteConsultoriosController::class, 'getEstablecimientos'])->name('consultorios.ajax.establecimientos');
+            Route::get('/consultorios/ajax/distritos', [ReporteConsultoriosController::class, 'ajaxGetDistritos'])->name('consultorios.ajax.distritos');
 
             Route::get('/equipos/ajax/establecimientos', [ReporteEquiposController::class, 'getEstablecimientos'])->name('equipos.ajax.establecimientos');
             Route::get('/equipos/ajax/provincias', [ReporteEquiposController::class, 'getProvincias'])->name('equipos.ajax.provincias');
