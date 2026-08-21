@@ -188,9 +188,8 @@ class EvidenciaMovilController extends Controller
 
         $slugLimpio = Str::slug($slug, '_');
         $numFoto = $totalActual + 1;
-        $extension = strtolower($request->file('foto')->getClientOriginalExtension() ?: 'jpg');
-        $nombreEstandar = "evidencia_acta_{$id}_{$slugLimpio}_{$numFoto}_" . date('Ymd_His') . '_' . uniqid() . '.' . $extension;
-        $path = $request->file('foto')->storeAs('evidencias_monitoreo', $nombreEstandar, 'public');
+        $nombreBase = "evidencia_acta_{$id}_{$slugLimpio}_{$numFoto}_" . date('Ymd_His') . '_' . uniqid();
+        $path = \App\Helpers\ImagenHelper::guardarComoWebp($request->file('foto'), 'evidencias_monitoreo', $nombreBase, 'public');
 
         $pendientes[] = [
             'path' => $path,

@@ -178,9 +178,8 @@ class EvidenciaMovilFijoController extends Controller
             return response()->json(['success' => false, 'message' => 'Ya se alcanzó el máximo de '.self::MAX_FOTOS.' fotos.'], 422);
         }
 
-        $extension = strtolower($request->file('foto')->getClientOriginalExtension() ?: 'jpg');
-        $nombre = "evidencia_{$datos['tipo']}_{$datos['id']}_".($totalActual + 1).'_'.date('Ymd_His').'_'.uniqid().'.'.$extension;
-        $path = $request->file('foto')->storeAs($cfg['carpeta'], $nombre, 'public');
+        $nombreBase = "evidencia_{$datos['tipo']}_{$datos['id']}_".($totalActual + 1).'_'.date('Ymd_His').'_'.uniqid();
+        $path = \App\Helpers\ImagenHelper::guardarComoWebp($request->file('foto'), $cfg['carpeta'], $nombreBase, 'public');
 
         $pendientes[] = ['path' => $path];
         Cache::put($this->clavePendientes($token), $pendientes, now()->addMinutes(self::MINUTOS_VIGENCIA));

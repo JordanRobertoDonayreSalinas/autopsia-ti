@@ -65,16 +65,18 @@ class EditMonitoreoController extends Controller
                     if ($monitoreo->foto1) {
                         Storage::disk('public')->delete($monitoreo->foto1);
                     }
-                    $monitoreo->foto1 = $files[0]->store('evidencias', 'public');
+                    $nombreBase1 = "acta_{$id}_foto1_" . date('Ymd_His') . '_' . uniqid();
+                    $monitoreo->foto1 = \App\Helpers\ImagenHelper::guardarComoWebp($files[0], 'evidencias', $nombreBase1, 'public');
                 }
-                
+
                 // Procesar Foto 2
                 if (isset($files[1])) {
                     // Borrar la foto anterior físicamente del storage si existe
                     if ($monitoreo->foto2) {
                         Storage::disk('public')->delete($monitoreo->foto2);
                     }
-                    $monitoreo->foto2 = $files[1]->store('evidencias', 'public');
+                    $nombreBase2 = "acta_{$id}_foto2_" . date('Ymd_His') . '_' . uniqid();
+                    $monitoreo->foto2 = \App\Helpers\ImagenHelper::guardarComoWebp($files[1], 'evidencias', $nombreBase2, 'public');
                 }
             }
 

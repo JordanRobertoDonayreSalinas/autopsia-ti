@@ -280,10 +280,9 @@ class RecursosHumanosController extends Controller
                         if ($pathExistente && Storage::disk('public')->exists($pathExistente)) {
                             Storage::disk('public')->delete($pathExistente);
                         }
-                        $extension = strtolower($archivoNuevo->getClientOriginalExtension() ?: 'jpg');
                         $numFoto = count($evidenciasFinal) + 1;
-                        $nombreEstandar = "evidencia_acta_{$id}_rrhh_{$numFoto}_".date('Ymd_His').'_'.uniqid().'.'.$extension;
-                        $path = $archivoNuevo->storeAs('evidencias_rrhh', $nombreEstandar, 'public');
+                        $nombreBase = "evidencia_acta_{$id}_rrhh_{$numFoto}_".date('Ymd_His').'_'.uniqid();
+                        $path = \App\Helpers\ImagenHelper::guardarComoWebp($archivoNuevo, 'evidencias_rrhh', $nombreBase, 'public');
                         $evidenciasFinal[] = ['path' => $path, 'descripcion' => $descripcion];
                     } elseif ($pathExistente) {
                         $evidenciasFinal[] = ['path' => $pathExistente, 'descripcion' => $descripcion];
