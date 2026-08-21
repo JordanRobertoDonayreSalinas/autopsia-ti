@@ -512,7 +512,7 @@
                     <option value="SISMED">
                     <option value="WAWARED">
                     <option value="RENIPRESS">
-                    <option value="SIHCE">
+                    <option value="SIHCE MINSA">
                     <option value="NOTISP">
                     <option value="SIGA">
                     <option value="SIAF">
