@@ -9,6 +9,7 @@ use App\Http\Controllers\AuditoriaEquiposController;
 use App\Http\Controllers\ConsolidadoESPPdfController;
 use App\Http\Controllers\ConsolidadoPdfController;
 use App\Http\Controllers\CronogramaActividadesController;
+use App\Http\Controllers\DashboardVisualController;
 use App\Http\Controllers\DnieVerificadorController;
 use App\Http\Controllers\EditMonitoreoController;
 use App\Http\Controllers\EstablecimientoController;
@@ -91,6 +92,7 @@ Route::middleware(['auth'])->group(function () {
         Route::prefix('dashboard')->name('dashboard.')->middleware('is_admin')->group(function () {
             Route::get('/', [UsuarioController::class, 'index'])->name('general');
             Route::get('/equipos', [UsuarioController::class, 'dashboardEquipos'])->name('equipos');
+            Route::get('/indicadores', [DashboardVisualController::class, 'index'])->name('indicadores');
         });
 
         // AJAX para Dashboard - Equipos de Cómputo
@@ -101,6 +103,14 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/dashboard/ajax/equipos-establecimientos', [ReporteEquiposController::class, 'getEstablecimientos'])->name('dashboard.ajax.equipos.establecimientos');
             Route::get('/dashboard/ajax/equipos-modulos', [ReporteEquiposController::class, 'getModulos'])->name('dashboard.ajax.equipos.modulos');
             Route::get('/dashboard/ajax/equipos-descripciones', [ReporteEquiposController::class, 'getDescripciones'])->name('dashboard.ajax.equipos.descripciones');
+        });
+
+        // AJAX para Dashboard - Panel de Indicadores (consultorios, RR.HH., conectividad, auditoría)
+        Route::middleware('is_admin')->group(function () {
+            Route::get('/dashboard/ajax/indicadores-stats', [DashboardVisualController::class, 'stats'])->name('dashboard.ajax.indicadores.stats');
+            Route::get('/dashboard/ajax/indicadores-provincias', [ReporteEquiposController::class, 'getProvincias'])->name('dashboard.ajax.indicadores.provincias');
+            Route::get('/dashboard/ajax/indicadores-establecimientos', [ReporteEquiposController::class, 'getEstablecimientos'])->name('dashboard.ajax.indicadores.establecimientos');
+            Route::get('/dashboard/ajax/indicadores-distritos', [ReporteEquiposController::class, 'ajaxGetDistritos'])->name('dashboard.ajax.indicadores.distritos');
         });
 
         Route::get('/mi-perfil', [UsuarioController::class, 'perfil'])->name('perfil');

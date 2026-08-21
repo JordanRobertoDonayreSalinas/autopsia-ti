@@ -88,12 +88,43 @@
             </div>
 
             <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scroll">
-                {{-- DASHBOARD --}}
-                <a href="{{ route('usuario.dashboard.general') }}"
-                    class="group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all {{ request()->routeIs('usuario.dashboard*') ? 'bg-emerald-600/10 text-emerald-400 font-semibold' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                    <span class="font-medium">Dashboard</span>
-                </a>
+                {{-- DASHBOARD (Desplegable) --}}
+                <div x-data="{ open: {{ request()->routeIs('usuario.dashboard.*') ? 'true' : 'false' }} }">
+                    <button @click="open = !open" type="button"
+                        class="w-full group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all {{ request()->routeIs('usuario.dashboard.*') ? 'bg-emerald-600/10 text-emerald-400 font-semibold' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                        <span class="font-medium flex-1 text-left">Dashboard</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"
+                            :class="open ? 'rotate-180' : ''"></i>
+                    </button>
+
+                    <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 -translate-y-2"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 -translate-y-2"
+                        class="ml-4 mt-1 space-y-1 border-l-2 border-slate-700/50 pl-2" x-cloak>
+
+                        <a href="{{ route('usuario.dashboard.general') }}"
+                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.general') ? 'bg-emerald-600/10 text-emerald-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
+                            <i data-lucide="map" class="w-4 h-4"></i>
+                            <span class="font-medium text-sm">Mapa de Progresión</span>
+                        </a>
+
+                        <a href="{{ route('usuario.dashboard.equipos') }}"
+                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.equipos') ? 'bg-emerald-600/10 text-emerald-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
+                            <i data-lucide="monitor" class="w-4 h-4"></i>
+                            <span class="font-medium text-sm">Equipos de Cómputo</span>
+                        </a>
+
+                        <a href="{{ route('usuario.dashboard.indicadores') }}"
+                            class="group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all {{ request()->routeIs('usuario.dashboard.indicadores') ? 'bg-emerald-600/10 text-emerald-300' : 'text-slate-400 hover:text-white hover:bg-white/5' }}">
+                            <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                            <span class="font-medium text-sm">Panel de Indicadores</span>
+                        </a>
+                    </div>
+                </div>
 
                 @if(Auth::user()->role === 'admin')
                 <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 mt-2">Plataforma</p>
