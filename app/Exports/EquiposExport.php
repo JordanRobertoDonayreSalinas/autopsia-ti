@@ -39,9 +39,15 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'Categoría',
             'Tipo',
             'Módulo',
+            'Servicio',
+            'Departamento',
+            'Consultorio',
+            'Vinculado a',
             'Cantidad',
             'Descripción',
             'Propio',
+            'N° Serie',
+            'Observación',
             'Estado',
             'Provincia',
             'Distrito',
@@ -69,6 +75,8 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
         ];
 
         $fecha = $equipo->cabecera->fecha ? \Carbon\Carbon::parse($equipo->cabecera->fecha) : null;
+        $datosConsultorio = \App\Helpers\ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo);
+
         return [
             $fecha ? \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($fecha->toDateTime()) : null,
             $fecha ? ($meses[$fecha->month] ?? 'N/A') : 'N/A',
@@ -77,9 +85,15 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $equipo->cabecera->establecimiento->categoria ?? 'N/A',
             \App\Helpers\ModuloHelper::getTipoEstablecimiento($equipo->cabecera->establecimiento),
             \App\Helpers\ModuloHelper::getNombreAmigable($equipo->modulo) ?? 'N/A',
+            $datosConsultorio['servicio_asociado'] ?: 'N/A',
+            $datosConsultorio['departamento_asociado'] ?: 'N/A',
+            $datosConsultorio['tipo_consultorio'] ?: 'N/A',
+            $datosConsultorio['vinculado_a'] ?: '',
             $equipo->cantidad ?? 0,
             $equipo->descripcion ?? 'N/A',
             $equipo->propio ?? 'N/A',
+            $equipo->nro_serie ?: '',
+            $equipo->observacion ?: '',
             $equipo->estado ?? 'N/A',
             $equipo->cabecera->establecimiento->provincia ?? 'N/A',
             $equipo->cabecera->establecimiento->distrito ?? 'N/A',
@@ -134,15 +148,21 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'E' => 12,  // Categoría
             'F' => 18,  // Tipo
             'G' => 30,  // Módulo
-            'H' => 10,  // Cantidad
-            'I' => 30,  // Descripción
-            'J' => 12,  // Propio
-            'K' => 12,  // Estado
-            'L' => 15,  // Provincia
-            'M' => 15,  // Distrito
-            'N' => 18,  // Conectividad
-            'O' => 18,  // Fuente WiFi
-            'P' => 18,  // Proveedor
+            'H' => 22,  // Servicio
+            'I' => 25,  // Departamento
+            'J' => 12,  // Consultorio (FISICO/FUNCIONAL)
+            'K' => 22,  // Vinculado a
+            'L' => 10,  // Cantidad
+            'M' => 30,  // Descripción
+            'N' => 12,  // Propio
+            'O' => 16,  // N° Serie
+            'P' => 25,  // Observación
+            'Q' => 12,  // Estado
+            'R' => 15,  // Provincia
+            'S' => 15,  // Distrito
+            'T' => 18,  // Conectividad
+            'U' => 18,  // Fuente WiFi
+            'V' => 18,  // Proveedor
         ];
     }
 }
