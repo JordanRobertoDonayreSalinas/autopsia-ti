@@ -172,10 +172,9 @@
                                 <th class="px-4 py-3">IPRESS</th>
                                 <th class="px-4 py-3">Establecimiento</th>
                                 <th class="px-4 py-3">Tipo</th>
-                                <th class="px-4 py-3">Módulo</th>
                                 <th class="px-4 py-3">Departamento</th>
                                 <th class="px-4 py-3">Servicio</th>
-                                <th class="px-4 py-3">Consultorio</th>
+                                <th class="px-4 py-3">Consultorio / Módulo</th>
                                 <th class="px-4 py-3 text-center">Cant.</th>
                                 <th class="px-4 py-3">Descripción</th>
                                 <th class="px-4 py-3">Especificaciones Técnicas</th>
@@ -214,17 +213,11 @@
                                             {{ $tipo }}
                                         </span>
                                     </td>
-                                    @php $esModuloFijo = ModuloHelper::esModuloFijo($moduloEfectivo); @endphp
-                                    <td class="px-4 py-3 text-slate-600">
-                                        {{ $esModuloFijo ? ModuloHelper::getNombreModulo($equipo->cabecera, $moduloEfectivo) : '—' }}
-                                    </td>
                                     @php $datosConsultorio = ModuloHelper::getDatosConsultorio($equipo->cabecera, $moduloEfectivo); @endphp
                                     <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['departamento_asociado'] ?: '—' }}</td>
                                     <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['servicio_asociado'] ?: '—' }}</td>
                                     <td class="px-4 py-3">
-                                        @if(!$esModuloFijo)
-                                            <span class="block font-bold text-slate-700 mb-1">{{ ModuloHelper::getNombreModulo($equipo->cabecera, $moduloEfectivo) }}</span>
-                                        @endif
+                                        <span class="block font-bold text-slate-700 mb-1">{{ ModuloHelper::getNombreModulo($equipo->cabecera, $moduloEfectivo) }}</span>
                                         @if($datosConsultorio['tipo_consultorio'] === 'FUNCIONAL')
                                             <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 whitespace-nowrap">FUNCIONAL</span>
                                             @if($datosConsultorio['vinculado_a'])
