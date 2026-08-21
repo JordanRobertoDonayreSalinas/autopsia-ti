@@ -153,15 +153,16 @@
                                 <tr>
                                     <th class="px-4 py-3">Fecha</th>
                                     <th class="px-4 py-3">Establecimiento</th>
+                                    <th class="px-4 py-3">Departamento</th>
+                                    <th class="px-4 py-3">Servicio</th>
                                     <th class="px-4 py-3">Consultorio</th>
-                                    <th class="px-4 py-3">Servicio / Depto.</th>
                                     <th class="px-4 py-3">Tipo</th>
                                     <th class="px-4 py-3">Electricidad</th>
                                     <th class="px-4 py-3">Tomas</th>
                                     <th class="px-4 py-3">Punto de Red</th>
                                     <th class="px-4 py-3">Conectividad</th>
-                                    <th class="px-4 py-3 text-center">Equipos</th>
-                                    <th class="px-4 py-3">Alertas</th>
+                                    <th class="px-4 py-3 text-center">Cant. Equipos de Cómputo</th>
+                                    <th class="px-4 py-3 text-center">Cant. Requerimientos Pendientes</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
@@ -178,16 +179,16 @@
                                             <span class="font-medium text-slate-700 block">{{ $cabecera->establecimiento->nombre ?? 'N/A' }}</span>
                                             <span class="text-[10px] text-slate-400">{{ $cabecera->establecimiento->distrito ?? '' }}</span>
                                         </td>
+                                        <td class="px-4 py-3 text-slate-500">
+                                            {{ $datos['departamento_asociado'] ?: '—' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-500">
+                                            {{ $datos['servicio_asociado'] ?: '—' }}
+                                        </td>
                                         <td class="px-4 py-3">
                                             <span class="font-bold text-slate-700 block">{{ $contenido['titulo_consultorio'] ?? $modulo->modulo_nombre }}</span>
                                             @if($datos['tipo_consultorio'] === 'FUNCIONAL')
                                                 <span class="text-[10px] text-indigo-500 flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i> {{ $datos['vinculado_a'] ?: '—' }}</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-4 py-3 text-slate-500">
-                                            {{ $datos['servicio_asociado'] ?: '—' }}
-                                            @if($datos['departamento_asociado'])
-                                                <span class="block text-[10px] text-slate-400">{{ $datos['departamento_asociado'] }}</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-3">
@@ -232,13 +233,7 @@
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 text-center font-bold text-slate-800">{{ $c['cantidadEquipos'] }}</td>
-                                        <td class="px-4 py-3">
-                                            @forelse($c['alertas'] as $alerta)
-                                                <span class="block px-2 py-0.5 mb-1 rounded-full bg-rose-50 text-rose-600 text-[10px] font-bold whitespace-nowrap w-fit">{{ $alerta }}</span>
-                                            @empty
-                                                <span class="text-green-500 text-[10px] font-bold">✓ SIN ALERTAS</span>
-                                            @endforelse
-                                        </td>
+                                        <td class="px-4 py-3 text-center font-bold text-slate-800">{{ $c['cantidadRequerimientos'] }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -249,8 +244,9 @@
                                 <tr>
                                     <th class="px-4 py-3">Fecha</th>
                                     <th class="px-4 py-3">Establecimiento</th>
+                                    <th class="px-4 py-3">Departamento</th>
+                                    <th class="px-4 py-3">Servicio</th>
                                     <th class="px-4 py-3">Consultorio</th>
-                                    <th class="px-4 py-3">Servicio / Depto.</th>
                                     <th class="px-4 py-3">Tipo de Equipo Requerido</th>
                                     <th class="px-4 py-3 text-center">Cant.</th>
                                     <th class="px-4 py-3">Observación</th>
@@ -264,13 +260,9 @@
                                             {{ $fila['fecha'] ? \Carbon\Carbon::parse($fila['fecha'])->format('d/m/Y') : 'N/A' }}
                                         </td>
                                         <td class="px-4 py-3 font-medium text-slate-700">{{ $fila['establecimiento']->nombre ?? 'N/A' }}</td>
+                                        <td class="px-4 py-3 text-slate-500">{{ $datos['departamento_asociado'] ?: '—' }}</td>
+                                        <td class="px-4 py-3 text-slate-500">{{ $datos['servicio_asociado'] ?: '—' }}</td>
                                         <td class="px-4 py-3 font-bold text-slate-700">{{ $fila['titulo_consultorio'] }}</td>
-                                        <td class="px-4 py-3 text-slate-500">
-                                            {{ $datos['servicio_asociado'] ?: '—' }}
-                                            @if($datos['departamento_asociado'])
-                                                <span class="block text-[10px] text-slate-400">{{ $datos['departamento_asociado'] }}</span>
-                                            @endif
-                                        </td>
                                         <td class="px-4 py-3 text-slate-700 font-semibold">{{ $req->descripcion }}</td>
                                         <td class="px-4 py-3 text-center font-bold text-slate-800">{{ $req->cantidad ?? 1 }}</td>
                                         <td class="px-4 py-3 text-slate-500">{{ $req->observacion ?: '—' }}</td>

@@ -4,15 +4,15 @@ namespace App\Exports;
 
 use App\Helpers\ModuloHelper;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Exporta el requerimiento de equipos: un renglón por cada equipo que un
@@ -20,7 +20,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
  * Recibe filas ya armadas por
  * ReporteConsultoriosController::exportarRequerimientosExcel().
  */
-class RequerimientosEquiposExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithColumnWidths, WithColumnFormatting
+class RequerimientosEquiposExport implements FromCollection, WithColumnFormatting, WithColumnWidths, WithHeadings, WithMapping, WithStyles
 {
     protected $filas;
 
@@ -44,9 +44,9 @@ class RequerimientosEquiposExport implements FromCollection, WithHeadings, WithM
             'Provincia',
             'Distrito',
             'Módulo',
-            'Consultorio',
-            'Servicio',
             'Departamento',
+            'Servicio',
+            'Consultorio',
             'Tipo Equipo Requerido',
             'Cantidad',
             'Observación',
@@ -68,9 +68,9 @@ class RequerimientosEquiposExport implements FromCollection, WithHeadings, WithM
             $est->provincia ?? 'N/A',
             $est->distrito ?? 'N/A',
             $fila['modulo'],
-            $fila['titulo_consultorio'],
-            $datos['servicio_asociado'] ?: '',
             $datos['departamento_asociado'] ?: '',
+            $datos['servicio_asociado'] ?: '',
+            $fila['titulo_consultorio'],
             $req->descripcion,
             $req->cantidad ?? 1,
             $req->observacion ?: '',
@@ -103,7 +103,7 @@ class RequerimientosEquiposExport implements FromCollection, WithHeadings, WithM
     {
         return [
             'A' => 12, 'B' => 10, 'C' => 32, 'D' => 16, 'E' => 14, 'F' => 14,
-            'G' => 26, 'H' => 24, 'I' => 20, 'J' => 22, 'K' => 26, 'L' => 10,
+            'G' => 26, 'H' => 22, 'I' => 20, 'J' => 24, 'K' => 26, 'L' => 10,
             'M' => 40,
         ];
     }

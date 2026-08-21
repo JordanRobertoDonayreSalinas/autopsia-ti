@@ -4,15 +4,15 @@ namespace App\Exports;
 
 use App\Helpers\ModuloHelper;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Exporta el reporte de Consultorios (infraestructura): un renglón por
@@ -20,7 +20,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
  * infraestructura heredada si aplica, conteos y alertas) que arma
  * ReporteConsultoriosController::enriquecerModulo().
  */
-class ConsultoriosInfraExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithColumnWidths, WithColumnFormatting
+class ConsultoriosInfraExport implements FromCollection, WithColumnFormatting, WithColumnWidths, WithHeadings, WithMapping, WithStyles
 {
     protected $consultorios;
 
@@ -44,9 +44,9 @@ class ConsultoriosInfraExport implements FromCollection, WithHeadings, WithMappi
             'Provincia',
             'Distrito',
             'Módulo',
-            'Consultorio',
-            'Servicio',
             'Departamento',
+            'Servicio',
+            'Consultorio',
             'Tipo Consultorio',
             'Vinculado a',
             'Turno',
@@ -70,7 +70,6 @@ class ConsultoriosInfraExport implements FromCollection, WithHeadings, WithMappi
             'Vel. Subida',
             'Cant. Equipos de Cómputo',
             'Cant. Requerimientos Pendientes',
-            'Alertas',
             'Observaciones',
         ];
     }
@@ -95,9 +94,9 @@ class ConsultoriosInfraExport implements FromCollection, WithHeadings, WithMappi
             $est->provincia ?? 'N/A',
             $est->distrito ?? 'N/A',
             ModuloHelper::esModuloFijo($modulo->modulo_nombre) ? ModuloHelper::getNombreModulo($cabecera, $modulo->modulo_nombre) : '',
-            $contenido['titulo_consultorio'] ?? $modulo->modulo_nombre,
-            $datos['servicio_asociado'] ?: '',
             $datos['departamento_asociado'] ?: '',
+            $datos['servicio_asociado'] ?: '',
+            $contenido['titulo_consultorio'] ?? $modulo->modulo_nombre,
             $datos['tipo_consultorio'] ?: 'FISICO',
             $datos['vinculado_a'] ?: '',
             $contenido['turno'] ?? '',
@@ -121,7 +120,6 @@ class ConsultoriosInfraExport implements FromCollection, WithHeadings, WithMappi
             $ce['velocidad_subida'] ?? '',
             $c['cantidadEquipos'],
             $c['cantidadRequerimientos'],
-            implode(' | ', $c['alertas']),
             $contenido['observaciones'] ?? '',
         ];
     }
@@ -152,11 +150,11 @@ class ConsultoriosInfraExport implements FromCollection, WithHeadings, WithMappi
     {
         return [
             'A' => 12, 'B' => 10, 'C' => 32, 'D' => 16, 'E' => 14, 'F' => 14,
-            'G' => 26, 'H' => 24, 'I' => 20, 'J' => 22, 'K' => 14, 'L' => 20,
+            'G' => 26, 'H' => 22, 'I' => 20, 'J' => 24, 'K' => 14, 'L' => 20,
             'M' => 10, 'N' => 8, 'O' => 16, 'P' => 14, 'Q' => 16, 'R' => 12,
             'S' => 12, 'T' => 14, 'U' => 12, 'V' => 12, 'W' => 14, 'X' => 16,
             'Y' => 18, 'Z' => 20, 'AA' => 16, 'AB' => 16, 'AC' => 18, 'AD' => 14,
-            'AE' => 14, 'AF' => 16, 'AG' => 20, 'AH' => 40, 'AI' => 30,
+            'AE' => 14, 'AF' => 16, 'AG' => 20, 'AH' => 30,
         ];
     }
 }
