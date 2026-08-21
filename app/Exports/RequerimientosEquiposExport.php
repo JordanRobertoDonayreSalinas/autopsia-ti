@@ -67,7 +67,7 @@ class RequerimientosEquiposExport implements FromCollection, WithHeadings, WithM
             ModuloHelper::getTipoEstablecimiento($est),
             $est->provincia ?? 'N/A',
             $est->distrito ?? 'N/A',
-            ModuloHelper::getNombreAmigable($fila['modulo']) ?? $fila['modulo'],
+            $fila['modulo'],
             $fila['titulo_consultorio'],
             $datos['servicio_asociado'] ?: '',
             $datos['departamento_asociado'] ?: '',

@@ -60,6 +60,37 @@ class ModuloHelper
     }
 
     /**
+     * Nombre a mostrar en reportes para un módulo: el nombre amigable fijo
+     * si es un módulo estándar (triaje, citas, farmacia, etc.), o el título
+     * propio del consultorio si es uno dinámico (nombre libre que el
+     * auditor le puso, ej. "Endocrinología Pediátrica") — nunca el slug
+     * interno (que incluye un sufijo de fecha para hacerlo único, ej.
+     * "endocrinologia_pediatrica_1787262353").
+     */
+    public static function getNombreModulo($cabecera, string $modulo): string
+    {
+        // Buscar directo en el mapa de módulos fijos, sin pasar por
+        // getNombreAmigable(): esa función siempre devuelve algo (tiene su
+        // propio fallback que embellece el slug crudo), por lo que nunca
+        // dejaría caer a buscar el título del consultorio más abajo.
+        $mapaFijo = self::getTodosLosModulos();
+        $clave = strtolower(str_replace('-', '_', trim($modulo)));
+        if (isset($mapaFijo[$clave])) {
+            return $mapaFijo[$clave];
+        }
+
+        if ($cabecera && $cabecera->detalles) {
+            $detalle = self::resolverDetalleModulo($cabecera->detalles, $modulo);
+            if ($detalle && is_array($detalle->contenido) && !empty($detalle->contenido['titulo_consultorio'])) {
+                return $detalle->contenido['titulo_consultorio'];
+            }
+        }
+
+        // Último recurso: formatear el slug quitando el sufijo de fecha interno
+        return strtoupper(str_replace(['_', '-'], ' ', preg_replace('/_\d+$/', '', $modulo)));
+    }
+
+    /**
      * Obtiene todos los módulos ordenados
      */
     public static function getTodosLosModulos()

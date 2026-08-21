@@ -92,7 +92,7 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $equipo->cabecera->establecimiento->nombre ?? 'N/A',
             $equipo->cabecera->establecimiento->categoria ?? 'N/A',
             \App\Helpers\ModuloHelper::getTipoEstablecimiento($equipo->cabecera->establecimiento),
-            \App\Helpers\ModuloHelper::getNombreAmigable($equipo->modulo) ?? 'N/A',
+            \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo),
             $datosConsultorio['servicio_asociado'] ?: 'N/A',
             $datosConsultorio['departamento_asociado'] ?: 'N/A',
             $datosConsultorio['tipo_consultorio'] ?: 'N/A',

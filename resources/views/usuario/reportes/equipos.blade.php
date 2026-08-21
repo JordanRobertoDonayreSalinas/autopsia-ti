@@ -208,7 +208,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-600">
-                                        {{ ModuloHelper::getNombreAmigable($equipo->modulo) ?? 'N/A' }}
+                                        {{ ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) }}
                                     </td>
                                     @php $datosConsultorio = ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo); @endphp
                                     <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['servicio_asociado'] ?: '—' }}</td>
