@@ -6,6 +6,7 @@ use App\Models\MonitoreoModulos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -103,12 +104,12 @@ class EvidenciaMovilController extends Controller
 
         $contenido = $detalle->contenido ?? [];
         $tituloConsultorio = $contenido['titulo_consultorio'] ?? 'Consultorio';
-        $totalActual = count($contenido['evidencias'] ?? []);
+        $evidencias = $contenido['evidencias'] ?? [];
 
         return view('wizard.evidencia-movil', [
             'token' => $token,
             'tituloConsultorio' => $tituloConsultorio,
-            'totalActual' => $totalActual,
+            'evidencias' => $evidencias,
             'maxEvidencias' => self::MAX_EVIDENCIAS,
         ]);
     }
@@ -160,8 +161,59 @@ class EvidenciaMovilController extends Controller
 
         return response()->json([
             'success' => true,
+            'path' => $path,
             'total' => count($evidencias),
             'restantes' => self::MAX_EVIDENCIAS - count($evidencias),
+        ]);
+    }
+
+    /**
+     * (Público, sin login.) Elimina una foto ya subida (identificada por su
+     * ruta) directamente desde el celular. La laptop detecta el borrado en
+     * el siguiente sondeo y quita esa tarjeta de su propia galería.
+     */
+    public function eliminar(Request $request, $token)
+    {
+        $datos = Cache::get("evidencia_movil_{$token}");
+        if (!$datos) {
+            return response()->json(['success' => false, 'message' => 'Este código QR ya expiró.'], 410);
+        }
+
+        $request->validate([
+            'path' => 'required|string',
+        ]);
+
+        $id = $datos['cabecera_monitoreo_id'];
+        $slug = $datos['slug'];
+
+        $detalle = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+            ->where('modulo_nombre', $slug)
+            ->firstOrFail();
+
+        $contenido = $detalle->contenido ?? [];
+        $evidencias = $contenido['evidencias'] ?? [];
+        $pathABorrar = $request->input('path');
+
+        $evidenciasFiltradas = array_values(array_filter(
+            $evidencias,
+            fn($ev) => ($ev['path'] ?? null) !== $pathABorrar
+        ));
+
+        if (count($evidenciasFiltradas) === count($evidencias)) {
+            return response()->json(['success' => false, 'message' => 'Esa foto ya no existe (puede que se haya eliminado desde la computadora).'], 404);
+        }
+
+        if (Storage::disk('public')->exists($pathABorrar)) {
+            Storage::disk('public')->delete($pathABorrar);
+        }
+
+        $contenido['evidencias'] = $evidenciasFiltradas;
+        $detalle->update(['contenido' => $contenido]);
+
+        return response()->json([
+            'success' => true,
+            'total' => count($evidenciasFiltradas),
+            'restantes' => self::MAX_EVIDENCIAS - count($evidenciasFiltradas),
         ]);
     }
 

@@ -55,6 +55,7 @@ Route::post('/firmar/save/{token}', [FirmaMovilController::class, 'saveMobileSig
 // --- RUTAS DE EVIDENCIA MÓVIL (PÚBLICAS): subir fotos de un consultorio desde el celular via QR ---
 Route::get('/evidencia-movil/{token}', [EvidenciaMovilController::class, 'mostrar'])->name('evidencia.movil.mostrar');
 Route::post('/evidencia-movil/{token}/subir', [EvidenciaMovilController::class, 'subir'])->name('evidencia.movil.subir');
+Route::post('/evidencia-movil/{token}/eliminar', [EvidenciaMovilController::class, 'eliminar'])->name('evidencia.movil.eliminar');
 
 // --- RUTAS PÚBLICAS DE ASISTENCIA Y AUTO-DETECCIÓN ---
 Route::prefix('asistencia-reunion')->name('asistencia.')->group(function () {

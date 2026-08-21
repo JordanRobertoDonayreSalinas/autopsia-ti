@@ -856,6 +856,10 @@
 
         const MAX_EVIDENCIAS = 10;
         let evidenciaCounter = parseInt(document.getElementById('container_evidencias')?.dataset.count || '0', 10);
+        // Paths de fotos ya guardadas que el auditor quitó localmente en esta
+        // pantalla (aún sin guardar el formulario): evita que el sondeo de
+        // evidencia móvil las vuelva a insertar mientras tanto.
+        const evidenciasRemovidasLocalmente = new Set();
 
         function updateBtnAddEvidenciaState() {
             const btn = document.getElementById('btn_add_evidencia');
@@ -922,7 +926,17 @@
 
         function removeEvidenciaRow(idx) {
             const card = document.querySelector(`.evidencia-card[data-idx="${idx}"]`);
-            if (card) card.remove();
+            if (card) {
+                // Si esta foto ya estaba guardada (tiene path_existente), se recuerda
+                // para que el sondeo de evidencia móvil no la vuelva a insertar
+                // mientras el auditor la está quitando aquí (el borrado recién
+                // queda firme al guardar el formulario completo).
+                const input = card.querySelector('input[name*="[path_existente]"]');
+                if (input && input.value) {
+                    evidenciasRemovidasLocalmente.add(input.value);
+                }
+                card.remove();
+            }
             updateBtnAddEvidenciaState();
         }
 
@@ -993,22 +1007,42 @@
                 .then(r => r.json())
                 .then(data => {
                     const evidencias = data.evidencias || [];
+                    const pathsServidor = new Set(evidencias.map(ev => ev.path));
+                    const tarjetas = Array.from(document.querySelectorAll('#container_evidencias .evidencia-card'));
                     const pathsActuales = new Set(
-                        Array.from(document.querySelectorAll('#container_evidencias .evidencia-card input[name*="[path_existente]"]'))
-                            .map(input => input.value)
+                        tarjetas
+                            .map(card => card.querySelector('input[name*="[path_existente]"]')?.value)
+                            .filter(Boolean)
                     );
 
+                    // 1. Fotos nuevas subidas desde el celular: se insertan aquí,
+                    // salvo las que el auditor ya quitó localmente en esta pantalla.
                     let nuevas = 0;
                     evidencias.forEach(ev => {
-                        if (!pathsActuales.has(ev.path)) {
+                        if (!pathsActuales.has(ev.path) && !evidenciasRemovidasLocalmente.has(ev.path)) {
                             agregarEvidenciaDesdeMovil(ev.path, ev.descripcion || '');
                             nuevas++;
                         }
                     });
 
+                    // 2. Fotos eliminadas desde el celular: se quitan de aquí también,
+                    // sin duplicar aviso con las que el auditor ya quitó él mismo.
+                    let eliminadas = 0;
+                    tarjetas.forEach(card => {
+                        const path = card.querySelector('input[name*="[path_existente]"]')?.value;
+                        if (path && !pathsServidor.has(path) && !evidenciasRemovidasLocalmente.has(path)) {
+                            card.remove();
+                            eliminadas++;
+                        }
+                    });
+                    if (eliminadas > 0) updateBtnAddEvidenciaState();
+
                     const statusEl = document.getElementById('ev_movil_status');
-                    if (statusEl && nuevas > 0) {
-                        statusEl.innerHTML = `<span class="text-emerald-600">✓ ${evidencias.length} foto(s) recibida(s) del celular</span>`;
+                    if (statusEl && (nuevas > 0 || eliminadas > 0)) {
+                        const partes = [];
+                        if (nuevas > 0) partes.push(`+${nuevas} nueva(s)`);
+                        if (eliminadas > 0) partes.push(`${eliminadas} eliminada(s) desde el celular`);
+                        statusEl.innerHTML = `<span class="text-emerald-600">✓ ${partes.join(', ')}</span>`;
                     }
                 })
                 .catch(() => {});

@@ -24,11 +24,11 @@
     <div class="p-5 space-y-4">
       <div class="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-2.5">
         <span class="text-[11px] font-black text-indigo-700 uppercase">Fotos subidas</span>
-        <span id="contador" class="text-sm font-black text-indigo-700">{{ $totalActual }} / {{ $maxEvidencias }}</span>
+        <span id="contador" class="text-sm font-black text-indigo-700">{{ count($evidencias) }} / {{ $maxEvidencias }}</span>
       </div>
 
       {{-- Paso 1: tomar / elegir foto --}}
-      <div id="paso_captura">
+      <div id="paso_captura" class="{{ count($evidencias) >= $maxEvidencias ? 'hidden' : '' }}">
         <label for="input_foto" class="block cursor-pointer">
           <div class="border-2 border-dashed border-indigo-300 rounded-2xl bg-indigo-50/60 h-48 flex flex-col items-center justify-center gap-2 text-center px-4">
             <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl">📷</div>
@@ -37,6 +37,13 @@
           </div>
         </label>
         <input type="file" id="input_foto" accept="image/*" capture="environment" class="hidden" onchange="mostrarPreview(this)">
+      </div>
+
+      <div id="max_alcanzado" class="{{ count($evidencias) >= $maxEvidencias ? '' : 'hidden' }}">
+        <div class="border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-24 flex flex-col items-center justify-center gap-1 text-center px-4">
+          <p class="text-xs font-black text-slate-500 uppercase">Máximo de {{ $maxEvidencias }} fotos alcanzado</p>
+          <p class="text-[10px] font-bold text-slate-400">Elimine alguna de abajo para poder subir otra</p>
+        </div>
       </div>
 
       {{-- Paso 2: preview + descripción + subir --}}
@@ -62,19 +69,38 @@
 
       <div id="mensaje_estado" class="hidden text-center text-xs font-bold rounded-xl p-3"></div>
 
-      {{-- Historial de esta sesión --}}
-      <div id="historial" class="space-y-2"></div>
+      {{-- Galería: fotos ya subidas para este consultorio, con opción de eliminar --}}
+      <div>
+        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Fotos de este consultorio</label>
+        <div id="galeria" class="space-y-2">
+          @forelse ($evidencias as $ev)
+            <div class="flex items-center gap-3 bg-slate-50 rounded-xl p-2 border border-slate-100" data-path="{{ $ev['path'] }}">
+              <img src="{{ asset('storage/' . $ev['path']) }}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
+              <div class="min-w-0 flex-1">
+                <p class="text-[11px] font-bold text-slate-700 truncate">{{ $ev['descripcion'] ?: 'Sin descripción' }}</p>
+                <p class="text-[9px] font-black text-emerald-600 uppercase">✓ Subida</p>
+              </div>
+              <button onclick="eliminarFoto('{{ $ev['path'] }}', this)" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition flex-shrink-0" title="Eliminar foto">
+                🗑️
+              </button>
+            </div>
+          @empty
+            <p id="galeria_vacia" class="text-center text-[11px] font-bold text-slate-400 py-2">Todavía no hay fotos subidas</p>
+          @endforelse
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
     const TOKEN = @json($token);
     const MAX_EVIDENCIAS = @json($maxEvidencias);
-    let contador = @json($totalActual);
+    let contador = @json(count($evidencias));
     let archivoActual = null;
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     const pasoCaptura = document.getElementById('paso_captura');
+    const maxAlcanzado = document.getElementById('max_alcanzado');
     const pasoDescripcion = document.getElementById('paso_descripcion');
     const previewImg = document.getElementById('preview_img');
     const inputFoto = document.getElementById('input_foto');
@@ -82,7 +108,13 @@
     const btnSubir = document.getElementById('btn_subir');
     const contadorEl = document.getElementById('contador');
     const mensajeEstado = document.getElementById('mensaje_estado');
-    const historial = document.getElementById('historial');
+    const galeria = document.getElementById('galeria');
+
+    function actualizarEstadoCaptura() {
+      const alTope = contador >= MAX_EVIDENCIAS;
+      pasoCaptura.classList.toggle('hidden', alTope);
+      maxAlcanzado.classList.toggle('hidden', !alTope);
+    }
 
     function mostrarPreview(input) {
       if (!input.files || !input.files[0]) return;
@@ -102,7 +134,7 @@
       archivoActual = null;
       inputFoto.value = '';
       pasoDescripcion.classList.add('hidden');
-      pasoCaptura.classList.remove('hidden');
+      actualizarEstadoCaptura();
     }
 
     function mostrarMensaje(texto, tipo) {
@@ -113,17 +145,62 @@
       setTimeout(() => mensajeEstado.classList.add('hidden'), 4000);
     }
 
-    function agregarAlHistorial(descripcion, dataUrl) {
+    function agregarAGaleria(path, descripcion, dataUrl) {
+      const vacia = document.getElementById('galeria_vacia');
+      if (vacia) vacia.remove();
+
       const item = document.createElement('div');
       item.className = 'flex items-center gap-3 bg-slate-50 rounded-xl p-2 border border-slate-100';
+      item.dataset.path = path;
       item.innerHTML = `
         <img src="${dataUrl}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
           <p class="text-[11px] font-bold text-slate-700 truncate">${descripcion || 'Sin descripción'}</p>
           <p class="text-[9px] font-black text-emerald-600 uppercase">✓ Subida</p>
         </div>
+        <button onclick="eliminarFoto('${path}', this)" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition flex-shrink-0" title="Eliminar foto">🗑️</button>
       `;
-      historial.prepend(item);
+      galeria.prepend(item);
+    }
+
+    function eliminarFoto(path, btnEl) {
+      if (!confirm('¿Eliminar esta foto? Esta acción no se puede deshacer.')) return;
+
+      btnEl.disabled = true;
+      btnEl.textContent = '...';
+
+      fetch(`{{ url('/evidencia-movil') }}/${TOKEN}/eliminar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({ path }),
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            btnEl.disabled = false;
+            btnEl.textContent = '🗑️';
+            return mostrarMensaje(data.message || 'No se pudo eliminar la foto.', 'error');
+          }
+
+          contador = data.total;
+          contadorEl.textContent = `${contador} / ${MAX_EVIDENCIAS}`;
+          actualizarEstadoCaptura();
+          mostrarMensaje('Foto eliminada.', 'ok');
+
+          const item = document.querySelector(`#galeria [data-path="${CSS.escape(path)}"]`);
+          if (item) item.remove();
+          if (galeria.children.length === 0) {
+            galeria.innerHTML = '<p id="galeria_vacia" class="text-center text-[11px] font-bold text-slate-400 py-2">Todavía no hay fotos subidas</p>';
+          }
+        })
+        .catch(() => {
+          btnEl.disabled = false;
+          btnEl.textContent = '🗑️';
+          mostrarMensaje('Error de conexión. Intente nuevamente.', 'error');
+        });
     }
 
     function subirFoto() {
@@ -157,21 +234,13 @@
 
           contador = data.total;
           contadorEl.textContent = `${contador} / ${MAX_EVIDENCIAS}`;
-          agregarAlHistorial(descripcion, previewImg.src);
+          agregarAGaleria(data.path, descripcion, previewImg.src);
           mostrarMensaje('¡Foto subida! Ya aparece en la computadora.', 'ok');
 
           archivoActual = null;
           inputFoto.value = '';
           pasoDescripcion.classList.add('hidden');
-
-          if (contador >= MAX_EVIDENCIAS) {
-            pasoCaptura.innerHTML = `
-              <div class="border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-32 flex flex-col items-center justify-center gap-1 text-center px-4">
-                <p class="text-xs font-black text-slate-500 uppercase">Máximo de ${MAX_EVIDENCIAS} fotos alcanzado</p>
-              </div>`;
-          } else {
-            pasoCaptura.classList.remove('hidden');
-          }
+          actualizarEstadoCaptura();
         })
         .catch(() => {
           btnSubir.disabled = false;
