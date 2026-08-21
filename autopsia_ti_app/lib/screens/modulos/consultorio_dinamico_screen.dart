@@ -80,7 +80,10 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
     final match = modulo.where((m) => m.moduloNombre == widget.moduloNombre);
     final equipos = await _actaRepo.obtenerEquiposDeModulo(widget.actaOfflineId, widget.moduloNombre);
     final consultorios = await _actaRepo.obtenerConsultoriosDinamicos(widget.actaOfflineId);
-    _otrosConsultorios = consultorios.where((m) => m.moduloNombre != widget.moduloNombre).toList();
+    // Solo se ofrecen consultorios FISICO (o legado sin tipo) como vínculo:
+    // vincular a otro FUNCIONAL encadenaría la herencia y la rompería, porque
+    // el intermedio no guarda su propia infraestructura, la hereda a su vez.
+    _otrosConsultorios = consultorios.where((m) => m.moduloNombre != widget.moduloNombre && !_esFuncional(m)).toList();
 
     if (match.isNotEmpty) {
       final data = jsonDecode(match.first.contenido) as Map<String, dynamic>;
@@ -406,6 +409,15 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  bool _esFuncional(MonitoreoModulo m) {
+    try {
+      final data = jsonDecode(m.contenido) as Map<String, dynamic>;
+      return (data['tipo_consultorio'] as String?)?.toUpperCase() == 'FUNCIONAL';
+    } catch (_) {
+      return false;
+    }
   }
 
   String _tituloDeModulo(MonitoreoModulo m) {

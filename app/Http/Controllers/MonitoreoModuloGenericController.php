@@ -88,10 +88,19 @@ class MonitoreoModuloGenericController extends Controller
         $tituloConsultorio = $contenido['titulo_consultorio'] ?? 'CONSULTORIO';
 
         // Otros consultorios de la misma acta, para el selector de
-        // "Consultorio Físico Vinculado" cuando este es FUNCIONAL.
+        // "Consultorio Físico Vinculado" cuando este es FUNCIONAL. Solo se
+        // ofrecen los que son (o no tienen tipo definido, es decir físicos
+        // por defecto) FISICO: vincular un funcional a otro funcional
+        // encadenaría la herencia y rompería los datos (el funcional
+        // intermedio no guarda su propia infraestructura, la hereda a su vez).
         $otrosConsultorios = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
             ->whereNotIn('modulo_nombre', ['infraestructura_2d', 'rrhh', 'config_modulos', $slug])
-            ->get();
+            ->get()
+            ->filter(function ($m) {
+                $c = $m->contenido ?? [];
+                return strtoupper($c['tipo_consultorio'] ?? '') !== 'FUNCIONAL';
+            })
+            ->values();
 
         $vinculacion = $this->resolverVinculacion($id, $contenido);
         $moduloVinculado = $vinculacion['moduloVinculado'];
@@ -542,9 +551,17 @@ class MonitoreoModuloGenericController extends Controller
             return ['moduloVinculado' => null, 'contenidoVinculado' => [], 'tituloVinculado' => null, 'slugVinculado' => null];
         }
 
+        // Evita encadenar vínculos (FUNCIONAL -> FUNCIONAL -> ...): el
+        // consultorio vinculado debe ser él mismo un FISICO (o legado sin tipo
+        // definido), nunca otro FUNCIONAL, porque este no guarda su propia
+        // infraestructura, solo la que a su vez hereda de un tercero.
         $moduloVinculado = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
             ->where('modulo_nombre', $slugVinculado)
             ->first();
+
+        if ($moduloVinculado && strtoupper(($moduloVinculado->contenido['tipo_consultorio'] ?? '')) === 'FUNCIONAL') {
+            $moduloVinculado = null;
+        }
 
         if (!$moduloVinculado) {
             return ['moduloVinculado' => null, 'contenidoVinculado' => [], 'tituloVinculado' => null, 'slugVinculado' => null];
