@@ -286,7 +286,9 @@
                 let isDragging = false;
                 let dragTarget = null;
                 let offset = { x: 0, y: 0 };
-                const GRID = 10;
+                /* Antes en 10: al arrastrar o redimensionar el salto se sentía brusco
+                   para acomodar objetos con precisión */
+                const GRID = 5;
                 const MAX_HISTORY = 50;
                 let isRotating = false;
                 let rotateTarget = null;
@@ -556,6 +558,16 @@
                                 setTimeout(() => { this._applyBreakpoint(); this.resizeCanvas(); }, 120);
                             });
 
+                            /* Ocultar/mostrar la barra superior cambia cuánto alto tiene el
+                               editor, pero el <canvas> no se entera solo: sin este watcher
+                               se quedaba con el tamaño viejo mientras la barra inferior sí
+                               se reacomodaba al contenedor nuevo, y el croquis se veía chico
+                               dentro de un editor que en realidad ya creció. Se espera a que
+                               termine la transición (300ms) antes de medir. */
+                            this.$watch('panelVisible', () => {
+                                setTimeout(() => this.resizeCanvas(), 320);
+                            });
+
                             /* Global pointer listeners for sidebar drag */
                             window.addEventListener('pointermove', (e) => this._onWindowPointerMove(e));
                             window.addEventListener('pointerup', (e) => this._onWindowPointerUp(e));
@@ -813,12 +825,14 @@
 
                     /* ─── Hover ─── */
                     checkHover(x, y) {
-                        this.hoveredEl = this.elements.find(el => this._isPointInElement(el, x, y)) || null;
+                        this.hoveredEl = this.elements.find(el => (el.piso || 1) === this.currentPiso && this._isPointInElement(el, x, y)) || null;
                     },
 
                     _isPointInElement(el, px, py, padding = null) {
-                        /* Margen de acierto constante en pantalla y más amplio con el dedo */
-                        if (padding === null) padding = (this.isTouch ? 10 : 4) / (this.canvasZoom || 1);
+                        /* Margen de acierto constante en pantalla y más amplio con el dedo.
+                           Antes 4px con mouse costaba "agarrar" objetos chicos (equipos,
+                           puertas); se amplía sin llegar a que objetos vecinos se pisen */
+                        if (padding === null) padding = (this.isTouch ? 14 : 8) / (this.canvasZoom || 1);
                         const cx = el.x + el.w / 2;
                         const cy = el.y + el.h / 2;
                         const rot = (el.rot || 0) * Math.PI / 180;
@@ -913,25 +927,52 @@
                     /* Count elements per piso */
                     countInPiso(n) { return this.elements.filter(e => (e.piso || 1) === n).length; },
 
+                    /* Busca un hueco libre para un objeto nuevo dentro del piso actual,
+                       en vez de soltarlo al azar: antes podía caer encima de un
+                       consultorio ya ubicado y costaba encontrarlo o agarrarlo. Si el
+                       piso ya está lleno, lo apila debajo de todo lo que hay. */
+                    _findFreeSpot(w, h) {
+                        const lw = this.logicalW || 800, lh = this.logicalH || 600;
+                        const margin = 14;
+                        const ocupados = this.elements.filter(e =>
+                            (e.piso || 1) === this.currentPiso && !this._isChild(e));
+                        const libre = (x, y) => ocupados.every(e =>
+                            x + w + margin <= e.x || e.x + e.w + margin <= x ||
+                            y + h + margin <= e.y || e.y + e.h + margin <= y);
+
+                        const step = Math.max(GRID * 4, 20);
+                        for (let y = 10; y + h < lh * 2.5; y += step) {
+                            for (let x = 10; x + w < lw; x += step) {
+                                if (libre(x, y)) {
+                                    return { x: Math.round(x / GRID) * GRID, y: Math.round(y / GRID) * GRID };
+                                }
+                            }
+                        }
+
+                        const maxY = ocupados.reduce((m, e) => Math.max(m, e.y + e.h), 0);
+                        return { x: 10, y: Math.round((maxY + margin) / GRID) * GRID };
+                    },
+
                     /* ─── Add Element ─── */
                     addElement(type = this.tool, dropX = null, dropY = null) {
                         this._snapshot();
-                        const lw = this.logicalW || 800;
-                        const lh = this.logicalH || 600;
                         const isDoorExt = (type === 'puerta' && this.doorSubtype === 'externa');
                         const calleW = this.calleSubtype === 'avenida' ? 500 : (this.calleSubtype === 'jiron' ? 400 : 300);
                         const calleH = this.calleSubtype === 'avenida' ? 80 : (this.calleSubtype === 'jiron' ? 60 : 40);
                         /* El acceso principal es un portón: nace ancho, como en la realidad */
                         const w = type === 'hardware' ? 62 : (type === 'pasillo' ? 300 : (type === 'puerta' ? (isDoorExt ? 180 : 40) : (type === 'calle' ? calleW : (type === 'sistema' ? 80 : 120))));
                         const h = type === 'hardware' ? 58 : (type === 'pasillo' ? 60 : (type === 'puerta' ? (isDoorExt ? 70 : 40) : (type === 'calle' ? calleH : (type === 'sistema' ? 70 : 100))));
-                        /* Use drop coords if provided (drag & drop), otherwise random */
-                        const rx = dropX !== null
-                            ? Math.max(0, Math.round((dropX - w / 2) / GRID) * GRID)
-                            : Math.round((Math.random() * (lw - w - 20) + 10) / GRID) * GRID;
-                        const ry = dropY !== null
-                            ? Math.max(0, Math.round((dropY - h / 2) / GRID) * GRID)
-                            : Math.round((Math.random() * (lh - h - 20) + 10) / GRID) * GRID;
-                        
+                        /* Con coordenadas de soltado (arrastre) se respeta dónde lo dejó el
+                           usuario; sin ellas (botón "Agregar"), se busca un hueco libre */
+                        let rx, ry;
+                        if (dropX !== null) {
+                            rx = Math.max(0, Math.round((dropX - w / 2) / GRID) * GRID);
+                            ry = Math.max(0, Math.round((dropY - h / 2) / GRID) * GRID);
+                        } else {
+                            const spot = this._findFreeSpot(w, h);
+                            rx = spot.x; ry = spot.y;
+                        }
+
                         let parentId = null;
                         if (type === 'hardware' || type === 'sistema') {
                             const p = [...this.elements].reverse().find(e => 
@@ -979,17 +1020,13 @@
                     },
                     resetZoom() { this.canvasZoom = 1.0; this.panX = 0; this.panY = 0; this.draw(); },
 
-                    /* ─── Ajustar el croquis a la pantalla ───
-                       Encuadra lo que se está viendo —el piso actual— dentro de la zona
-                       del lienzo que no tapan los paneles flotantes. */
-                    autoFit() {
-                        const visibles = this.elements.filter(e => (e.piso || 1) === this.currentPiso);
-                        if (!visibles.length) {
-                            this.resetZoom();
-                            return;
-                        }
+                    /* ─── Bounding box (en coordenadas de mundo) de todo lo que hay en un
+                       piso. Lo usan tanto autoFit() como la captura para exportar, así
+                       que vive una sola vez. Devuelve null si el piso está vacío. ─── */
+                    _bboxForPiso(piso) {
+                        const visibles = this.elements.filter(e => (e.piso || 1) === piso);
+                        if (!visibles.length) return null;
 
-                        /* Calculate Bounding Box of items */
                         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                         visibles.forEach(el => {
                             /* El portón lleva el letrero del establecimiento por encima:
@@ -1003,8 +1040,19 @@
                             maxX = Math.max(maxX, el.x + el.w); maxY = Math.max(maxY, el.y + el.h);
                         });
 
-                        const bW = Math.max(1, maxX - minX);
-                        const bH = Math.max(1, maxY - minY);
+                        return { minX, minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
+                    },
+
+                    /* ─── Ajustar el croquis a la pantalla ───
+                       Encuadra lo que se está viendo —el piso actual— dentro de la zona
+                       del lienzo que no tapan los paneles flotantes. */
+                    autoFit() {
+                        const box = this._bboxForPiso(this.currentPiso);
+                        if (!box) {
+                            this.resetZoom();
+                            return;
+                        }
+                        const { minX, minY, w: bW, h: bH } = box;
                         const lw = this.logicalW;
                         const lh = this.logicalH;
 
@@ -1021,8 +1069,10 @@
                         const utilH = Math.max(140, lh - arr - aba);
 
                         /* Escala para que quepa dentro de esa zona, con un respiro del 3%
-                           para que el croquis no quede pegado al borde */
-                        const newZoom = Math.min(2.0, (utilW / bW) * 0.97, (utilH / bH) * 0.97);
+                           para que el croquis no quede pegado al borde. El tope va a la par
+                           del zoom manual (zoomIn llega a 5.0): con pocos ambientes, un tope
+                           bajo dejaba el croquis chico con medio lienzo vacío alrededor */
+                        const newZoom = Math.min(5.0, (utilW / bW) * 0.97, (utilH / bH) * 0.97);
                         this.canvasZoom = isFinite(newZoom) && newZoom > 0 ? Math.max(0.05, newZoom) : 1.0;
 
                         /* Centrado en la zona útil, no en el lienzo entero */
@@ -1030,6 +1080,64 @@
                         this.panY = arr + utilH / 2 - (minY + bH / 2) * this.canvasZoom;
 
                         this.draw();
+                    },
+
+                    /* ─── Encuadre "limpio" para exportar ───
+                       A diferencia de autoFit(), no reserva hueco para los paneles
+                       flotantes: son HTML aparte, no se dibujan en el canvas, así que
+                       exportar puede usar todo el lienzo. Devuelve el zoom/paneo que
+                       centra TODO el contenido del piso, sin importar con qué zoom se
+                       lo esté viendo en pantalla en ese momento. */
+                    _fitZoomPanForExport(piso) {
+                        const box = this._bboxForPiso(piso);
+                        const lw = this.logicalW, lh = this.logicalH;
+                        if (!box) return { zoom: 1.0, panX: 0, panY: 0 };
+
+                        const pad = 32;
+                        const utilW = Math.max(140, lw - pad * 2);
+                        const utilH = Math.max(140, lh - pad * 2);
+                        const zoom = Math.max(0.05, Math.min(5.0, (utilW / box.w) * 0.97, (utilH / box.h) * 0.97));
+                        const panX = pad + utilW / 2 - (box.minX + box.w / 2) * zoom;
+                        const panY = pad + utilH / 2 - (box.minY + box.h / 2) * zoom;
+                        return { zoom, panX, panY };
+                    },
+
+                    /* Foto en PNG de un piso puntual, con todo su contenido encuadrado
+                       (sin importar el zoom/paneo con que se lo esté viendo). Deja el
+                       canvasZoom/pan del piso pedido puestos; quien llama debe restaurar
+                       el estado si hace falta. */
+                    _snapshotPiso(piso) {
+                        const fit = this._fitZoomPanForExport(piso);
+                        this.currentPiso = piso;
+                        this.canvasZoom = fit.zoom; this.panX = fit.panX; this.panY = fit.panY;
+                        this._flushDraw();
+                        return canvas.toDataURL('image/png');
+                    },
+
+                    /* Foto de cada piso que tenga algo dibujado, encuadrando todo su
+                       contenido. La usan exportImage() (para el piso actual) y
+                       saveData() (para todos, de cara al PDF). Restaura el editor a como
+                       estaba al terminar. */
+                    _snapshotAllPisos() {
+                        if (!canvas) return {};
+                        const prevPiso = this.currentPiso, prevZoom = this.canvasZoom,
+                            prevPanX = this.panX, prevPanY = this.panY,
+                            prevGhost = this.showGhostFloor, prevSelected = this.selectedId;
+
+                        this.showGhostFloor = false;
+                        this.selectedId = null;
+
+                        const pisosConContenido = [...new Set(this.elements.map(e => e.piso || 1))]
+                            .sort((a, b) => a - b);
+                        const shots = {};
+                        pisosConContenido.forEach(p => { shots[p] = this._snapshotPiso(p); });
+
+                        this.currentPiso = prevPiso;
+                        this.canvasZoom = prevZoom; this.panX = prevPanX; this.panY = prevPanY;
+                        this.showGhostFloor = prevGhost; this.selectedId = prevSelected;
+                        this._flushDraw();
+
+                        return shots;
                     },
 
                     /* ═══════════ Utilidades de dibujo ═══════════ */
@@ -2661,11 +2769,15 @@
                         }
 
                         if (this.tool === 'red') {
-                            const clicked = this.elements.find(el => !this._isChild(el) && this._isPointInElement(el, x, y));
+                            const clicked = this.elements.find(el => (el.piso || 1) === this.currentPiso && !this._isChild(el) && this._isPointInElement(el, x, y));
                             if (clicked) { this.isConnecting = true; this.connectionStart = clicked.id; return; }
                         }
                         for (let i = this.elements.length - 1; i >= 0; i--) {
                             const el = this.elements[i];
+                            /* Solo se puede seleccionar/arrastrar lo que pertenece al piso
+                               que se está viendo; si no, un consultorio de otro piso en la
+                               misma coordenada "robaba" el clic y quedaba inamovible */
+                            if ((el.piso || 1) !== this.currentPiso) continue;
                             /* Los equipos de un ambiente no se seleccionan sueltos: se
                                mueven y giran junto con el ambiente que los contiene */
                             if (this._isChild(el)) continue;
@@ -2894,7 +3006,7 @@
                             return;
                         }
                         if (this.isConnecting && this.connectionStart) {
-                            const endEl = this.elements.find(el => !this._isChild(el) && this._isPointInElement(el, x, y));
+                            const endEl = this.elements.find(el => (el.piso || 1) === this.currentPiso && !this._isChild(el) && this._isPointInElement(el, x, y));
                             if (endEl && endEl.id !== this.connectionStart) {
                                 /* No duplicate connections */
                                 const already = this.connections.some(c =>
@@ -3002,6 +3114,19 @@
                         this.selectedId = null; this.draw();
                     },
 
+                    /* El menú contextual (clic derecho, o mantener presionado en táctil)
+                       solo debe ofrecer borrar cuando se dispara sobre el propio objeto
+                       seleccionado: antes se abría con un clic derecho en cualquier parte
+                       del lienzo, aunque fuera lejos del objeto, y se sentía como un
+                       borrado "por accidente" al hacer clic en otro lado */
+                    handleCanvasContextMenu(e) {
+                        if (!this.selectedId) return;
+                        const sel = this.elements.find(el => el.id === this.selectedId);
+                        if (!sel) return;
+                        const { x, y } = this._getEventCoords(e);
+                        if (this._isPointInElement(sel, x, y)) this.confirmDelete(e);
+                    },
+
                     async confirmDelete(e) {
                         if (!this.selectedId) return;
                         const result = await Swal.fire({
@@ -3020,11 +3145,27 @@
 
                     exportImage() {
                         if (!canvas) return;
-                        this._flushDraw();   /* asegura que el PNG refleje el estado actual */
+                        /* La foto siempre muestra TODO el piso actual, aunque en pantalla
+                           se esté viendo con zoom sobre un solo consultorio: si no, la
+                           imagen exportada salía recortada a lo que se veía en ese momento */
+                        const prevZoom = this.canvasZoom, prevPanX = this.panX, prevPanY = this.panY;
+                        /* La silueta del piso adyacente es solo una ayuda visual en el
+                           editor: en la foto exportada no debe aparecer */
+                        const hadGhost = this.showGhostFloor;
+                        if (hadGhost) this.showGhostFloor = false;
+
+                        const fit = this._fitZoomPanForExport(this.currentPiso);
+                        this.canvasZoom = fit.zoom; this.panX = fit.panX; this.panY = fit.panY;
+                        this._flushDraw();
+
                         const link = document.createElement('a');
-                        link.download = 'croquis-infraestructura.png';
+                        link.download = 'croquis-infraestructura-piso' + this.currentPiso + '.png';
                         link.href = canvas.toDataURL('image/png');
                         link.click();
+
+                        this.canvasZoom = prevZoom; this.panX = prevPanX; this.panY = prevPanY;
+                        if (hadGhost) this.showGhostFloor = true;
+                        this._flushDraw();
                         Swal.fire({ target: document.getElementById('tablet-editor-container'), title: '¡Imagen exportada!', text: 'El croquis se descargó como PNG.', icon: 'success', confirmButtonColor: '#4f46e5', timer: 2000, showConfirmButton: false });
                     },
 
@@ -4350,8 +4491,16 @@
                         this.isSaving = true;
 
                         try {
-                            this._flushDraw();   /* la miniatura guardada debe estar al día */
-                            const dataUrl = canvas.toDataURL('image/png');
+                            /* Una foto por cada piso que tenga algo dibujado (encuadrando
+                               todo su contenido), para que el PDF pueda mostrar el edificio
+                               completo y no solo el piso que estaba abierto al guardar */
+                            const shots = this._snapshotAllPisos();
+                            let dataUrl = shots[this.currentPiso] || Object.values(shots)[0];
+                            if (!dataUrl) {
+                                /* Croquis vacío: no hay nada que encuadrar, se manda tal cual */
+                                this._flushDraw();
+                                dataUrl = canvas.toDataURL('image/png');
+                            }
                             const payload = {
                                 contenido: {
                                     elementos: this.elements,
@@ -4363,6 +4512,7 @@
                                     mapAnchorY: this.mapAnchorY
                                 },
                                 croquis_image: dataUrl,
+                                croquis_images: shots,
                                 _token: '{{ csrf_token() }}'
                             };
 
@@ -5569,7 +5719,7 @@
                 <canvas id="blueprint-canvas" :style="panMode ? 'cursor:grab' : ''" @mousedown="handleMouseDown"
                     @mousemove="handleMouseMove"
                     @mouseup="handleMouseUp" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
-                    @touchend="handleTouchEnd" @contextmenu.prevent="confirmDelete($event)" @dragover.prevent
+                    @touchend="handleTouchEnd" @contextmenu.prevent="handleCanvasContextMenu($event)" @dragover.prevent
                     @drop="handleDrop($event)">
                 </canvas>
 

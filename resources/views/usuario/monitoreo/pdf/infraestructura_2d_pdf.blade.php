@@ -241,8 +241,19 @@
         .badge-neutral { background-color: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
 
         /* CROQUIS CONTAINER */
+        .croquis-piso-block {
+            page-break-inside: avoid;
+        }
+        .croquis-piso-label {
+            padding: 4px 10px 0 10px;
+            font-size: 7.5px;
+            font-weight: 800;
+            color: #4338ca;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
         .croquis-wrapper {
-            padding: 10px;
+            padding: 6px 10px 10px 10px;
             text-align: center;
             background-color: #f8fafc;
         }
@@ -393,15 +404,30 @@
         </tr>
     </table>
 
-    {{-- CROQUIS 2D --}}
+    {{-- CROQUIS 2D: una imagen por cada piso que tenga consultorios u otros
+         objetos, para que el reporte no se quede solo con el piso que estaba
+         abierto en el editor al momento de guardar --}}
     @php
-        $imagen_path = $contenido['imagen_path'] ?? null;
-        $base64 = null;
-        if ($imagen_path) {
-            $path = storage_path('app/public/' . $imagen_path);
+        $croquisPorPiso = [];
+        foreach (($contenido['piso_images'] ?? []) as $piso => $relPath) {
+            $path = storage_path('app/public/' . $relPath);
             if (file_exists($path)) {
                 $type = pathinfo($path, PATHINFO_EXTENSION);
-                $base64 = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($path));
+                $croquisPorPiso[(int)$piso] = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($path));
+            }
+        }
+        ksort($croquisPorPiso, SORT_NUMERIC);
+
+        // Compatibilidad: croquis guardados antes de que existiera el snapshot
+        // por piso solo tienen esta imagen única.
+        if (!$croquisPorPiso) {
+            $imagen_path = $contenido['imagen_path'] ?? null;
+            if ($imagen_path) {
+                $path = storage_path('app/public/' . $imagen_path);
+                if (file_exists($path)) {
+                    $type = pathinfo($path, PATHINFO_EXTENSION);
+                    $croquisPorPiso[1] = 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($path));
+                }
             }
         }
     @endphp
@@ -410,15 +436,24 @@
         <div class="card-header">
             PLANO Y CROQUIS 2D DEL ESTABLECIMIENTO
         </div>
-        <div class="croquis-wrapper">
-            @if($base64)
-                <img src="{{ $base64 }}" class="croquis-img">
-            @else
+        @if(count($croquisPorPiso))
+            @foreach($croquisPorPiso as $piso => $base64)
+                <div class="croquis-piso-block">
+                    @if(count($croquisPorPiso) > 1)
+                        <div class="croquis-piso-label">PISO {{ $piso }}</div>
+                    @endif
+                    <div class="croquis-wrapper">
+                        <img src="{{ $base64 }}" class="croquis-img">
+                    </div>
+                </div>
+            @endforeach
+        @else
+            <div class="croquis-wrapper">
                 <div class="vacio-box">
                     No se ha exportado una imagen de croquis 2D para este establecimiento.
                 </div>
-            @endif
-        </div>
+            </div>
+        @endif
     </div>
 
     {{-- CUADRO 1: AMBIENTES --}}
