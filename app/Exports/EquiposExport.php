@@ -41,7 +41,8 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'Módulo',
             'Servicio',
             'Departamento',
-            'Consultorio',
+            'Nombre del Consultorio',
+            'Tipo Consultorio',
             'Vinculado a',
             'Cantidad',
             'Descripción',
@@ -83,6 +84,7 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
 
         $fecha = $equipo->cabecera->fecha ? \Carbon\Carbon::parse($equipo->cabecera->fecha) : null;
         $datosConsultorio = \App\Helpers\ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo);
+        $esModuloFijo = \App\Helpers\ModuloHelper::esModuloFijo($equipo->modulo);
         $specs = is_array($equipo->especificaciones) ? $equipo->especificaciones : [];
 
         return [
@@ -92,9 +94,10 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $equipo->cabecera->establecimiento->nombre ?? 'N/A',
             $equipo->cabecera->establecimiento->categoria ?? 'N/A',
             \App\Helpers\ModuloHelper::getTipoEstablecimiento($equipo->cabecera->establecimiento),
-            \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo),
+            $esModuloFijo ? \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) : '',
             $datosConsultorio['servicio_asociado'] ?: 'N/A',
             $datosConsultorio['departamento_asociado'] ?: 'N/A',
+            $esModuloFijo ? '' : \App\Helpers\ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo),
             $datosConsultorio['tipo_consultorio'] ?: 'N/A',
             $datosConsultorio['vinculado_a'] ?: '',
             $equipo->cantidad ?? 0,
@@ -165,26 +168,27 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'G' => 30,  // Módulo
             'H' => 22,  // Servicio
             'I' => 25,  // Departamento
-            'J' => 12,  // Consultorio (FISICO/FUNCIONAL)
-            'K' => 22,  // Vinculado a
-            'L' => 10,  // Cantidad
-            'M' => 30,  // Descripción
-            'N' => 24,  // Modelo (Especif.)
-            'O' => 30,  // Procesador (Especif.)
-            'P' => 14,  // RAM (Especif.)
-            'Q' => 26,  // Disco (Especif.)
-            'R' => 26,  // GPU (Especif.)
-            'S' => 20,  // S.O. (Especif.)
-            'T' => 16,  // Origen Especif.
-            'U' => 12,  // Propio
-            'V' => 16,  // N° Serie
-            'W' => 25,  // Observación
-            'X' => 12,  // Estado
-            'Y' => 15,  // Provincia
-            'Z' => 15,  // Distrito
-            'AA' => 18, // Conectividad
-            'AB' => 18, // Fuente WiFi
-            'AC' => 18, // Proveedor
+            'J' => 30,  // Nombre del Consultorio
+            'K' => 14,  // Tipo Consultorio (FISICO/FUNCIONAL)
+            'L' => 22,  // Vinculado a
+            'M' => 10,  // Cantidad
+            'N' => 30,  // Descripción
+            'O' => 24,  // Modelo (Especif.)
+            'P' => 30,  // Procesador (Especif.)
+            'Q' => 14,  // RAM (Especif.)
+            'R' => 26,  // Disco (Especif.)
+            'S' => 26,  // GPU (Especif.)
+            'T' => 20,  // S.O. (Especif.)
+            'U' => 16,  // Origen Especif.
+            'V' => 12,  // Propio
+            'W' => 16,  // N° Serie
+            'X' => 25,  // Observación
+            'Y' => 12,  // Estado
+            'Z' => 15,  // Provincia
+            'AA' => 15, // Distrito
+            'AB' => 18, // Conectividad
+            'AC' => 18, // Fuente WiFi
+            'AD' => 18, // Proveedor
         ];
     }
 }

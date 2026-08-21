@@ -91,6 +91,20 @@ class ModuloHelper
     }
 
     /**
+     * True si el slug corresponde a un módulo estándar/fijo (triaje, citas,
+     * farmacia, etc.), false si es un consultorio dinámico de nombre libre.
+     * Sirve para no mezclar "Módulo" (categoría fija) con "Consultorio"
+     * (nombre propio que el auditor le puso) en la misma columna de reporte.
+     */
+    public static function esModuloFijo(string $modulo): bool
+    {
+        $mapaFijo = self::getTodosLosModulos();
+        $clave = strtolower(str_replace('-', '_', trim($modulo)));
+
+        return isset($mapaFijo[$clave]);
+    }
+
+    /**
      * Obtiene todos los módulos ordenados
      */
     public static function getTodosLosModulos()

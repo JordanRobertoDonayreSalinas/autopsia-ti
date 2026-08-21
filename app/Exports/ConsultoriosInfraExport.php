@@ -94,7 +94,7 @@ class ConsultoriosInfraExport implements FromCollection, WithHeadings, WithMappi
             ModuloHelper::getTipoEstablecimiento($est),
             $est->provincia ?? 'N/A',
             $est->distrito ?? 'N/A',
-            ModuloHelper::getNombreModulo($cabecera, $modulo->modulo_nombre),
+            ModuloHelper::esModuloFijo($modulo->modulo_nombre) ? ModuloHelper::getNombreModulo($cabecera, $modulo->modulo_nombre) : '',
             $contenido['titulo_consultorio'] ?? $modulo->modulo_nombre,
             $datos['servicio_asociado'] ?: '',
             $datos['departamento_asociado'] ?: '',

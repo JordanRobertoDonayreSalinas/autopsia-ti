@@ -207,13 +207,17 @@
                                             {{ $tipo }}
                                         </span>
                                     </td>
+                                    @php $esModuloFijo = ModuloHelper::esModuloFijo($equipo->modulo); @endphp
                                     <td class="px-4 py-3 text-slate-600">
-                                        {{ ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) }}
+                                        {{ $esModuloFijo ? ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) : '—' }}
                                     </td>
                                     @php $datosConsultorio = ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo); @endphp
                                     <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['servicio_asociado'] ?: '—' }}</td>
                                     <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['departamento_asociado'] ?: '—' }}</td>
                                     <td class="px-4 py-3">
+                                        @if(!$esModuloFijo)
+                                            <span class="block font-bold text-slate-700 mb-1">{{ ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) }}</span>
+                                        @endif
                                         @if($datosConsultorio['tipo_consultorio'] === 'FUNCIONAL')
                                             <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 whitespace-nowrap">FUNCIONAL</span>
                                             @if($datosConsultorio['vinculado_a'])

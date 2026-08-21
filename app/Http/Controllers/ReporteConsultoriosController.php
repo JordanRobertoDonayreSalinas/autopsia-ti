@@ -162,7 +162,7 @@ class ReporteConsultoriosController extends Controller
                 $filas->push([
                     'establecimiento' => $modulo->cabecera->establecimiento,
                     'fecha' => $modulo->cabecera->fecha,
-                    'modulo' => ModuloHelper::getNombreModulo($modulo->cabecera, $modulo->modulo_nombre),
+                    'modulo' => ModuloHelper::esModuloFijo($modulo->modulo_nombre) ? ModuloHelper::getNombreModulo($modulo->cabecera, $modulo->modulo_nombre) : '',
                     'titulo_consultorio' => $contenido['titulo_consultorio'] ?? $modulo->modulo_nombre,
                     'datosConsultorio' => $datosConsultorio,
                     'requerimiento' => $req,
