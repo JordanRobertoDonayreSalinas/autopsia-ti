@@ -174,7 +174,7 @@
                                 <th class="px-4 py-3">Tipo</th>
                                 <th class="px-4 py-3">Departamento</th>
                                 <th class="px-4 py-3">Servicio</th>
-                                <th class="px-4 py-3">Consultorio / Módulo</th>
+                                <th class="px-4 py-3">Consultorio</th>
                                 <th class="px-4 py-3 text-center">Cant.</th>
                                 <th class="px-4 py-3">Descripción</th>
                                 <th class="px-4 py-3">Especificaciones Técnicas</th>

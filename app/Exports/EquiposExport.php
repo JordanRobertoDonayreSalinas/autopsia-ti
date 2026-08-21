@@ -40,7 +40,7 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'Tipo',
             'Departamento',
             'Servicio',
-            'Consultorio / Módulo',
+            'Consultorio',
             'Tipo Consultorio',
             'Vinculado a',
             'Cantidad',
@@ -171,7 +171,7 @@ class EquiposExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'F' => 18,  // Tipo
             'G' => 25,  // Departamento
             'H' => 22,  // Servicio
-            'I' => 30,  // Consultorio / Módulo
+            'I' => 30,  // Consultorio
             'J' => 14,  // Tipo Consultorio (FISICO/FUNCIONAL)
             'K' => 22,  // Vinculado a
             'L' => 10,  // Cantidad
