@@ -36,7 +36,7 @@
             <p class="text-[10px] font-bold text-indigo-400">o elegir de la galería</p>
           </div>
         </label>
-        <input type="file" id="input_foto" accept="image/*" capture="environment" class="hidden" onchange="mostrarPreview(this)">
+        <input type="file" id="input_foto" accept="image/*" class="hidden" onchange="mostrarPreview(this)">
       </div>
 
       <div id="max_alcanzado" class="{{ count($evidencias) >= $maxEvidencias ? '' : 'hidden' }}">
