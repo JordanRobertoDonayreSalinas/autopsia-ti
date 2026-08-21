@@ -575,6 +575,42 @@
         @endif
     </div>
 
+    {{-- ═══ SISTEMAS DE INFORMACIÓN UTILIZADOS ═══ --}}
+    @php $sistemasUtilizadosPdf = $contenido['sistemas_utilizados'] ?? []; @endphp
+    @if(!empty($sistemasUtilizadosPdf) && count($sistemasUtilizadosPdf) > 0)
+        <div class="section-card">
+            <table class="section-header-table">
+                <tr>
+                    <td style="width: 20px;"><span class="section-badge">{{ $secNum++ }}</span></td>
+                    <td><span class="section-title-text">SISTEMAS DE INFORMACIÓN UTILIZADOS</span></td>
+                </tr>
+            </table>
+
+            <table class="equipos-table">
+                <thead>
+                    <tr>
+                        <th style="width: 18px; text-align: center;">#</th>
+                        <th style="width: 200px;">Sistema / Software</th>
+                        <th>Observación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sistemasUtilizadosPdf as $idx => $sis)
+                        <tr>
+                            <td style="text-align: center; font-weight: bold; color: #64748b;">{{ $idx + 1 }}</td>
+                            <td style="font-weight: bold; color: #0f172a; text-transform: uppercase;">
+                                {{ $sis['nombre'] ?? '' }}
+                            </td>
+                            <td style="color: #475569; font-size: 7px;">
+                                {{ !empty($sis['observacion']) ? strtoupper($sis['observacion']) : '—' }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     {{-- ═══ 2. EQUIPOS DE CÓMPUTO E IMPRESORA ═══ --}}
     <div class="section-card">
         <table class="section-header-table">
