@@ -342,6 +342,26 @@
                            consultorio: roja-naranja la estabilizada, blanco/gris la comercial. */
                         toma_estabilizada: { fill: '#fff7ed', stroke: '#fb923c', ink: '#9a3412', accent: '#f97316' },
                         toma_comercial: { fill: '#f8fafc', stroke: '#94a3b8', ink: '#334155', accent: '#64748b' },
+                        /* Sistemas de información utilizados: mismo violeta para todos —
+                           lo que los distingue entre sí es el nombre, no el color; el
+                           color solo marca la categoría "es un sistema/software". */
+                        his: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        sis: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        sismed: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        wawared: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        renipress: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        sihce: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        notisp: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        siga: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        siaf: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        refcon: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        telesalud: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        sicovid: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        sisgalenplus: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        exapacs: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        sistema_otro: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        tua: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
+                        hisminsa: { fill: '#f5f3ff', stroke: '#a78bfa', ink: '#5b21b6', accent: '#7c3aed' },
                         _default: { fill: '#eff6ff', stroke: '#93c5fd', ink: '#1d4ed8', accent: '#3b82f6' },
                     },
                     /* Las puertas se leen mejor como hueco en el muro: fondo neutro y
@@ -376,6 +396,16 @@
                     pozo: 'POZO TIERRA', punto_red: 'PUNTO RED', equipo: 'EQUIPO',
                     panel_solar: 'PANEL SOLAR', aire_acondicionado: 'AIRE ACONDICIONADO',
                     toma_estabilizada: 'TOMA ESTABILIZADA', toma_comercial: 'TOMA COMERCIAL',
+                    /* Sistemas de información utilizados (sección homónima de la ficha
+                       del consultorio): un ícono de equipo más, no una pastilla aparte.
+                       tua/hisminsa solo existen por compatibilidad con actas antiguas
+                       (la ficha ya no los ofrece, pero un acta vieja puede seguir
+                       trayéndolos). */
+                    his: 'HIS', sis: 'SIS', sismed: 'SISMED', wawared: 'WAWARED',
+                    renipress: 'RENIPRESS', sihce: 'SIHCE MINSA', notisp: 'NOTISP',
+                    siga: 'SIGA', siaf: 'SIAF', refcon: 'REFCON', telesalud: 'TELESALUD',
+                    sicovid: 'SICOVID', sisgalenplus: 'SIS GALENPLUS', exapacs: 'EXA PACS',
+                    sistema_otro: 'SISTEMA', tua: 'TUA', hisminsa: 'HISMINSA',
                 };
 
                 /* Nombre legible de cada sistema de salud dibujable en el croquis */
@@ -421,8 +451,28 @@
                         { tipo: 'toma_estabilizada', label: 'Toma Estabilizada', icon: 'zap' },
                         { tipo: 'toma_comercial', label: 'Toma Comercial', icon: 'plug' },
                     ],
+                    /* Sistemas de información utilizados: mismo catálogo que ofrece la
+                       ficha del consultorio en su sección homónima, para colocarlos a
+                       mano igual que cualquier otro equipo (comparten el mismo ícono
+                       que cuando se sincronizan solos desde la ficha). */
+                    equiposSistemas: [
+                        { tipo: 'his', label: 'HIS', icon: 'heart-pulse' },
+                        { tipo: 'sis', label: 'SIS', icon: 'shield-check' },
+                        { tipo: 'sismed', label: 'SISMED', icon: 'pill' },
+                        { tipo: 'wawared', label: 'WAWARED', icon: 'baby' },
+                        { tipo: 'renipress', label: 'RENIPRESS', icon: 'building-2' },
+                        { tipo: 'sihce', label: 'SIHCE MINSA', icon: 'file-text' },
+                        { tipo: 'notisp', label: 'NOTISP', icon: 'bell-ring' },
+                        { tipo: 'siga', label: 'SIGA', icon: 'package' },
+                        { tipo: 'siaf', label: 'SIAF', icon: 'wallet' },
+                        { tipo: 'refcon', label: 'REFCON', icon: 'arrow-left-right' },
+                        { tipo: 'telesalud', label: 'Telesalud', icon: 'video' },
+                        { tipo: 'sicovid', label: 'SICOVID', icon: 'shield-plus' },
+                        { tipo: 'sisgalenplus', label: 'SIS GalenPlus', icon: 'plus-square' },
+                        { tipo: 'exapacs', label: 'EXA PACS', icon: 'scan-line' },
+                    ],
                     get hwLabelActual() {
-                        const todos = [...this.equiposComputo, ...this.equiposRed];
+                        const todos = [...this.equiposComputo, ...this.equiposRed, ...this.equiposSistemas];
                         const eq = todos.find(e => e.tipo === this.hwType);
                         return eq ? eq.label : 'Equipo';
                     },
@@ -2307,8 +2357,22 @@
                                 c.beginPath(); c.arc(3.5, -3, 1.6, 0, Math.PI * 2); c.fill();
                                 c.beginPath(); c.arc(0, 4.5, 1.8, 0, Math.PI * 2); c.stroke();
                             },
+                            /* Ventana de aplicación: marco + barra de título con sus tres
+                               puntos, para leerse como "sistema/software" y no como un
+                               monitor físico. Se comparte entre los 17 sistemas de
+                               información posibles —lo que los distingue es el nombre. */
+                            sistema_generico: (c) => {
+                                c.beginPath(); c.roundRect(-11, -9, 22, 17, 2); c.stroke();
+                                c.beginPath(); c.moveTo(-11, -3); c.lineTo(11, -3); c.stroke();
+                                [-7.5, -4.5, -1.5].forEach(x => {
+                                    c.beginPath(); c.arc(x, -6, 0.8, 0, Math.PI * 2); c.fill();
+                                });
+                            },
                         };
                         G.toma_comercial = G.toma_estabilizada;
+                        ['his', 'sis', 'sismed', 'wawared', 'renipress', 'sihce', 'notisp', 'siga', 'siaf',
+                         'refcon', 'telesalud', 'sicovid', 'sisgalenplus', 'exapacs', 'sistema_otro',
+                         'tua', 'hisminsa'].forEach(k => { G[k] = G.sistema_generico; });
                         return G[sub] || ((c) => {
                             c.beginPath(); c.roundRect(-9, -7, 18, 14, 2); c.stroke();
                             c.beginPath(); c.moveTo(-4, 0); c.lineTo(4, 0); c.stroke();
@@ -4060,14 +4124,15 @@
                         return m.tipo_conectividad === 'CABLEADO' ? 1 : 0;
                     },
 
-                    /* ── Extras de infraestructura eléctrica/red que declara la propia
-                          ficha del consultorio (aire acondicionado, toma estabilizada y
-                          toma comercial), cada uno como un ícono más en la rejilla de
-                          equipos. Centralizado aquí porque tanto el cálculo del tamaño
-                          de la sala como su llenado necesitan la misma lista, en el mismo
-                          orden. Los puntos de red NO van aquí: se reflejan en el
-                          indicador de la esquina inferior de la sala (ver
-                          "attrs.red" en prepopularModulos), junto con wifi y luz. ── */
+                    /* ── Extras que declara la propia ficha del consultorio (aire
+                          acondicionado, toma estabilizada, toma comercial y los
+                          sistemas de información utilizados), cada uno como un ícono
+                          más en la rejilla de equipos. Centralizado aquí porque tanto
+                          el cálculo del tamaño de la sala como su llenado necesitan la
+                          misma lista, en el mismo orden. Los puntos de red NO van
+                          aquí: se reflejan en el indicador de la esquina inferior de
+                          la sala (ver "attrs.red" en prepopularModulos), junto con
+                          wifi y luz. ── */
                     _extrasConsultorio(m) {
                         const extras = [];
                         if (m.aire_acondicionado) {
@@ -4085,6 +4150,19 @@
                         if ((m.toma_comercial_externas || 0) > 0) {
                             extras.push({ subtype: 'toma_comercial', estado: 'EXTERNA', cantidad: m.toma_comercial_externas, nombre: 'EXTERNA' });
                         }
+                        /* Sistemas de información utilizados: lista libre de la ficha
+                           ("SISTEMAS DE INFORMACIÓN UTILIZADOS"), uno por fila. Se
+                           deduplica por slug —si alguien cargó el mismo sistema dos
+                           veces en la ficha, en el croquis se ve una sola vez— porque
+                           el mecanismo de limpieza de íconos identifica cada extra por
+                           su subtype, no por su posición en la lista. */
+                        const sistemasVistos = new Set();
+                        (m.sistemas || []).forEach(sis => {
+                            const slug = sis.slug || 'sistema_otro';
+                            if (sistemasVistos.has(slug)) return;
+                            sistemasVistos.add(slug);
+                            extras.push({ subtype: slug, estado: '', cantidad: 1, nombre: sis.label || slug.toUpperCase() });
+                        });
                         return extras;
                     },
 
@@ -4460,59 +4538,12 @@
                                 if (setEliminar.has(this.selectedId)) this.selectedId = null;
                             }
 
-                            /* ── Sistema de salud que usa el consultorio (TUA, SIHCE, SISMED,
-                                  HISMINSA, SIS GalenPlus), declarado en su propia ficha.
-                                  Se mantiene SIHCE por defecto si el módulo solo trae la
-                                  pregunta antigua "utiliza_sihce" (módulos fijos). ── */
-                            const sistemaDeclarado = m.sistema_actual || (m.utiliza_sihce === 'SI' ? 'sihce' : '');
-                            if (sistemaDeclarado && SIST_LABEL[sistemaDeclarado]) {
-                                const sistemaExistente = this.elements.find(
-                                    e => e.parentId === sala.id && e.type === 'sistema' && SIST_LABEL[e.subtype]
-                                );
-                                /* Se ancla siempre a la esquina inferior de la sala:
-                                   si esta creció para acoger más equipos, se reubica
-                                   junto con el nuevo borde en vez de quedar flotando. */
-                                const nx = sala.x + 10, ny = sala.y + sala.h - 30;
-                                if (sistemaExistente) {
-                                    if (sistemaExistente.subtype !== sistemaDeclarado) {
-                                        sistemaExistente.subtype = sistemaDeclarado;
-                                        sistemaExistente.name = SIST_LABEL[sistemaDeclarado];
-                                        sistemaExistente._ts = now();
-                                    }
-                                    if (sistemaExistente.piso !== pisoDestino || sistemaExistente.x !== nx || sistemaExistente.y !== ny) {
-                                        sistemaExistente.piso = pisoDestino;
-                                        sistemaExistente.x = nx;
-                                        sistemaExistente.y = ny;
-                                        sistemaExistente._ts = now();
-                                    }
-                                } else {
-                                    this.elements.push({
-                                        id: 'sis_' + m.slug + '_' + sistemaDeclarado + '_' + rid(),
-                                        type: 'sistema', subtype: sistemaDeclarado,
-                                        parentId: sala.id,
-                                        x: nx, y: ny,
-                                        w: 66, h: 24,
-                                        name: SIST_LABEL[sistemaDeclarado],
-                                        rot: 0,
-                                        piso: pisoDestino,
-                                        _ts: now(),
-                                        _synced: true,
-                                    });
-                                }
-                            } else {
-                                /* La ficha ya no declara ningún sistema: si el que se ve en
-                                   el croquis fue puesto por la sincronización, se retira con
-                                   ella. Uno colocado a mano (sin _synced) se respeta. */
-                                const sistemaHuerfano = this.elements.find(
-                                    e => e.parentId === sala.id && e.type === 'sistema' && e._synced
-                                );
-                                if (sistemaHuerfano) {
-                                    if (!this.deletedIds.includes(sistemaHuerfano.id)) this.deletedIds.push(sistemaHuerfano.id);
-                                    this.elements = this.elements.filter(e => e.id !== sistemaHuerfano.id);
-                                    this.connections = this.connections.filter(c => c.from !== sistemaHuerfano.id && c.to !== sistemaHuerfano.id);
-                                    if (this.selectedId === sistemaHuerfano.id) this.selectedId = null;
-                                }
-                            }
+                            /* Los "Sistemas de Información Utilizados" (HIS, SIS, SISMED,
+                               SIHCE MINSA...) ya no se sincronizan como una pastilla aparte:
+                               desde que la ficha pasó a admitir una lista libre en vez de un
+                               solo desplegable, cada uno se agrega como un ícono más en la
+                               rejilla de equipos —ver _extrasConsultorio()— igual que el aire
+                               acondicionado o las tomas eléctricas. */
                         });
 
                         /* Pozo a tierra y panel solar son datos del acta completa, no de un
@@ -5163,11 +5194,6 @@
                         class="px-2.5 sm:px-3 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
                         <i data-lucide="map" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Calle</span>
                     </button>
-                    <button @click="tool = 'sistema'"
-                        :class="tool === 'sistema' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-500'"
-                        class="px-2.5 sm:px-3 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
-                        <i data-lucide="monitor" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Sistemas</span>
-                    </button>
                 </div>
             </div>
 
@@ -5555,11 +5581,27 @@
 
                                 {{-- Red y energía --}}
                                 <p class="text-[7px] font-black uppercase text-slate-400 mb-1.5">Red y energía</p>
-                                <div class="grid grid-cols-3 gap-1.5 mb-4">
+                                <div class="grid grid-cols-3 gap-1.5 mb-3">
                                     <template x-for="eq in equiposRed" :key="eq.tipo">
                                         <button @click="hwType = eq.tipo"
                                             :class="hwType === eq.tipo ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200' : 'bg-white text-slate-400 hover:text-emerald-600'"
                                             class="p-2 rounded-xl flex flex-col items-center gap-1 transition-all shadow-sm border border-emerald-50">
+                                            <i :data-lucide="eq.icon" class="w-4 h-4"></i>
+                                            <span class="text-[7px] font-black uppercase leading-tight text-center"
+                                                x-text="eq.label"></span>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                {{-- Sistemas de información: mismo catálogo que la sección
+                                     "Sistemas de Información Utilizados" de la ficha del
+                                     consultorio, para colocarlos a mano si hiciera falta. --}}
+                                <p class="text-[7px] font-black uppercase text-slate-400 mb-1.5">Sistemas de información</p>
+                                <div class="grid grid-cols-3 gap-1.5 mb-4">
+                                    <template x-for="eq in equiposSistemas" :key="eq.tipo">
+                                        <button @click="hwType = eq.tipo"
+                                            :class="hwType === eq.tipo ? 'bg-violet-600 text-white shadow-md shadow-violet-200' : 'bg-white text-slate-400 hover:text-violet-600'"
+                                            class="p-2 rounded-xl flex flex-col items-center gap-1 transition-all shadow-sm border border-violet-50">
                                             <i :data-lucide="eq.icon" class="w-4 h-4"></i>
                                             <span class="text-[7px] font-black uppercase leading-tight text-center"
                                                 x-text="eq.label"></span>
@@ -5735,78 +5777,11 @@
                             </div>
                         </template>
 
-                        <template x-if="tool === 'sistema'">
-                            <div class="p-4 rounded-2xl"
-                                style="background-color:rgba(245,243,255,0.5);border:1px solid #ede9fe;">
-                                <h2 class="text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2"
-                                    style="color:#7c3aed;">
-                                    <i data-lucide="monitor" class="w-3 h-3"></i> Sistema de Salud
-                                </h2>
-
-                                <!-- Selector sistema -->
-                                <div class="grid grid-cols-2 gap-2 mb-3">
-                                    <button @click="sistemaType = 'tua'"
-                                        :style="sistemaType === 'tua' ? 'background:#6d28d9;color:white;box-shadow:0 4px 6px rgba(109,40,217,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
-                                        style="border:1px solid #ede9fe;">
-                                        <i data-lucide="app-window" class="w-5 h-5"></i>
-                                        <span class="text-[9px] font-black uppercase">TUA</span>
-                                        <span class="text-[7px] opacity-70">Turnos únicos</span>
-                                    </button>
-                                    <button @click="sistemaType = 'sihce'"
-                                        :style="sistemaType === 'sihce' ? 'background:#1d4ed8;color:white;box-shadow:0 4px 6px rgba(29,78,216,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
-                                        style="border:1px solid #dbeafe;">
-                                        <i data-lucide="file-text" class="w-5 h-5"></i>
-                                        <span class="text-[9px] font-black uppercase">SIHCE</span>
-                                        <span class="text-[7px] opacity-70">Hist. clínica</span>
-                                    </button>
-                                    <button @click="sistemaType = 'sismed'"
-                                        :style="sistemaType === 'sismed' ? 'background:#0f766e;color:white;box-shadow:0 4px 6px rgba(15,118,110,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
-                                        style="border:1px solid #ccfbf1;">
-                                        <i data-lucide="pill" class="w-5 h-5"></i>
-                                        <span class="text-[9px] font-black uppercase">SISMED</span>
-                                        <span class="text-[7px] opacity-70">Medicamentos</span>
-                                    </button>
-                                    <button @click="sistemaType = 'hisminsa'"
-                                        :style="sistemaType === 'hisminsa' ? 'background:#c2410c;color:white;box-shadow:0 4px 6px rgba(194,65,12,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
-                                        style="border:1px solid #fed7aa;">
-                                        <i data-lucide="activity" class="w-5 h-5"></i>
-                                        <span class="text-[9px] font-black uppercase">HISMINSA</span>
-                                        <span class="text-[7px] opacity-70">Indicadores HIS</span>
-                                    </button>
-                                    <button @click="sistemaType = 'sisgalenplus'"
-                                        :style="sistemaType === 'sisgalenplus' ? 'background:#2563eb;color:white;box-shadow:0 4px 6px rgba(37,99,235,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
-                                        style="border:1px solid #dbeafe;">
-                                        <i data-lucide="plus-square" class="w-5 h-5"></i>
-                                        <span class="text-[9px] font-black uppercase">SIS GalenPlus</span>
-                                        <span class="text-[7px] opacity-70">Gestión Hospitalaria</span>
-                                    </button>
-                                </div>
-
-                                <!-- Info contextual -->
-                                <div class="mb-3 p-2.5 rounded-xl text-[8px] leading-relaxed"
-                                    :style="sistemaType === 'tua'          ? 'background:#f5f3ff;color:#5b21b6;border:1px solid #ede9fe;' :
-                                                                                                             sistemaType === 'sihce'        ? 'background:#eff6ff;color:#1e40af;border:1px solid #dbeafe;' :
-                                                                                                             sistemaType === 'sismed'       ? 'background:#f0fdfa;color:#134e4a;border:1px solid #ccfbf1;' :
-                                                                                                             sistemaType === 'hisminsa'     ? 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;' :
-                                                                                                                                              'background:#eff6ff;color:#1e40af;border:1px solid #dbeafe;'">
-                                    <span x-show="sistemaType === 'tua'">🖥️ <strong>TUA:</strong> Sistema de turnos y citas
-                                        únicas de atención.</span>
-                                    <span x-show="sistemaType === 'sihce'">📋 <strong>SIHCE:</strong> Historia clínica
-                                        electrónica del paciente.</span>
-                                    <span x-show="sistemaType === 'sismed'">💊 <strong>SISMED:</strong> Sistema de
-                                        información de medicamentos.</span>
-                                    <span x-show="sistemaType === 'hisminsa'">📊 <strong>HISMINSA:</strong> Indicadores de
-                                        salud y producción de servicios.</span>
-                                    <span x-show="sistemaType === 'sisgalenplus'">🏥 <strong>SIS GalenPlus:</strong> Sistema
-                                        integral de gestión hospitalaria.</span>
-                                </div>
-                            </div>
-                        </template>
+                        {{-- El antiguo tab "Sistemas" se retiró: ahora los sistemas de
+                             información se colocan a mano desde el propio panel de
+                             Equipamiento TI (arriba), igual que cualquier otro equipo,
+                             con el mismo ícono que cuando se sincronizan solos desde la
+                             ficha del consultorio. --}}
 
                         <template x-if="selectedId">
                             <div class="mt-6 pt-6 border-t border-slate-100">
@@ -5976,12 +5951,12 @@
                     {{-- Botón de acción del panel activo: fuera del área con scroll, así
                          queda siempre completamente visible sin depender de cuánto
                          contenido tenga la lista de arriba. --}}
-                    <template x-if="['ambiente', 'hardware', 'puerta', 'calle', 'sistema'].includes(tool)">
+                    <template x-if="['ambiente', 'hardware', 'puerta', 'calle'].includes(tool)">
                         <div class="flex-shrink-0 px-4 pt-3 pb-4 border-t"
                             :class="tool === 'ambiente' || tool === 'hardware'
                                 ? 'bg-indigo-50/95 border-indigo-100'
                                 : (tool === 'puerta' ? 'bg-amber-50/95 border-amber-100' : 'border-transparent')"
-                            :style="tool === 'calle' ? 'background-color:rgba(209,250,229,0.95)' : (tool === 'sistema' ? 'background-color:rgba(245,243,255,0.95)' : '')">
+                            :style="tool === 'calle' ? 'background-color:rgba(209,250,229,0.95)' : ''">
 
                             <template x-if="tool === 'ambiente'">
                                 <div>
@@ -6032,18 +6007,6 @@
                                 </div>
                             </template>
 
-                            <template x-if="tool === 'sistema'">
-                                <div>
-                                    <button @click="addElement('sistema'); _autoCloseSheet()"
-                                        @pointerdown="startSidebarDrag('sistema', sistemaType, $event)"
-                                        :style="'background:' + (sistemaType === 'tua' ? '#6d28d9' : sistemaType === 'sihce' ? '#1d4ed8' : sistemaType === 'sismed' ? '#0f766e' : sistemaType === 'hisminsa' ? '#c2410c' : '#1d4ed8')"
-                                        class="w-full py-3 text-white rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg cursor-grab active:cursor-grabbing active:scale-95">
-                                        Colocar Sistema
-                                    </button>
-                                    <p class="text-[7px] text-center mt-1" style="color:#c4b5fd;">↗ o arrástralo directo al
-                                        plano</p>
-                                </div>
-                            </template>
                         </div>
                     </template>
                 </div><!-- /sidebar -->
