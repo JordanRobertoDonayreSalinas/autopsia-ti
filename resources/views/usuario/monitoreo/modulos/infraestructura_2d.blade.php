@@ -338,6 +338,10 @@
                         pozo: { fill: '#ecfdf5', stroke: '#34d399', ink: '#065f46', accent: '#10b981' },
                         punto_red: { fill: '#ecfdf5', stroke: '#34d399', ink: '#065f46', accent: '#10b981' },
                         ups: { fill: '#ecfdf5', stroke: '#34d399', ink: '#065f46', accent: '#10b981' },
+                        /* Mismo código de color que sus preguntas en la ficha del
+                           consultorio: roja-naranja la estabilizada, blanco/gris la comercial. */
+                        toma_estabilizada: { fill: '#fff7ed', stroke: '#fb923c', ink: '#9a3412', accent: '#f97316' },
+                        toma_comercial: { fill: '#f8fafc', stroke: '#94a3b8', ink: '#334155', accent: '#64748b' },
                         _default: { fill: '#eff6ff', stroke: '#93c5fd', ink: '#1d4ed8', accent: '#3b82f6' },
                     },
                     /* Las puertas se leen mejor como hueco en el muro: fondo neutro y
@@ -370,7 +374,8 @@
                     ticketera: 'TICKETERA', escaner: 'ESCANER', lector_dnie: 'LECTOR DNIe', ups: 'UPS',
                     router: 'ROUTER', ap: 'ACCESS POINT', switch: 'SWITCH',
                     pozo: 'POZO TIERRA', punto_red: 'PUNTO RED', equipo: 'EQUIPO',
-                    panel_solar: 'PANEL SOLAR',
+                    panel_solar: 'PANEL SOLAR', aire_acondicionado: 'AIRE ACONDICIONADO',
+                    toma_estabilizada: 'TOMA ESTABILIZADA', toma_comercial: 'TOMA COMERCIAL',
                 };
 
                 /* Nombre legible de cada sistema de salud dibujable en el croquis */
@@ -412,6 +417,9 @@
                         { tipo: 'pozo', label: 'Pozo Tierra', icon: 'anchor' },
                         { tipo: 'ups', label: 'UPS', icon: 'battery-charging' },
                         { tipo: 'panel_solar', label: 'Panel Solar', icon: 'sun' },
+                        { tipo: 'aire_acondicionado', label: 'Aire Acondicionado', icon: 'wind' },
+                        { tipo: 'toma_estabilizada', label: 'Toma Estabilizada', icon: 'zap' },
+                        { tipo: 'toma_comercial', label: 'Toma Comercial', icon: 'plug' },
                     ],
                     get hwLabelActual() {
                         const todos = [...this.equiposComputo, ...this.equiposRed];
@@ -470,6 +478,7 @@
                     _hintVisible: false,    // pista de gestos táctiles
                     isSaving: false,
                     isFullscreen: false,
+                    dirty: false,           // hay cambios sin guardar desde el último "Guardar"
                     history: [],
                     future: [],
                     canvasZoom: 1.0,
@@ -519,7 +528,7 @@
                     _toastTimer: null,           // Timer para auto-ocultar el toast
 
                     /* ─ Datos de módulos (sincronización) ─ */
-                    modulosData: @json($modulosData ?? []),  // [{ slug, label, equipos[], utiliza_sihce, sistema_actual, tipo_conectividad }]
+                    modulosData: @json($modulosData ?? []),  // [{ slug, label, equipos[], utiliza_sihce, sistema_actual, aire_acondicionado, cantidad_puntos_red, sin_punto_red, toma_estabilizada_internas/externas, toma_comercial_internas/externas, tipo_conectividad }]
 
                     /* ─ Pozo a tierra: dato del acta completa, no de un consultorio en particular ─ */
                     pozoTierra: @json($acta->pozo_tierra ?? 'NO'),
@@ -628,7 +637,18 @@
                         });
 
                         /* Notificar al servidor cuando el usuario cierra/navega */
-                        window.addEventListener('beforeunload', () => this._leaveColab());
+                        window.addEventListener('beforeunload', (e) => {
+                            this._leaveColab();
+                            /* Si hay cambios sin guardar, el navegador muestra su propio
+                               aviso nativo ("¿salir sin guardar?"). Cubre cualquier forma
+                               de salir: cerrar pestaña, recargar, escribir otra URL o
+                               hacer clic en un enlace del menú lateral que no pase por
+                               confirmarSalir(). */
+                            if (this.dirty) {
+                                e.preventDefault();
+                                e.returnValue = '';
+                            }
+                        });
 
                         this.$watch('sidebarOpen', () => {
                             this.$nextTick(() => setTimeout(() => { this.resizeCanvas(); this._refreshIcons(); }, 350));
@@ -765,9 +785,13 @@
                         this.history.push(snap);
                         if (this.history.length > MAX_HISTORY) this.history.shift();
                         this.future = [];
+                        /* Toda mutación pasa por aquí antes de tocar el croquis, así que
+                           es el punto único para marcar "hay cambios sin guardar". */
+                        this.dirty = true;
                     },
                     undo() {
                         if (!this.history.length) return;
+                        this.dirty = true;
                         this.future.push(JSON.stringify({ elements: this.elements, connections: this.connections }));
                         const prev = JSON.parse(this.history.pop());
                         const now = this._now();
@@ -796,6 +820,7 @@
                     },
                     redo() {
                         if (!this.future.length) return;
+                        this.dirty = true;
                         this.history.push(JSON.stringify({ elements: this.elements, connections: this.connections }));
                         const next = JSON.parse(this.future.pop());
                         const now = this._now();
@@ -2000,25 +2025,43 @@
 
                     /* ─── Servicios del ambiente (luz · wifi · puntos de red) ───
                        Una sola tira compacta en la esquina inferior derecha, con iconos
-                       monocromos sobre fondo blanco: informa sin llenar el plano de color. */
+                       monocromos sobre fondo blanco: informa sin llenar el plano de color.
+                       Si la ficha del consultorio respondió explícitamente que NO cuenta
+                       con punto de red, o que su tipo de conectividad es "SIN
+                       CONECTIVIDAD", se avisa con un ícono de alerta en vez de dejar la
+                       tira vacía (que se leería como "no se sabe"). ── */
                     drawServiceIcons(el) {
                         const items = [];
                         if (el.attrs?.light && this.layers.power) items.push('light');
+                        /* Tipo de conectividad del consultorio: wifi y cableado son
+                           mutuamente excluyentes (misma pregunta de la ficha), cada uno
+                           con su propio ícono para no confundirlos de un vistazo. */
                         if (el.attrs?.wifi && this.layers.network) items.push('wifi');
-                        if (el.attrs?.red > 0 && this.layers.network) items.push('red');
+                        else if (el.attrs?.cableado && this.layers.network) items.push('cableado');
+                        if (el.attrs?.sinConexion && this.layers.network) {
+                            /* Sin ninguna conectividad: prevalece sobre el aviso de "sin
+                               punto de red", que quedaría redundante en ese caso. */
+                            items.push('sin_conexion');
+                        } else if (this.layers.network) {
+                            if (el.attrs?.red > 0) items.push('red');
+                            else if (el.attrs?.sinRed) items.push('sin_red');
+                        }
                         if (!items.length) return;
 
-                        const COLORS = { light: '#f59e0b', wifi: '#2563eb', red: '#10b981' };
+                        const COLORS = { light: '#f59e0b', wifi: '#2563eb', cableado: '#0891b2', red: '#10b981', sin_red: '#e11d48', sin_conexion: '#e11d48' };
                         const s = Math.max(11, Math.min(15, Math.min(el.w, el.h) * 0.13));
                         const gap = s * 0.42;
                         const padIn = s * 0.42;
                         const count = items.length;
                         const stripW = count * s + (count - 1) * gap + padIn * 2;
                         const stripH = s + padIn * 2;
-                        if (el.w < stripW + 10 || el.h < stripH + 10) return;
+                        /* Separación respecto al borde del consultorio: antes quedaba
+                           pegada (6px), ahora respira un poco más dentro de la sala. */
+                        const margenBorde = 12;
+                        if (el.w < stripW + margenBorde * 2 || el.h < stripH + margenBorde * 2) return;
 
-                        const x0 = el.x + el.w - stripW - 6;
-                        const y0 = el.y + el.h - stripH - 6;
+                        const x0 = el.x + el.w - stripW - margenBorde;
+                        const y0 = el.y + el.h - stripH - margenBorde;
 
                         ctx.save();
                         /* Bandeja blanca */
@@ -2056,7 +2099,16 @@
                                     c.arc(0, 6, 1.6, 0, Math.PI * 2);
                                     c.fill();
                                 });
-                            } else {
+                            } else if (kind === 'cableado') {
+                                /* Conector de red: plug con dos terminales y su cable,
+                                   distinto de las ondas de wifi. */
+                                this._icon(cx, cy, s, col, 1.8, (c) => {
+                                    c.beginPath(); c.roundRect(-6, -3, 12, 9, 2); c.stroke();
+                                    c.beginPath(); c.moveTo(-3, -3); c.lineTo(-3, -8); c.stroke();
+                                    c.beginPath(); c.moveTo(3, -3); c.lineTo(3, -8); c.stroke();
+                                    c.beginPath(); c.moveTo(0, 6); c.lineTo(0, 9); c.stroke();
+                                });
+                            } else if (kind === 'red') {
                                 /* Toma de red y número de puntos */
                                 this._icon(cx, cy, s, col, 1.7, (c) => {
                                     c.beginPath();
@@ -2079,6 +2131,38 @@
                                     ctx.textBaseline = 'middle';
                                     ctx.fillText('×' + el.attrs.red, cx + s * 0.52, cy + s * 0.02);
                                 }
+                            } else if (kind === 'sin_red') {
+                                /* Triángulo de alerta: la ficha del consultorio respondió
+                                   explícitamente que no cuenta con punto de red. */
+                                this._icon(cx, cy, s, col, 1.6, (c) => {
+                                    c.beginPath();
+                                    c.moveTo(0, -9); c.lineTo(8, 8); c.lineTo(-8, 8);
+                                    c.closePath();
+                                    c.stroke();
+                                    c.beginPath();
+                                    c.moveTo(0, -2.5); c.lineTo(0, 2.5);
+                                    c.stroke();
+                                    c.beginPath();
+                                    c.arc(0, 5.8, 0.9, 0, Math.PI * 2);
+                                    c.fill();
+                                });
+                            } else if (kind === 'sin_conexion') {
+                                /* Ondas de wifi tachadas: la ficha del consultorio marcó
+                                   su tipo de conectividad como "SIN CONECTIVIDAD" (ni wifi
+                                   ni cableado). */
+                                this._icon(cx, cy, s, col, 1.8, (c) => {
+                                    [4, 7.5, 11].forEach(r => {
+                                        c.beginPath();
+                                        c.arc(0, 6, r, Math.PI * 1.22, Math.PI * 1.78);
+                                        c.stroke();
+                                    });
+                                    c.beginPath();
+                                    c.arc(0, 6, 1.6, 0, Math.PI * 2);
+                                    c.fill();
+                                    c.beginPath();
+                                    c.moveTo(-9, -8); c.lineTo(9, 11);
+                                    c.stroke();
+                                });
                             }
                         });
                         ctx.restore();
@@ -2204,7 +2288,27 @@
                                 c.lineTo(-2, 7); c.lineTo(4, 0); c.lineTo(0, 0);
                                 c.closePath(); c.fill();
                             },
+                            aire_acondicionado: (c) => {
+                                /* Cuerpo del equipo split + rejillas + soplo de aire ondulado */
+                                c.beginPath(); c.roundRect(-11, -8, 22, 10, 2); c.stroke();
+                                [-6, -2, 2, 6].forEach(x => {
+                                    c.beginPath(); c.moveTo(x, -6); c.lineTo(x, 0); c.stroke();
+                                });
+                                c.beginPath();
+                                c.moveTo(-9, 5); c.quadraticCurveTo(-5, 9, 0, 5); c.quadraticCurveTo(5, 1, 9, 5);
+                                c.stroke();
+                            },
+                            /* Tomacorriente de pared: dos ranuras + orificio de tierra.
+                               Se comparte entre toma estabilizada y comercial; lo que las
+                               distingue en el plano es el color (rojo-naranja / blanco). */
+                            toma_estabilizada: (c) => {
+                                c.beginPath(); c.roundRect(-9, -11, 18, 22, 3); c.stroke();
+                                c.beginPath(); c.arc(-3.5, -3, 1.6, 0, Math.PI * 2); c.fill();
+                                c.beginPath(); c.arc(3.5, -3, 1.6, 0, Math.PI * 2); c.fill();
+                                c.beginPath(); c.arc(0, 4.5, 1.8, 0, Math.PI * 2); c.stroke();
+                            },
                         };
+                        G.toma_comercial = G.toma_estabilizada;
                         return G[sub] || ((c) => {
                             c.beginPath(); c.roundRect(-9, -7, 18, 14, 2); c.stroke();
                             c.beginPath(); c.moveTo(-4, 0); c.lineTo(4, 0); c.stroke();
@@ -3942,6 +4046,48 @@
                         return 'consultorio_fisico';
                     },
 
+                    /* ── Puntos de red del consultorio, para el indicador de la esquina
+                          inferior de su sala. Si la ficha respondió explícitamente que NO
+                          cuenta con punto de red, eso manda y el resultado es 0 (así se
+                          dispara el aviso de "sin red" en vez del ícono verde). Si declaró
+                          una cantidad exacta ("¿Cuenta con punto de red?" = SÍ + cantidad),
+                          esa manda; si la pregunta no existe en este módulo (fijos, sin
+                          ficha propia), se conserva el criterio anterior según el tipo de
+                          conectividad. ── */
+                    _puntosRedDeclarados(m) {
+                        if (m.sin_punto_red) return 0;
+                        if ((m.cantidad_puntos_red || 0) > 0) return m.cantidad_puntos_red;
+                        return m.tipo_conectividad === 'CABLEADO' ? 1 : 0;
+                    },
+
+                    /* ── Extras de infraestructura eléctrica/red que declara la propia
+                          ficha del consultorio (aire acondicionado, toma estabilizada y
+                          toma comercial), cada uno como un ícono más en la rejilla de
+                          equipos. Centralizado aquí porque tanto el cálculo del tamaño
+                          de la sala como su llenado necesitan la misma lista, en el mismo
+                          orden. Los puntos de red NO van aquí: se reflejan en el
+                          indicador de la esquina inferior de la sala (ver
+                          "attrs.red" en prepopularModulos), junto con wifi y luz. ── */
+                    _extrasConsultorio(m) {
+                        const extras = [];
+                        if (m.aire_acondicionado) {
+                            extras.push({ subtype: 'aire_acondicionado', estado: '', cantidad: 1, nombre: 'A/C' });
+                        }
+                        if ((m.toma_estabilizada_internas || 0) > 0) {
+                            extras.push({ subtype: 'toma_estabilizada', estado: 'INTERNA', cantidad: m.toma_estabilizada_internas, nombre: 'INTERNA' });
+                        }
+                        if ((m.toma_estabilizada_externas || 0) > 0) {
+                            extras.push({ subtype: 'toma_estabilizada', estado: 'EXTERNA', cantidad: m.toma_estabilizada_externas, nombre: 'EXTERNA' });
+                        }
+                        if ((m.toma_comercial_internas || 0) > 0) {
+                            extras.push({ subtype: 'toma_comercial', estado: 'INTERNA', cantidad: m.toma_comercial_internas, nombre: 'INTERNA' });
+                        }
+                        if ((m.toma_comercial_externas || 0) > 0) {
+                            extras.push({ subtype: 'toma_comercial', estado: 'EXTERNA', cantidad: m.toma_comercial_externas, nombre: 'EXTERNA' });
+                        }
+                        return extras;
+                    },
+
                     prepopularModulos(modoLimpiar = false, silent = false) {
                         /* Se dibuja todo servicio activo del establecimiento; los equipos
                            solo se añaden a los que tengan alguno registrado. */
@@ -3962,11 +4108,14 @@
                               Cada celda de equipo lleva su icono y, debajo, su nombre. ── */
                         const HWW = 68, HWH = 66, HWGAP = 8, PADX = 16;
                         const HEAD = 42;   // franja del rótulo
-                        const FOOT = 34;   // franja de los indicadores wifi/luz/red
+                        const FOOT = 40;   // franja de los indicadores wifi/luz/red (12px de margen + su propio alto)
                         const COLS_MAX = 4;
 
                         const layouts = servicios.map(m => {
-                            const n = (m.equipos || []).length;
+                            /* + los extras declarados en la ficha (aire acondicionado,
+                               tomas estabilizada/comercial): se dibujan como íconos más
+                               en la misma rejilla de equipos. */
+                            const n = (m.equipos || []).length + this._extrasConsultorio(m).length;
                             const cols = Math.min(COLS_MAX, Math.max(2, n));
                             return { m, cols, rows: Math.ceil(n / cols) };
                         });
@@ -4041,7 +4190,37 @@
 
                         const rid = () => Math.random().toString(36).slice(2, 7);
                         const now = () => this._now();
-                        let salasNuevas = 0, equiposNuevos = 0, salasActualizadas = 0;
+                        let salasNuevas = 0, equiposNuevos = 0, salasActualizadas = 0, salasEliminadas = 0;
+
+                        /* ── Consultorios eliminados desde "Gestión de Módulos": si una
+                              sala fue creada automáticamente para un consultorio (tiene
+                              _slug) y ese consultorio ya no existe o dejó de estar activo,
+                              se retira del croquis junto con todo lo que tenga adentro
+                              (equipos, sistema, extras). Los ambientes sin _slug —puestos
+                              a mano, como un baño o pasillo— nunca se tocan aquí. Como
+                              esta función también corre sola cada 20s (_autoSyncModulos),
+                              basta con eliminar el consultorio en la vista de módulos para
+                              que desaparezca del croquis sin que nadie tenga que entrar a
+                              sincronizar manualmente. ── */
+                        if (!modoLimpiar) {
+                            const slugsVigentes = new Set(servicios.map(m => m.slug));
+                            const salasHuerfanas = this.elements.filter(e =>
+                                e.type === 'ambiente' && e._slug && e._synced && !slugsVigentes.has(e._slug)
+                            );
+                            if (salasHuerfanas.length) {
+                                const idsHuerfanos = new Set(salasHuerfanas.map(e => e.id));
+                                this.elements.forEach(e => {
+                                    if (e.parentId && idsHuerfanos.has(e.parentId)) idsHuerfanos.add(e.id);
+                                });
+                                idsHuerfanos.forEach(idH => {
+                                    if (!this.deletedIds.includes(idH)) this.deletedIds.push(idH);
+                                });
+                                this.elements = this.elements.filter(e => !idsHuerfanos.has(e.id));
+                                this.connections = this.connections.filter(c => !idsHuerfanos.has(c.from) && !idsHuerfanos.has(c.to));
+                                if (idsHuerfanos.has(this.selectedId)) this.selectedId = null;
+                                salasEliminadas = salasHuerfanas.length;
+                            }
+                        }
 
                         /* ── Piso de cada servicio: lo declara la propia ficha del
                               consultorio dinámico ("¿Qué piso es?"); los módulos fijos,
@@ -4087,8 +4266,11 @@
                                     rot: 0,
                                     attrs: {
                                         wifi: m.tipo_conectividad === 'WIFI',
+                                        cableado: m.tipo_conectividad === 'CABLEADO',
                                         light: true,
-                                        red: m.tipo_conectividad === 'CABLEADO' ? 1 : 0,
+                                        red: this._puntosRedDeclarados(m),
+                                        sinRed: !!m.sin_punto_red,
+                                        sinConexion: m.tipo_conectividad === 'SIN CONECTIVIDAD',
                                     },
                                     piso: pisoDestino,
                                     _ts: now(),
@@ -4102,6 +4284,19 @@
                                 /* La sala existente debe poder acoger la rejilla de equipos */
                                 if (sala.w < RW) sala.w = RW;
                                 if (sala.h < RH) sala.h = RH;
+                                /* Tipo de conectividad y puntos de red: la ficha manda
+                                   siempre, así que el indicador de la esquina inferior se
+                                   refresca en cada sincronización (igual que la cantidad
+                                   de un equipo cambia si se edita la ficha). A diferencia
+                                   de "luz" —libre para ajustar a mano y que la
+                                   sincronización nunca toca— estos datos sí tienen una
+                                   fuente de verdad clara: las preguntas del formulario. */
+                                if (!sala.attrs) sala.attrs = { wifi: false, light: false, red: 0 };
+                                sala.attrs.wifi = m.tipo_conectividad === 'WIFI';
+                                sala.attrs.cableado = m.tipo_conectividad === 'CABLEADO';
+                                sala.attrs.red = this._puntosRedDeclarados(m);
+                                sala.attrs.sinRed = !!m.sin_punto_red;
+                                sala.attrs.sinConexion = m.tipo_conectividad === 'SIN CONECTIVIDAD';
                                 /* Si cambiaron Físico ↔ Funcional en la ficha, la sala ya
                                    dibujada se repinta para reflejarlo (solo entre esos dos:
                                    nunca le pisa un tipo especial como emergencias/quirófano). */
@@ -4190,12 +4385,67 @@
                                 equiposNuevos++;
                             });
 
-                            /* ── Quita los equipos auto-sincronizados que ya no están en la
-                                  ficha del consultorio (se borró la fila o cambió de tipo/
-                                  estado): así una edición se refleja en el croquis igual que
-                                  una alta nueva. Nunca toca un icono colocado a mano — esos
-                                  no llevan _synced y quedan fuera de este filtro. ── */
+                            /* ── Extras de infraestructura declarados en la ficha del
+                                  consultorio: aire acondicionado, toma estabilizada y
+                                  toma comercial (con su desglose interna/externa). Cada
+                                  uno se dibuja como un ícono más en la misma rejilla de
+                                  equipos, justo después del último de ellos — la sala ya
+                                  se dimensionó para todos en el cálculo de "layouts". Si
+                                  la ficha responde "NO" o pone la cantidad en 0, el
+                                  limpiador de más abajo lo retira. (Los puntos de red no
+                                  van aquí, ver "attrs.red" más arriba.) ── */
+                            const extras = this._extrasConsultorio(m);
+                            extras.forEach((extra, idx) => {
+                                const exIndex = (m.equipos || []).length + idx;
+                                const existenteExtra = !modoLimpiar && this.elements.find(e =>
+                                    e.type === 'hardware' && e.parentId === sala.id &&
+                                    e.subtype === extra.subtype && String(e.estado || '') === String(extra.estado || '')
+                                );
+                                const exx = originX + (exIndex % cols) * (HWW + HWGAP);
+                                const exy = originY + Math.floor(exIndex / cols) * (HWH + HWGAP);
+
+                                if (existenteExtra) {
+                                    let cambio = false;
+                                    if (existenteExtra.cantidad !== extra.cantidad) {
+                                        existenteExtra.cantidad = extra.cantidad;
+                                        cambio = true;
+                                    }
+                                    if (existenteExtra.piso !== pisoDestino || existenteExtra.x !== exx || existenteExtra.y !== exy) {
+                                        existenteExtra.piso = pisoDestino;
+                                        existenteExtra.x = exx;
+                                        existenteExtra.y = exy;
+                                        cambio = true;
+                                    }
+                                    if (cambio) existenteExtra._ts = now();
+                                } else {
+                                    this.elements.push({
+                                        id: 'hw_' + m.slug + '_' + extra.subtype + (extra.estado ? '_' + extra.estado.toLowerCase() : '') + '_' + rid(),
+                                        type: 'hardware',
+                                        subtype: extra.subtype,
+                                        parentId: sala.id,
+                                        x: exx, y: exy,
+                                        w: HWW, h: HWH,
+                                        name: extra.nombre,
+                                        rot: 0,
+                                        estado: extra.estado || undefined,
+                                        cantidad: extra.cantidad,
+                                        piso: pisoDestino,
+                                        _ts: now(),
+                                        _synced: true,
+                                    });
+                                    equiposNuevos++;
+                                }
+                            });
+
+                            /* ── Quita los equipos y extras auto-sincronizados que ya no
+                                  están en la ficha del consultorio (se borró la fila,
+                                  cambió de tipo/estado, o la pregunta pasó a "NO" / la
+                                  cantidad bajó a 0): así una edición se refleja en el
+                                  croquis igual que una alta nueva. Nunca toca un icono
+                                  colocado a mano — esos no llevan _synced y quedan fuera
+                                  de este filtro. ── */
                             const clavesVigentes = new Set((m.equipos || []).map(eq => eq.tipo + '|' + String(eq.estado || '')));
+                            extras.forEach(extra => clavesVigentes.add(extra.subtype + '|' + String(extra.estado || '')));
                             const idsAEliminar = this.elements
                                 .filter(e => e.type === 'hardware' && e.parentId === sala.id && e._synced &&
                                     !clavesVigentes.has(e.subtype + '|' + String(e.estado || '')))
@@ -4452,7 +4702,7 @@
                         const sinEquipos = servicios.filter(m => (m.equipos || []).length === 0).length;
                         const inactivos = (this.modulosData || []).filter(m => !m.activo).length;
 
-                        if (!salasNuevas && !equiposNuevos) {
+                        if (!salasNuevas && !equiposNuevos && !salasEliminadas) {
                             if (!silent) {
                                 Swal.fire({
                                     title: 'Todo al día',
@@ -4476,7 +4726,7 @@
                             title: '¡Croquis actualizado!',
                             html: `<div class="text-left text-sm text-slate-600 space-y-1">
                                      <p><strong>${servicios.length}</strong> servicio(s) activo(s) · <strong>${totalEquipos}</strong> equipo(s) en total.</p>
-                                     <p>${salasNuevas} sala(s) nueva(s)${salasActualizadas ? ` · ${salasActualizadas} ya existente(s)` : ''} · ${equiposNuevos} equipo(s) colocado(s).</p>
+                                     <p>${salasNuevas} sala(s) nueva(s)${salasActualizadas ? ` · ${salasActualizadas} ya existente(s)` : ''} · ${equiposNuevos} equipo(s) colocado(s)${salasEliminadas ? ` · ${salasEliminadas} sala(s) de consultorios eliminados retirada(s)` : ''}.</p>
                                      ${sinEquipos ? `<p class="text-xs text-slate-400">${sinEquipos} servicio(s) sin equipos registrados: se dibujó la sala vacía.</p>` : ''}
                                      ${inactivos ? `<p class="text-xs text-slate-400">${inactivos} módulo(s) inactivo(s): no se dibujaron.</p>` : ''}
                                      <p class="text-xs text-slate-400 pt-1">Puedes mover y editar todo. Recuerda guardar el croquis.</p>
@@ -4526,6 +4776,7 @@
                             });
 
                             if (res.ok) {
+                                this.dirty = false;
                                 Swal.fire({
                                     target: document.getElementById('tablet-editor-container'),
                                     title: '¡Guardado!',
@@ -4550,6 +4801,42 @@
                         } finally {
                             this.isSaving = false;
                         }
+                    },
+
+                    /* Botón "Volver a módulos": si hay cambios sin guardar, se avisa
+                       con un modal propio (más claro que el aviso genérico del
+                       navegador) antes de salir del editor. */
+                    async confirmarSalir(url) {
+                        if (!this.dirty) {
+                            window.location.href = url;
+                            return;
+                        }
+
+                        const result = await Swal.fire({
+                            target: document.getElementById('tablet-editor-container'),
+                            title: 'Tienes cambios sin guardar',
+                            text: 'Si sales ahora, lo que agregaste o moviste en el croquis desde el último "Guardar" se perderá.',
+                            icon: 'warning',
+                            showDenyButton: true,
+                            showCancelButton: true,
+                            confirmButtonText: 'Guardar y salir',
+                            denyButtonText: 'Salir sin guardar',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#4f46e5',
+                            denyButtonColor: '#e11d48',
+                        });
+
+                        if (result.isConfirmed) {
+                            const guardado = await this.saveData();
+                            if (guardado) window.location.href = url;
+                        } else if (result.isDenied) {
+                            /* El usuario ya confirmó que quiere salir sin guardar: se
+                               apaga "dirty" para que el aviso nativo del navegador
+                               (beforeunload) no vuelva a preguntar lo mismo. */
+                            this.dirty = false;
+                            window.location.href = url;
+                        }
+                        /* result.isDismissed (Cancelar / Esc / clic afuera): no hace nada, se queda editando */
                     },
 
                     /* ═══════════════════════════════════════════════════
@@ -4832,9 +5119,9 @@
             x-transition:enter-start="-translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
             x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0 opacity-100"
             x-transition:leave-end="-translate-y-full opacity-0"
-            class="relative bg-white border-b border-slate-200 px-2 sm:px-4 py-2 sm:py-3 flex flex-col lg:flex-row lg:flex-wrap lg:items-center lg:justify-between gap-2 lg:gap-4 shadow-sm z-50 flex-shrink-0">
+            class="relative bg-white border-b border-slate-200 px-2 sm:px-4 py-1.5 sm:py-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-3 shadow-sm z-50 flex-shrink-0">
 
-            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <button @click="toggleSidebar()" title="Mostrar/ocultar herramientas"
                         class="w-9 h-9 sm:w-8 sm:h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-600 transition-colors">
@@ -4850,43 +5137,43 @@
 
                 <div class="h-6 w-px bg-slate-200 hidden xl:block flex-shrink-0"></div>
 
-                <div class="tool-strip no-scrollbar items-center gap-1 bg-slate-100 p-1 rounded-xl min-w-0 flex-1 lg:flex-none">
+                <div class="tool-strip no-scrollbar items-center gap-1 bg-slate-100 p-1 rounded-xl min-w-0 flex-1 sm:flex-none">
                     <button @click="tool = 'ambiente'"
                         :class="tool === 'ambiente' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
-                        <i data-lucide="square" class="w-4 h-4"></i> <span class="hidden sm:inline">Ambiente</span>
+                        class="px-2.5 sm:px-3 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="square" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Ambiente</span>
                     </button>
                     <button @click="tool = 'hardware'"
                         :class="tool === 'hardware' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-2.5 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
-                        <i data-lucide="cpu" class="w-4 h-4"></i> <span class="hidden sm:inline">Equipamiento TI</span>
+                        class="px-2.5 sm:px-4 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="cpu" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Equipamiento TI</span>
                     </button>
                     <button @click="tool = 'puerta'"
                         :class="tool === 'puerta' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-2.5 sm:px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
-                        <i data-lucide="door-open" class="w-4 h-4"></i> <span class="hidden sm:inline">Puerta</span>
+                        class="px-2.5 sm:px-4 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="door-open" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Puerta</span>
                     </button>
                     <button @click="tool = 'red'"
                         :class="tool === 'red' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'"
-                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
-                        <i data-lucide="share-2" class="w-4 h-4"></i> <span class="hidden sm:inline">Cableado</span>
+                        class="px-2.5 sm:px-3 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="share-2" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Cableado</span>
                     </button>
                     <button @click="tool = 'calle'"
                         :class="tool === 'calle' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500'"
-                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
-                        <i data-lucide="map" class="w-4 h-4"></i> <span class="hidden sm:inline">Calle</span>
+                        class="px-2.5 sm:px-3 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="map" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Calle</span>
                     </button>
                     <button @click="tool = 'sistema'"
                         :class="tool === 'sistema' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-500'"
-                        class="px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
-                        <i data-lucide="monitor" class="w-4 h-4"></i> <span class="hidden sm:inline">Sistemas</span>
+                        class="px-2.5 sm:px-3 py-2 sm:py-1 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1.5 sm:gap-2">
+                        <i data-lucide="monitor" class="w-4 h-4"></i> <span :class="isFullscreen ? 'hidden sm:inline' : 'hidden'">Sistemas</span>
                     </button>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 sm:gap-3 xl:gap-6 flex-wrap">
+            <div class="flex items-center gap-1.5 sm:gap-2 xl:gap-4 flex-wrap">
                 <!-- ── Badge Piso Actual ── -->
-                <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-xl">
+                <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-200 rounded-xl">
                     <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                         stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -4970,18 +5257,18 @@
                 </div>
 
 
-                <!-- Capas Toggle -->
+                <!-- Capas Toggle: colapsado por defecto en cualquier tamaño de pantalla,
+                     así no ocupa espacio hasta que se necesita ajustar algo. -->
                 <div id="topbar-filters-wrap" class="relative flex-shrink-0" @click.outside="showFilters = false">
-                    <!-- Disparador (solo tablet/móvil) -->
-                    <button x-show="isMobile" @click="showFilters = !showFilters; showActions = false"
+                    <button @click="showFilters = !showFilters; showActions = false"
                         :class="showFilters ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'"
                         class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
                         title="Filtros de vista">
                         <i data-lucide="layers" class="w-4 h-4"></i>
                     </button>
 
-                    <div id="topbar-filters-menu" x-show="!isMobile || showFilters"
-                        class="flex items-center gap-4 px-4 py-2 bg-slate-50 rounded-xl border border-slate-200">
+                    <div id="topbar-filters-menu" x-show="showFilters"
+                        class="flex items-center gap-4 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200">
                     <span class="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1"><i data-lucide="layers" class="w-3 h-3"></i> Filtros de Vista:</span>
                     <label class="flex items-center gap-2 cursor-pointer group">
                         <input type="checkbox" x-model="layers.furniture" @change="draw()" class="rounded text-indigo-600">
@@ -5075,54 +5362,55 @@
                     </button>
 
                     <div id="topbar-actions-menu" x-show="!isMobile || showActions"
-                        class="flex items-center gap-2 sm:gap-3">
+                        class="flex items-center gap-1.5 sm:gap-2">
                     <button @click="toggleFullscreen()"
                         :class="isFullscreen ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'"
-                        class="px-4 py-2 hover:bg-indigo-200 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2"
+                        class="px-3 py-1.5 hover:bg-indigo-200 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2"
                         title="Pantalla Completa">
                         <i :data-lucide="isFullscreen ? 'minimize' : 'maximize'" class="w-4 h-4"></i>
-                        <span :class="isMobile ? '' : 'hidden xl:inline'"
+                        <span :class="isMobile || isFullscreen ? '' : 'hidden'"
                             x-text="isFullscreen ? 'Salir' : 'Pantalla Completa'"></span>
                     </button>
                     {{-- 🔄 Botón Reiniciar Croquis (borra todo y regenera desde los módulos) --}}
                     <button id="btn-sync" @click="reiniciarCroquis()" title="Borra todo el croquis y lo regenera desde cero con los datos vigentes de los módulos"
-                        class="relative px-4 py-2 bg-amber-500 text-slate-900 rounded-xl text-[10px] font-black uppercase hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-200">
+                        class="relative px-3 py-1.5 bg-amber-500 text-slate-900 rounded-xl text-[10px] font-black uppercase hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-200">
                         {{-- El contador refleja los servicios activos del establecimiento --}}
                         <span class="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 rounded-full text-[8px] flex items-center justify-center font-black text-white shadow"
                             x-text="(modulosData || []).filter(m => m.activo).length"></span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        <span :class="isMobile ? '' : 'hidden xl:inline'">Reiniciar Croquis</span>
+                        <span :class="isMobile || isFullscreen ? '' : 'hidden'">Reiniciar Croquis</span>
                     </button>
                     {{-- Botón Exportar Imagen --}}
                     <button @click="exportImage()" title="Exportar croquis como imagen PNG"
-                        class="px-3 xl:px-5 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100">
+                        class="px-3 xl:px-5 py-1.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100">
                         <i data-lucide="image" class="w-4 h-4"></i>
-                        <span :class="isMobile ? '' : 'hidden xl:inline'">Exportar PNG</span>
+                        <span :class="isMobile || isFullscreen ? '' : 'hidden'">Exportar PNG</span>
                     </button>
                     {{-- Botón Exportar PDF: guarda el croquis y luego abre el reporte --}}
                     <button @click="exportPdf()" :class="isSaving ? 'btn-saving' : ''"
                         title="Guardar y exportar el reporte a PDF"
-                        class="px-3 xl:px-5 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-rose-700 transition-all flex items-center gap-2 shadow-lg shadow-rose-100">
+                        class="px-3 xl:px-5 py-1.5 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-rose-700 transition-all flex items-center gap-2 shadow-lg shadow-rose-100">
                         <i data-lucide="file-text" class="w-4 h-4"></i>
-                        <span :class="isMobile ? '' : 'hidden xl:inline'">Exportar PDF</span>
+                        <span :class="isMobile || isFullscreen ? '' : 'hidden'">Exportar PDF</span>
                     </button>
                     <a href="{{ route('usuario.monitoreo.modulos', $acta->id) }}"
-                        class="h-10 px-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase"
+                        @click.prevent="confirmarSalir('{{ route('usuario.monitoreo.modulos', $acta->id) }}')"
+                        class="h-9 px-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase"
                         title="Volver al Panel de Módulos">
                         <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                        <span :class="isMobile ? '' : 'hidden'">Volver a módulos</span>
+                        <span :class="isMobile || isFullscreen ? '' : 'hidden'">Volver a módulos</span>
                     </a>
                     <button @click="panelVisible = false; showActions = false"
-                        class="px-3 h-10 bg-rose-50 hover:bg-rose-100 text-rose-500 text-[10px] uppercase font-black tracking-wide rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
+                        class="px-3 h-9 bg-rose-50 hover:bg-rose-100 text-rose-500 text-[10px] uppercase font-black tracking-wide rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
                         title="Ocultar Panel Superior">
                         <i data-lucide="chevron-up" class="w-4 h-4"></i>
-                        <span :class="isMobile ? '' : 'hidden xl:inline'">Ocultar</span>
+                        <span :class="isMobile || isFullscreen ? '' : 'hidden'">Ocultar</span>
                     </button>
                     </div><!-- /topbar-actions-menu -->
 
                     {{-- Guardar: siempre accesible, en cualquier tamaño de pantalla --}}
                     <button @click="saveData()" :class="isSaving ? 'btn-saving' : ''"
-                        class="px-4 sm:px-6 h-10 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase hover:bg-indigo-600 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 flex-shrink-0">
+                        class="px-4 sm:px-6 h-9 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase hover:bg-indigo-600 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 flex-shrink-0">
                         <i :data-lucide="isSaving ? 'loader' : 'save'" :class="isSaving ? 'animate-spin' : ''"
                             class="w-4 h-4"></i>
                         <span x-text="isSaving ? 'Guardando…' : 'Guardar'"></span>
@@ -5157,27 +5445,32 @@
                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                     x-transition:leave="transition ease-in duration-200"
                     x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                    class="absolute top-4 left-4 w-72 bg-white/95 backdrop-blur-xl border border-white/20 flex flex-col p-5 shadow-2xl z-40 rounded-3xl overflow-y-auto overscroll-contain"
-                    :style="panelVisible ? 'max-height: calc(100dvh - 130px)' : 'max-height: calc(100dvh - 40px)'">
+                    class="absolute top-4 left-4 w-56 bg-white/95 backdrop-blur-xl border border-white/20 flex flex-col shadow-2xl z-40 rounded-3xl overflow-hidden"
+                    :style="panelVisible ? 'max-height: calc(100dvh - 112px)' : 'max-height: calc(100dvh - 40px)'">
 
-                    <!-- Asa y cierre (solo tablet/móvil) -->
-                    <div x-show="isMobile" class="relative flex items-center justify-center mb-3 flex-shrink-0">
+                    <!-- Asa y cierre (solo tablet/móvil): fija arriba, fuera del scroll -->
+                    <div x-show="isMobile" class="relative flex items-center justify-center pt-5 pb-3 flex-shrink-0">
                         <div class="h-1.5 w-12 bg-slate-200 rounded-full"></div>
                         <button @click="sidebarOpen = false" title="Cerrar herramientas"
-                            class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                            class="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
                             <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
 
+                    {{-- Área con scroll: separada del botón de acción de abajo, para que
+                         ese botón quede SIEMPRE visible completo sin importar cuánto
+                         contenido tenga el panel activo (antes, con muchos tipos de
+                         equipo en la lista, el botón podía quedar cortado). --}}
+                    <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4">
                     <div class="flex flex-col gap-6" id="tools-content">
 
                         <template x-if="tool === 'ambiente'">
-                            <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
+                            <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
                                 <h2
-                                    class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                     <i data-lucide="plus-circle" class="w-3 h-3"></i> Nuevo Ambiente
                                 </h2>
-                                <div class="space-y-4">
+                                <div class="space-y-3">
                                     <select x-model="roomSubtype"
                                         class="w-full bg-white border-none rounded-xl px-4 py-3 text-xs font-bold text-slate-700 shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all">
                                         <option value="consultorio_fisico">🏥 CONSULTORIO FÍSICO</option>
@@ -5206,14 +5499,14 @@
                                     <div class="grid grid-cols-2 gap-2">
                                         <button @click="attrs.wifi = !attrs.wifi"
                                             :class="attrs.wifi ? 'bg-blue-600 text-white shadow-indigo-200' : 'bg-white text-slate-400'"
-                                            class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all shadow-sm group">
+                                            class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm group">
                                             <i data-lucide="wifi"
                                                 class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
                                             <span class="text-[8px] font-black uppercase">Wifi</span>
                                         </button>
                                         <button @click="attrs.light = !attrs.light"
                                             :class="attrs.light ? 'bg-amber-500 text-white shadow-amber-200' : 'bg-white text-slate-400'"
-                                            class="p-4 rounded-2xl flex flex-col items-center gap-2 transition-all shadow-sm group">
+                                            class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm group">
                                             <i data-lucide="zap"
                                                 class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
                                             <span class="text-[8px] font-black uppercase">Luz</span>
@@ -5235,19 +5528,12 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <button @click="addElement('ambiente'); _autoCloseSheet()"
-                                        @pointerdown="startSidebarDrag('ambiente', roomSubtype, $event)"
-                                        class="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-100 cursor-grab active:cursor-grabbing">
-                                        Añadir al Plano
-                                    </button>
-                                    <p class="text-[7px] text-center text-indigo-300 mt-1">↗ o arrástralo directo al plano
-                                    </p>
                                 </div>
                             </div>
                         </template>
 
                         <template x-if="tool === 'hardware'">
-                            <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
+                            <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
                                 <h2
                                     class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                     <i data-lucide="cpu" class="w-3 h-3"></i> Equipamiento TI
@@ -5280,28 +5566,21 @@
                                         </button>
                                     </template>
                                 </div>
-
-                                <button @click="addElement('hardware'); _autoCloseSheet()"
-                                    @pointerdown="startSidebarDrag('hardware', hwType, $event)"
-                                    class="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-100 cursor-grab active:cursor-grabbing">
-                                    Colocar <span x-text="hwLabelActual"></span>
-                                </button>
-                                <p class="text-[7px] text-center text-indigo-300 mt-1">↗ o arrástralo directo al plano</p>
                             </div>
                         </template>
 
                         <template x-if="tool === 'puerta'">
-                            <div class="bg-amber-50/50 p-5 rounded-2xl border border-amber-100">
+                            <div class="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
                                 <h2
-                                    class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2">
                                     <i data-lucide="door-open" class="w-3 h-3"></i> Colocar Puerta
                                 </h2>
 
                                 <!-- Selector subtipo -->
-                                <div class="grid grid-cols-2 gap-2 mb-4">
+                                <div class="grid grid-cols-2 gap-2 mb-3">
                                     <button @click="doorSubtype = 'interna'"
                                         :class="doorSubtype === 'interna' ? 'bg-amber-500 text-white shadow-amber-200 shadow-md' : 'bg-white text-slate-500'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all border border-amber-100">
+                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all border border-amber-100">
                                         <!-- Puerta interna: panel blanco + ventana arcada gris + pomo negro -->
                                         <svg width="22" height="26" viewBox="0 0 22 26" fill="none"
                                             xmlns="http://www.w3.org/2000/svg">
@@ -5335,7 +5614,7 @@
                                     </button>
                                     <button @click="doorSubtype = 'externa'"
                                         :class="doorSubtype === 'externa' ? 'bg-slate-800 text-white shadow-slate-300 shadow-md' : 'bg-white text-slate-500'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all border border-slate-200">
+                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all border border-slate-200">
                                         <!-- Portón de rejas: pilares, barrotes y remate de puntas -->
                                         <svg width="32" height="26" viewBox="0 0 32 26" fill="none"
                                             xmlns="http://www.w3.org/2000/svg">
@@ -5367,28 +5646,20 @@
                                 </div>
 
                                 <!-- Descripción contextual -->
-                                <div class="mb-4 p-3 rounded-xl text-[8px] leading-relaxed"
+                                <div class="mb-3 p-2.5 rounded-xl text-[8px] leading-relaxed"
                                     :class="doorSubtype === 'externa' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-amber-50 text-amber-700 border border-amber-100'">
                                     <span x-show="doorSubtype === 'interna'">🚪 Puerta simple de una hoja. Para pasillos,
                                         consultorios y ambientes interiores.</span>
                                     <span x-show="doorSubtype === 'externa'">🚧 Portón de rejas de dos hojas. Acceso
                                         principal del establecimiento desde la calle.</span>
                                 </div>
-
-                                <button @click="addElement('puerta'); _autoCloseSheet()"
-                                    @pointerdown="startSidebarDrag('puerta', doorSubtype, $event)"
-                                    :class="doorSubtype === 'externa' ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-900 hover:bg-slate-800'"
-                                    class="w-full py-4 text-white rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg cursor-grab active:cursor-grabbing active:scale-95">
-                                    Añadir Puerta
-                                </button>
-                                <p class="text-[7px] text-center text-slate-400 mt-1">↗ o arrástrala directo al plano</p>
                             </div>
                         </template>
 
                         <template x-if="tool === 'red'">
-                            <div class="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
+                            <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
                                 <h2
-                                    class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                     <i data-lucide="share-2" class="w-3 h-3"></i> Cableado de Red
                                 </h2>
                                 <div class="space-y-3">
@@ -5404,9 +5675,9 @@
                         </template>
 
                         <template x-if="tool === 'calle'">
-                            <div class="p-5 rounded-2xl"
+                            <div class="p-4 rounded-2xl"
                                 style="background-color:rgba(209,250,229,0.45);border:1px solid #a7f3d0;">
-                                <h2 class="text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2"
+                                <h2 class="text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2"
                                     style="color:#047857;">
                                     <i data-lucide="map" class="w-3 h-3"></i> Calle / Referencia
                                 </h2>
@@ -5452,7 +5723,7 @@
                                 </div>
 
                                 <!-- Descripción visual -->
-                                <div class="mb-4 p-3 rounded-xl text-[8px] text-slate-500 leading-relaxed"
+                                <div class="mb-3 p-2.5 rounded-xl text-[8px] text-slate-500 leading-relaxed"
                                     style="background:white;border:1px solid #d1fae5;">
                                     <span x-show="calleSubtype === 'avenida'">🛣️ <strong>Avenida:</strong> vía ancha de
                                         doble sentido con aceras y líneas de carril.</span>
@@ -5461,33 +5732,22 @@
                                     <span x-show="calleSubtype === 'pasaje'">🚶 <strong>Pasaje:</strong> vía angosta
                                         peatonal o vehicular restringida.</span>
                                 </div>
-
-                                <button @click="addElement('calle'); _autoCloseSheet()"
-                                    @pointerdown="startSidebarDrag('calle', calleSubtype, $event)"
-                                    @mouseenter="$el.style.backgroundColor='#065f46'"
-                                    @mouseleave="$el.style.backgroundColor='#047857'"
-                                    class="w-full py-4 text-white rounded-2xl text-[10px] font-black uppercase active:scale-95 transition-all shadow-lg cursor-grab active:cursor-grabbing"
-                                    style="background-color:#047857;">
-                                    Añadir Calle
-                                </button>
-                                <p class="text-[7px] text-center mt-1" style="color:#6ee7b7;">↗ o arrástrala directo al
-                                    plano</p>
                             </div>
                         </template>
 
                         <template x-if="tool === 'sistema'">
-                            <div class="p-5 rounded-2xl"
+                            <div class="p-4 rounded-2xl"
                                 style="background-color:rgba(245,243,255,0.5);border:1px solid #ede9fe;">
-                                <h2 class="text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2"
+                                <h2 class="text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2"
                                     style="color:#7c3aed;">
                                     <i data-lucide="monitor" class="w-3 h-3"></i> Sistema de Salud
                                 </h2>
 
                                 <!-- Selector sistema -->
-                                <div class="grid grid-cols-2 gap-2 mb-4">
+                                <div class="grid grid-cols-2 gap-2 mb-3">
                                     <button @click="sistemaType = 'tua'"
                                         :style="sistemaType === 'tua' ? 'background:#6d28d9;color:white;box-shadow:0 4px 6px rgba(109,40,217,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
+                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
                                         style="border:1px solid #ede9fe;">
                                         <i data-lucide="app-window" class="w-5 h-5"></i>
                                         <span class="text-[9px] font-black uppercase">TUA</span>
@@ -5495,7 +5755,7 @@
                                     </button>
                                     <button @click="sistemaType = 'sihce'"
                                         :style="sistemaType === 'sihce' ? 'background:#1d4ed8;color:white;box-shadow:0 4px 6px rgba(29,78,216,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
+                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
                                         style="border:1px solid #dbeafe;">
                                         <i data-lucide="file-text" class="w-5 h-5"></i>
                                         <span class="text-[9px] font-black uppercase">SIHCE</span>
@@ -5503,7 +5763,7 @@
                                     </button>
                                     <button @click="sistemaType = 'sismed'"
                                         :style="sistemaType === 'sismed' ? 'background:#0f766e;color:white;box-shadow:0 4px 6px rgba(15,118,110,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
+                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
                                         style="border:1px solid #ccfbf1;">
                                         <i data-lucide="pill" class="w-5 h-5"></i>
                                         <span class="text-[9px] font-black uppercase">SISMED</span>
@@ -5511,7 +5771,7 @@
                                     </button>
                                     <button @click="sistemaType = 'hisminsa'"
                                         :style="sistemaType === 'hisminsa' ? 'background:#c2410c;color:white;box-shadow:0 4px 6px rgba(194,65,12,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
+                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
                                         style="border:1px solid #fed7aa;">
                                         <i data-lucide="activity" class="w-5 h-5"></i>
                                         <span class="text-[9px] font-black uppercase">HISMINSA</span>
@@ -5519,7 +5779,7 @@
                                     </button>
                                     <button @click="sistemaType = 'sisgalenplus'"
                                         :style="sistemaType === 'sisgalenplus' ? 'background:#2563eb;color:white;box-shadow:0 4px 6px rgba(37,99,235,0.35)' : 'background:white;color:#64748b'"
-                                        class="p-3 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
+                                        class="p-2.5 rounded-2xl flex flex-col items-center gap-1.5 transition-all shadow-sm"
                                         style="border:1px solid #dbeafe;">
                                         <i data-lucide="plus-square" class="w-5 h-5"></i>
                                         <span class="text-[9px] font-black uppercase">SIS GalenPlus</span>
@@ -5528,7 +5788,7 @@
                                 </div>
 
                                 <!-- Info contextual -->
-                                <div class="mb-4 p-3 rounded-xl text-[8px] leading-relaxed"
+                                <div class="mb-3 p-2.5 rounded-xl text-[8px] leading-relaxed"
                                     :style="sistemaType === 'tua'          ? 'background:#f5f3ff;color:#5b21b6;border:1px solid #ede9fe;' :
                                                                                                              sistemaType === 'sihce'        ? 'background:#eff6ff;color:#1e40af;border:1px solid #dbeafe;' :
                                                                                                              sistemaType === 'sismed'       ? 'background:#f0fdfa;color:#134e4a;border:1px solid #ccfbf1;' :
@@ -5545,15 +5805,6 @@
                                     <span x-show="sistemaType === 'sisgalenplus'">🏥 <strong>SIS GalenPlus:</strong> Sistema
                                         integral de gestión hospitalaria.</span>
                                 </div>
-
-                                <button @click="addElement('sistema'); _autoCloseSheet()"
-                                    @pointerdown="startSidebarDrag('sistema', sistemaType, $event)"
-                                    :style="'background:' + (sistemaType === 'tua' ? '#6d28d9' : sistemaType === 'sihce' ? '#1d4ed8' : sistemaType === 'sismed' ? '#0f766e' : sistemaType === 'hisminsa' ? '#c2410c' : '#1d4ed8')"
-                                    class="w-full py-4 text-white rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg cursor-grab active:cursor-grabbing active:scale-95">
-                                    Colocar Sistema
-                                </button>
-                                <p class="text-[7px] text-center mt-1" style="color:#c4b5fd;">↗ o arrástralo directo al
-                                    plano</p>
                             </div>
                         </template>
 
@@ -5574,16 +5825,22 @@
                                         <p class="text-[8px] font-black uppercase text-slate-400 mb-2 flex items-center gap-1">
                                             <i data-lucide="settings" class="w-3 h-3"></i> Propiedades
                                         </p>
-                                        <div class="grid grid-cols-2 gap-2">
+                                        <div class="grid grid-cols-3 gap-2">
                                             <button @click="toggleSelectedAttr('wifi')"
                                                 :class="selectedEl.attrs?.wifi ? 'bg-blue-600 text-white shadow-indigo-200' : 'bg-white border-slate-200 text-slate-400'"
-                                                class="p-4 rounded-xl flex flex-col items-center gap-2 transition-all shadow-sm border">
+                                                class="p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all shadow-sm border">
                                                 <i data-lucide="wifi" class="w-4 h-4"></i>
                                                 <span class="text-[8px] font-black uppercase">Wifi</span>
                                             </button>
+                                            <button @click="toggleSelectedAttr('cableado')"
+                                                :class="selectedEl.attrs?.cableado ? 'bg-cyan-600 text-white shadow-cyan-200' : 'bg-white border-slate-200 text-slate-400'"
+                                                class="p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all shadow-sm border">
+                                                <i data-lucide="cable" class="w-4 h-4"></i>
+                                                <span class="text-[8px] font-black uppercase">Cableado</span>
+                                            </button>
                                             <button @click="toggleSelectedAttr('light')"
                                                 :class="selectedEl.attrs?.light ? 'bg-amber-500 text-white shadow-amber-200' : 'bg-white border-slate-200 text-slate-400'"
-                                                class="p-4 rounded-xl flex flex-col items-center gap-2 transition-all shadow-sm border">
+                                                class="p-3 rounded-xl flex flex-col items-center gap-1.5 transition-all shadow-sm border">
                                                 <i data-lucide="zap" class="w-4 h-4"></i>
                                                 <span class="text-[8px] font-black uppercase">Luz</span>
                                             </button>
@@ -5714,6 +5971,81 @@
                         </template>
 
                     </div><!-- /tools-content -->
+                    </div><!-- /área con scroll -->
+
+                    {{-- Botón de acción del panel activo: fuera del área con scroll, así
+                         queda siempre completamente visible sin depender de cuánto
+                         contenido tenga la lista de arriba. --}}
+                    <template x-if="['ambiente', 'hardware', 'puerta', 'calle', 'sistema'].includes(tool)">
+                        <div class="flex-shrink-0 px-4 pt-3 pb-4 border-t"
+                            :class="tool === 'ambiente' || tool === 'hardware'
+                                ? 'bg-indigo-50/95 border-indigo-100'
+                                : (tool === 'puerta' ? 'bg-amber-50/95 border-amber-100' : 'border-transparent')"
+                            :style="tool === 'calle' ? 'background-color:rgba(209,250,229,0.95)' : (tool === 'sistema' ? 'background-color:rgba(245,243,255,0.95)' : '')">
+
+                            <template x-if="tool === 'ambiente'">
+                                <div>
+                                    <button @click="addElement('ambiente'); _autoCloseSheet()"
+                                        @pointerdown="startSidebarDrag('ambiente', roomSubtype, $event)"
+                                        class="w-full py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-100 cursor-grab active:cursor-grabbing">
+                                        Añadir al Plano
+                                    </button>
+                                    <p class="text-[7px] text-center text-indigo-300 mt-1">↗ o arrástralo directo al plano</p>
+                                </div>
+                            </template>
+
+                            <template x-if="tool === 'hardware'">
+                                <div>
+                                    <button @click="addElement('hardware'); _autoCloseSheet()"
+                                        @pointerdown="startSidebarDrag('hardware', hwType, $event)"
+                                        class="w-full py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-100 cursor-grab active:cursor-grabbing">
+                                        Colocar <span x-text="hwLabelActual"></span>
+                                    </button>
+                                    <p class="text-[7px] text-center text-indigo-300 mt-1">↗ o arrástralo directo al plano</p>
+                                </div>
+                            </template>
+
+                            <template x-if="tool === 'puerta'">
+                                <div>
+                                    <button @click="addElement('puerta'); _autoCloseSheet()"
+                                        @pointerdown="startSidebarDrag('puerta', doorSubtype, $event)"
+                                        :class="doorSubtype === 'externa' ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-900 hover:bg-slate-800'"
+                                        class="w-full py-3 text-white rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg cursor-grab active:cursor-grabbing active:scale-95">
+                                        Añadir Puerta
+                                    </button>
+                                    <p class="text-[7px] text-center text-slate-400 mt-1">↗ o arrástrala directo al plano</p>
+                                </div>
+                            </template>
+
+                            <template x-if="tool === 'calle'">
+                                <div>
+                                    <button @click="addElement('calle'); _autoCloseSheet()"
+                                        @pointerdown="startSidebarDrag('calle', calleSubtype, $event)"
+                                        @mouseenter="$el.style.backgroundColor='#065f46'"
+                                        @mouseleave="$el.style.backgroundColor='#047857'"
+                                        class="w-full py-3 text-white rounded-2xl text-[10px] font-black uppercase active:scale-95 transition-all shadow-lg cursor-grab active:cursor-grabbing"
+                                        style="background-color:#047857;">
+                                        Añadir Calle
+                                    </button>
+                                    <p class="text-[7px] text-center mt-1" style="color:#6ee7b7;">↗ o arrástrala directo al
+                                        plano</p>
+                                </div>
+                            </template>
+
+                            <template x-if="tool === 'sistema'">
+                                <div>
+                                    <button @click="addElement('sistema'); _autoCloseSheet()"
+                                        @pointerdown="startSidebarDrag('sistema', sistemaType, $event)"
+                                        :style="'background:' + (sistemaType === 'tua' ? '#6d28d9' : sistemaType === 'sihce' ? '#1d4ed8' : sistemaType === 'sismed' ? '#0f766e' : sistemaType === 'hisminsa' ? '#c2410c' : '#1d4ed8')"
+                                        class="w-full py-3 text-white rounded-2xl text-[10px] font-black uppercase transition-all shadow-lg cursor-grab active:cursor-grabbing active:scale-95">
+                                        Colocar Sistema
+                                    </button>
+                                    <p class="text-[7px] text-center mt-1" style="color:#c4b5fd;">↗ o arrástralo directo al
+                                        plano</p>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </div><!-- /sidebar -->
 
                 <canvas id="blueprint-canvas" :style="panMode ? 'cursor:grab' : ''" @mousedown="handleMouseDown"

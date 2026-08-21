@@ -52,6 +52,9 @@ class CroquisCatalogo {
     'pozo': CroquisTipoInfo(label: 'POZO TIERRA', icon: Icons.anchor_rounded, fill: Color(0xFFF0FDF4), stroke: Color(0xFF22C55E), ink: Color(0xFF166534), defaultW: 62, defaultH: 58),
     'ups': CroquisTipoInfo(label: 'UPS', icon: Icons.battery_charging_full_rounded, fill: Color(0xFFF0FDF4), stroke: Color(0xFF22C55E), ink: Color(0xFF166534), defaultW: 62, defaultH: 58),
     'panel_solar': CroquisTipoInfo(label: 'PANEL SOLAR', icon: Icons.wb_sunny_rounded, fill: Color(0xFFF0FDF4), stroke: Color(0xFF22C55E), ink: Color(0xFF166534), defaultW: 62, defaultH: 58),
+    'aire_acondicionado': CroquisTipoInfo(label: 'AIRE ACONDICIONADO', icon: Icons.ac_unit_rounded, fill: Color(0xFFEFF6FF), stroke: Color(0xFF3B82F6), ink: Color(0xFF1E3A8A), defaultW: 62, defaultH: 58),
+    'toma_estabilizada': CroquisTipoInfo(label: 'TOMA ESTABILIZADA', icon: Icons.bolt_rounded, fill: Color(0xFFFFF7ED), stroke: Color(0xFFFB923C), ink: Color(0xFF9A3412), defaultW: 62, defaultH: 58),
+    'toma_comercial': CroquisTipoInfo(label: 'TOMA COMERCIAL', icon: Icons.power_rounded, fill: Color(0xFFF8FAFC), stroke: Color(0xFF94A3B8), ink: Color(0xFF334155), defaultW: 62, defaultH: 58),
   };
 
   static const puertas = <String, CroquisTipoInfo>{

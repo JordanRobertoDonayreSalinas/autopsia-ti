@@ -292,8 +292,20 @@
                                 // Consultorios Hallados: todo lo agregado con "Nuevo Consultorio"
                                 // (cada uno queda con su ficha como "Evaluación Registrada"), sin
                                 // contar los módulos fijos ni el registro de configuración.
-                                $totalConsultoriosHallados = $misDetalles
-                                    ->whereNotIn('modulo_nombre', ['infraestructura_2d', 'rrhh', 'config_modulos'])
+                                $consultoriosDetalles = $misDetalles
+                                    ->whereNotIn('modulo_nombre', ['infraestructura_2d', 'rrhh', 'config_modulos']);
+                                $totalConsultoriosHallados = $consultoriosDetalles->count();
+
+                                // Servicios Hallados: cantidad de servicios distintos declarados
+                                // en esos consultorios (campo "servicio_asociado" del formulario),
+                                // igual que en la vista de gestión de módulos.
+                                $totalServiciosHallados = $consultoriosDetalles
+                                    ->map(function ($d) {
+                                        $cc = is_array($d->contenido) ? $d->contenido : (json_decode($d->contenido, true) ?? []);
+                                        return mb_strtoupper(trim($cc['servicio_asociado'] ?? ''), 'UTF-8');
+                                    })
+                                    ->filter(fn($svc) => $svc !== '')
+                                    ->unique()
                                     ->count();
 
                                 $configMod = $misDetalles->where('modulo_nombre', 'config_modulos')->first();
@@ -398,19 +410,15 @@
                                     @endif
                                 </td>
                                 
-                                {{-- COLUMNA MÓDULOS --}}
-                                <td class="px-3 py-3 min-w-[110px]">
-                                    <div class="flex flex-col">
-                                        <div class="flex items-center justify-between mb-0.5">
-                                            <span class="text-[10px] font-bold text-slate-500">{{ $firmadosCount }}/{{ $totalHabilitados }}</span>
-                                            <span class="text-[9px] font-black {{ $porcentaje == 100 ? 'text-emerald-500' : 'text-amber-500' }}">
-                                                {{ round($porcentaje) }}%
-                                            </span>
-                                        </div>
-                                        <div class="progress-bar-container">
-                                            <div class="progress-bar-fill {{ $porcentaje == 100 ? 'bg-emerald-500' : 'bg-amber-400' }}" style="width: {{ $porcentaje }}%"></div>
-                                        </div>
-                                    </div>
+                                {{-- COLUMNA SERVICIOS HALLADOS --}}
+                                <td class="px-3 py-3 min-w-[110px] text-center">
+                                    @if($totalServiciosHallados > 0)
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-100 text-indigo-700 font-black text-[10px] rounded-lg uppercase tracking-widest">
+                                            <i data-lucide="layers" class="w-3 h-3"></i> {{ $totalServiciosHallados }}
+                                        </span>
+                                    @else
+                                        <span class="text-xs text-slate-400">-</span>
+                                    @endif
                                 </td>
 
                                 {{-- COLUMNA ACTA FINAL --}}
@@ -489,7 +497,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400">No se encontraron registros de monitoreo para el periodo seleccionado</td></tr>
+                            <tr><td colspan="9" class="px-6 py-12 text-center text-slate-400">No se encontraron registros de monitoreo para el periodo seleccionado</td></tr>
                         @endforelse
                     </tbody>
                 </table>
