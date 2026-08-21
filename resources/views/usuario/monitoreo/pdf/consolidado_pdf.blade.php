@@ -376,7 +376,26 @@
 
         // Normalizar colección de módulos
         $modulosCol = collect($modulos ?? []);
-        
+
+        // Mapa slug => contenido de cada módulo, usado para resolver lo que un
+        // consultorio FUNCIONAL vinculado a un físico hereda de él (ver
+        // MonitoreoModuloGenericController::resolverVinculacion, mismo criterio
+        // replicado aquí porque este PDF consolidado no pasa por ese controlador).
+        $contenidoPorSlug = [];
+        foreach ($modulosCol as $m) {
+            $cRaw = $m->contenido;
+            $cDecoded = is_array($cRaw) ? $cRaw : (is_string($cRaw) ? json_decode($cRaw, true) : []);
+            $contenidoPorSlug[strtolower($m->modulo_nombre ?? '')] = is_array($cDecoded) ? $cDecoded : [];
+        }
+        $camposInfraHeredables = [
+            'cuenta_electricidad',
+            'tiene_toma_estabilizada', 'toma_estabilizada_internas', 'toma_estabilizada_externas',
+            'tiene_toma_comercial', 'toma_comercial_internas', 'toma_comercial_externas',
+            'cuenta_punto_red', 'cantidad_puntos_red',
+            'tipo_conectividad', 'operador_servicio', 'operador',
+            'velocidad_descarga', 'velocidad_descarga_unidad', 'velocidad_subida', 'velocidad_subida_unidad',
+        ];
+
         // Separar consultorios clínicos/dinámicos del módulo de RRHH y Croquis
         $consultoriosLista = [];
         $rrhhModulo = null;
@@ -390,6 +409,24 @@
             $rawCont = $modItem->contenido;
             $cont = is_array($rawCont) ? $rawCont : (is_string($rawCont) ? json_decode($rawCont, true) : []);
             if (!is_array($cont)) $cont = [];
+
+            // Si es FUNCIONAL vinculado a un físico, heredar su infraestructura
+            // (electricidad/tomas/punto de red/conectividad) y, si además marcó
+            // que comparte equipo, resolver de qué slug leer los equipos.
+            $slugEquiposEfectivo = $slug;
+            if (strtoupper($cont['tipo_consultorio'] ?? '') === 'FUNCIONAL' && !empty($cont['consultorio_vinculado'])) {
+                $slugVinculado = strtolower(trim($cont['consultorio_vinculado']));
+                // No encadenar: el vinculado debe ser FISICO (o legado sin tipo), nunca otro FUNCIONAL.
+                if (isset($contenidoPorSlug[$slugVinculado]) && strtoupper($contenidoPorSlug[$slugVinculado]['tipo_consultorio'] ?? '') !== 'FUNCIONAL') {
+                    $contVinculado = $contenidoPorSlug[$slugVinculado];
+                    foreach ($camposInfraHeredables as $campo) {
+                        $cont[$campo] = $contVinculado[$campo] ?? null;
+                    }
+                    if (strtoupper($cont['comparte_equipo_con_fisico'] ?? 'NO') === 'SI') {
+                        $slugEquiposEfectivo = $slugVinculado;
+                    }
+                }
+            }
 
             if ($slug === 'rrhh') {
                 $rrhhModulo = [
@@ -427,6 +464,7 @@
                 
                 $consultoriosLista[] = [
                     'slug'      => $slug,
+                    'slug_equipos' => $slugEquiposEfectivo,
                     'titulo'    => $tituloCons,
                     'servicio'  => strtoupper($cont['servicio_asociado'] ?? 'GENERAL'),
                     'departamento' => strtoupper($cont['departamento_asociado'] ?? ''),
@@ -733,9 +771,10 @@
                 <tbody>
                     @foreach($consultoriosLista as $iCons => $c)
                         @php
-                            // Filtrar equipos de este consultorio
+                            // Filtrar equipos de este consultorio (o los del físico
+                            // vinculado, si este consultorio marcó que los comparte)
                             $eqsModulo = $equiposCol->filter(function($e) use ($c) {
-                                return strtolower(trim($e->modulo ?? '')) === strtolower(trim($c['slug']));
+                                return strtolower(trim($e->modulo ?? '')) === strtolower(trim($c['slug_equipos'] ?? $c['slug']));
                             });
                             
                             $resumenEqs = [];

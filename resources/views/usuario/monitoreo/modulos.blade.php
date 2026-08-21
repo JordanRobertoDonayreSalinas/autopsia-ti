@@ -203,6 +203,31 @@
                     $cContent = is_array($consultorio->contenido) ? $consultorio->contenido : (json_decode($consultorio->contenido, true) ?? []);
                     $cTitulo = $cContent['titulo_consultorio'] ?? ('Consultorio ' . ($index + 1));
                     $isSigned = !empty($consultorio->pdf_firmado_path);
+
+                    // Si es FUNCIONAL vinculado a un físico, buscar su título para
+                    // mostrarlo como badge (sin consulta extra: ya está en la colección).
+                    $cVinculadoTitulo = null;
+                    if (strtoupper($cContent['tipo_consultorio'] ?? '') === 'FUNCIONAL' && !empty($cContent['consultorio_vinculado'])) {
+                        $otroFisico = $consultoriosDinamicos->firstWhere('modulo_nombre', $cContent['consultorio_vinculado']);
+                        if ($otroFisico) {
+                            $otroFisicoContent = is_array($otroFisico->contenido) ? $otroFisico->contenido : (json_decode($otroFisico->contenido, true) ?? []);
+                            $cVinculadoTitulo = $otroFisicoContent['titulo_consultorio'] ?? $cContent['consultorio_vinculado'];
+                        }
+                    }
+
+                    // Consultorios funcionales que dependen de este (lo tienen como
+                    // su físico vinculado), para advertir antes de eliminarlo.
+                    $cDependientes = $consultoriosDinamicos->filter(function ($otro) use ($cSlug) {
+                        $oc = is_array($otro->contenido) ? $otro->contenido : (json_decode($otro->contenido, true) ?? []);
+                        return ($oc['consultorio_vinculado'] ?? null) === $cSlug;
+                    })->map(function ($otro) {
+                        $oc = is_array($otro->contenido) ? $otro->contenido : (json_decode($otro->contenido, true) ?? []);
+                        return $oc['titulo_consultorio'] ?? $otro->modulo_nombre;
+                    })->values();
+
+                    $mensajeConfirmarEliminar = $cDependientes->isNotEmpty()
+                        ? addslashes('⚠ ' . $cDependientes->implode(', ') . ' ' . ($cDependientes->count() === 1 ? 'está vinculado' : 'están vinculados') . ' a este consultorio físico y perderá(n) la electricidad, tomas, punto de red y conectividad heredada si lo eliminas. ¿Eliminar de todas formas?')
+                        : addslashes('¿Estás seguro de eliminar este consultorio de la lista?');
                 @endphp
 
                 <div class="relative bg-white rounded-[2.5rem] border-2 border-emerald-200 shadow-xl transition-all duration-500 group overflow-hidden flex flex-col hover:border-emerald-400">
@@ -217,7 +242,7 @@
                                 <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                             </button>
                             
-                            <form action="{{ route('usuario.monitoreo.consultorio.destroy', [$acta->id, $cSlug]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio de la lista?');">
+                            <form action="{{ route('usuario.monitoreo.consultorio.destroy', [$acta->id, $cSlug]) }}" method="POST" onsubmit="return confirm('{{ $mensajeConfirmarEliminar }}');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="h-8 w-8 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors" title="Eliminar Consultorio">
@@ -235,6 +260,11 @@
                             <span class="text-[9px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-1">
                                 <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Evaluación Registrada
                             </span>
+                            @if($cVinculadoTitulo)
+                                <span class="text-[9px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-1 mt-1">
+                                    <i data-lucide="link" class="w-3.5 h-3.5"></i> Vinculado a: {{ $cVinculadoTitulo }}
+                                </span>
+                            @endif
                         </a>
                     </div>
 

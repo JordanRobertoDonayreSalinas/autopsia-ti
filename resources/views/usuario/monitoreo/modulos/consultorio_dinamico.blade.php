@@ -54,6 +54,10 @@
 
                 @php
                     $contenido = $detalle->contenido ?? [];
+                    $esFuncionalInicial = strtoupper($contenido['tipo_consultorio'] ?? '') === 'FUNCIONAL';
+                    $vinculadoInicial = trim($contenido['consultorio_vinculado'] ?? '');
+                    $tieneVinculoInicial = $esFuncionalInicial && !empty($vinculadoInicial);
+                    $comparteEquipoInicial = $tieneVinculoInicial && strtoupper($contenido['comparte_equipo_con_fisico'] ?? 'NO') === 'SI';
                 @endphp
 
                 {{-- 1.- DATOS GENERALES --}}
@@ -121,7 +125,7 @@
                             <label class="block text-slate-600 text-[10px] font-black uppercase tracking-wider mb-2 flex items-center gap-1">
                                 <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-slate-400"></i> Tipo de Consultorio
                             </label>
-                            <select name="contenido[tipo_consultorio]" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-xs uppercase outline-none text-slate-800 cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+                            <select name="contenido[tipo_consultorio]" id="select_tipo_consultorio" onchange="toggleVinculado()" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-xs uppercase outline-none text-slate-800 cursor-pointer focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
                                 <option value="FISICO" {{ ($contenido['tipo_consultorio'] ?? '') == 'FISICO' || ($contenido['tipo_consultorio'] ?? '') == 'FÍSICO' ? 'selected' : '' }}>FÍSICO</option>
                                 <option value="FUNCIONAL" {{ ($contenido['tipo_consultorio'] ?? '') == 'FUNCIONAL' ? 'selected' : '' }}>FUNCIONAL</option>
                             </select>
@@ -130,10 +134,50 @@
                             <label class="block text-slate-600 text-[10px] font-black uppercase tracking-wider mb-2 flex items-center gap-1">
                                 <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i> Nivel / Piso
                             </label>
-                            <input type="number" name="contenido[piso]" min="1" max="99" 
-                                value="{{ preg_replace('/[^0-9]/', '', $contenido['piso'] ?? '1') ?: '1' }}" 
+                            <input type="number" name="contenido[piso]" min="1" max="99"
+                                value="{{ preg_replace('/[^0-9]/', '', $contenido['piso'] ?? '1') ?: '1' }}"
                                 placeholder="Ej: 1"
                                 class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-xs outline-none text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all">
+                        </div>
+                    </div>
+
+                    {{-- VINCULACIÓN CON CONSULTORIO FÍSICO (solo si es FUNCIONAL): el
+                         mismo ambiente puede ser usado por más de un servicio en distintos
+                         días (ej. Medicina lunes/miércoles/viernes, Odontología martes/
+                         jueves). Vincular evita repetir la infraestructura del ambiente. --}}
+                    <div id="container_vinculado" class="mt-5 bg-indigo-50/50 border border-indigo-200 rounded-2xl p-5 {{ $esFuncionalInicial ? '' : 'hidden' }}">
+                        <label class="block text-indigo-900 text-[11px] font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i data-lucide="link" class="w-3.5 h-3.5 text-indigo-600"></i> Consultorio Físico Vinculado (opcional)
+                        </label>
+                        <p class="text-[10px] text-indigo-600/80 font-semibold mb-2.5">
+                            Si este consultorio funcional ocupa el mismo ambiente que otro consultorio físico ya registrado, selecciónelo para heredar automáticamente su electricidad, tomas, punto de red y conectividad.
+                        </p>
+                        <select name="contenido[consultorio_vinculado]" id="select_vinculado" onchange="toggleInfraHeredada()"
+                            class="w-full bg-white border-2 border-indigo-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm uppercase outline-none transition-all shadow-sm">
+                            <option value="">-- NINGUNO (FUNCIONAL INDEPENDIENTE) --</option>
+                            @foreach (($otrosConsultorios ?? []) as $otro)
+                                @php $otroContenido = $otro->contenido ?? []; @endphp
+                                <option value="{{ $otro->modulo_nombre }}" {{ $vinculadoInicial === $otro->modulo_nombre ? 'selected' : '' }}>
+                                    {{ $otroContenido['titulo_consultorio'] ?? $otro->modulo_nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        {{-- ¿COMPARTE EQUIPO DE CÓMPUTO CON EL FÍSICO? --}}
+                        <div id="container_comparte_equipo" class="mt-4 pt-4 border-t border-indigo-200/70 {{ $tieneVinculoInicial ? '' : 'hidden' }}">
+                            <label class="block text-[10px] font-black text-indigo-900 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <i data-lucide="monitor" class="w-3.5 h-3.5 text-indigo-600"></i> ¿Comparte equipo de cómputo con ese consultorio físico?
+                            </label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label data-valor="SI" onclick="setComparteEquipo('SI')" class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ $comparteEquipoInicial ? 'border-indigo-500 bg-indigo-100 text-indigo-800 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                    <input type="radio" name="contenido[comparte_equipo_con_fisico]" value="SI" {{ $comparteEquipoInicial ? 'checked' : '' }} class="sr-only">
+                                    <span class="font-black text-xs uppercase">SÍ, LO COMPARTE</span>
+                                </label>
+                                <label data-valor="NO" onclick="setComparteEquipo('NO')" class="relative flex items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer transition-all {{ !$comparteEquipoInicial ? 'border-slate-400 bg-slate-100 text-slate-700 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                                    <input type="radio" name="contenido[comparte_equipo_con_fisico]" value="NO" {{ !$comparteEquipoInicial ? 'checked' : '' }} class="sr-only">
+                                    <span class="font-black text-xs uppercase">NO, TIENE EL SUYO</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -163,7 +207,7 @@
                     </div>
 
                     {{-- CONDICIONES BÁSICAS DE RED Y ENERGÍA --}}
-                    <div class="mt-7 pt-6 border-t border-slate-100">
+                    <div id="seccion_infra_editable" class="mt-7 pt-6 border-t border-slate-100 {{ $tieneVinculoInicial ? 'hidden' : '' }}">
                         <label class="block text-slate-800 text-xs font-black uppercase tracking-wider mb-4 flex items-center gap-2">
                             <i data-lucide="power" class="w-4 h-4 text-indigo-600"></i> Condiciones e Instalaciones Básicas del Ambiente
                         </label>
@@ -352,90 +396,224 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
-                <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
-                    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-5">
-                        <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
-                            2
-                        </div>
-                        <div>
-                            <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
-                                EQUIPOS DE CÓMPUTO E IMPRESORA
-                            </h3>
-                            <p class="text-xs text-slate-400 font-semibold">Registro de hardware, cantidad, estado operativo y número de serie</p>
+                    {{-- RESUMEN DE SOLO LECTURA: infraestructura heredada del físico vinculado --}}
+                    <div id="seccion_infra_heredada" data-vinculado-cargado="{{ $vinculadoInicial }}" class="mt-7 pt-6 border-t border-slate-100 {{ $tieneVinculoInicial ? '' : 'hidden' }}">
+                        <div class="bg-indigo-50/60 border border-indigo-200 rounded-2xl p-5">
+                            <div class="flex items-center gap-2.5 mb-3">
+                                <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                                    <i data-lucide="link" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-black text-indigo-900 uppercase tracking-tight">
+                                        Electricidad, tomas, punto de red y conectividad heredados
+                                    </p>
+                                    <p class="text-[10px] text-indigo-600/80 font-semibold">
+                                        Este consultorio funcional comparte ambiente con
+                                        <strong>{{ $tituloVinculado ?? 'el consultorio físico vinculado' }}</strong>.
+                                        Edite esos datos allí; aquí solo se muestran de referencia.
+                                    </p>
+                                </div>
+                            </div>
+                            <div id="seccion_infra_heredada_resumen" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-[10px] font-bold text-indigo-900 uppercase">
+                                <div class="bg-white/70 rounded-xl p-2.5">
+                                    <span class="block text-indigo-400 font-black text-[9px]">Electricidad</span>
+                                    {{ strtoupper($contenidoVinculado['cuenta_electricidad'] ?? 'SI') === 'SI' ? '✓ Cuenta' : '✗ No cuenta' }}
+                                </div>
+                                <div class="bg-white/70 rounded-xl p-2.5">
+                                    <span class="block text-indigo-400 font-black text-[9px]">Toma Estabilizada</span>
+                                    {{ strtoupper($contenidoVinculado['tiene_toma_estabilizada'] ?? 'NO') === 'SI' ? (($contenidoVinculado['toma_estabilizada_internas'] ?? 0) . ' int / ' . ($contenidoVinculado['toma_estabilizada_externas'] ?? 0) . ' ext') : 'No tiene' }}
+                                </div>
+                                <div class="bg-white/70 rounded-xl p-2.5">
+                                    <span class="block text-indigo-400 font-black text-[9px]">Toma Comercial</span>
+                                    {{ strtoupper($contenidoVinculado['tiene_toma_comercial'] ?? 'NO') === 'SI' ? (($contenidoVinculado['toma_comercial_internas'] ?? 0) . ' int / ' . ($contenidoVinculado['toma_comercial_externas'] ?? 0) . ' ext') : 'No tiene' }}
+                                </div>
+                                <div class="bg-white/70 rounded-xl p-2.5">
+                                    <span class="block text-indigo-400 font-black text-[9px]">Punto de Red</span>
+                                    {{ strtoupper($contenidoVinculado['cuenta_punto_red'] ?? 'SI') === 'SI' ? '✓ ' . ($contenidoVinculado['cantidad_puntos_red'] ?? 1) . ' pto(s)' : '✗ No cuenta' }}
+                                </div>
+                                <div class="bg-white/70 rounded-xl p-2.5 col-span-2 sm:col-span-2">
+                                    <span class="block text-indigo-400 font-black text-[9px]">Conectividad</span>
+                                    {{ strtoupper($contenidoVinculado['tipo_conectividad'] ?? 'SIN CONECTIVIDAD') }}
+                                </div>
+                                <div class="bg-white/70 rounded-xl p-2.5 col-span-2 sm:col-span-2">
+                                    <span class="block text-indigo-400 font-black text-[9px]">Operador de Servicio</span>
+                                    {{ strtoupper($contenidoVinculado['operador_servicio'] ?? 'N/A') }}
+                                </div>
+                            </div>
+                            <p id="seccion_infra_heredada_pendiente" class="hidden text-[10px] text-indigo-700 font-bold uppercase italic mt-1">
+                                Guarde los cambios y vuelva a abrir este consultorio para ver el resumen actualizado del ambiente heredado.
+                            </p>
                         </div>
                     </div>
-
-                    <x-tabla-equipos :prefix="$slug" :modulo="$slug" :equipos="$equipos ?? []" />
                 </div>
 
-                {{-- REQUERIMIENTO DE EQUIPOS (manual, equipos que aun no tiene el consultorio) --}}
-                <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
-                    <div class="flex items-center justify-between gap-3 mb-6 border-b border-slate-100 pb-5">
-                        <div class="flex items-center gap-3">
+                {{-- EQUIPOS DE CÓMPUTO Y SU REQUERIMIENTO: solo editables aquí cuando el
+                     consultorio NO comparte equipo con su físico vinculado. Cuando sí lo
+                     comparte, se muestra un resumen de solo lectura con el equipo del físico
+                     (ver bloque "seccion_equipos_heredado" más abajo). --}}
+                <div id="seccion_equipos_editable" class="{{ $comparteEquipoInicial ? 'hidden' : '' }}">
+                    {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
+                    <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
+                        <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-5">
                             <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
-                                0
+                                2
                             </div>
                             <div>
                                 <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
-                                    REQUERIMIENTO DE EQUIPOS
+                                    EQUIPOS DE CÓMPUTO E IMPRESORA
                                 </h3>
-                                <p class="text-xs text-slate-400 font-semibold">Equipos que el consultorio necesita y todavía no tiene</p>
+                                <p class="text-xs text-slate-400 font-semibold">Registro de hardware, cantidad, estado operativo y número de serie</p>
                             </div>
                         </div>
-                        <button type="button" onclick="addRequerimientoRow()"
-                                class="group flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
-                            <i data-lucide="plus-circle" class="w-4 h-4 group-hover:rotate-90 transition-transform duration-300"></i>
-                            Añadir Requerimiento
-                        </button>
+
+                        <x-tabla-equipos :prefix="$slug" :modulo="$slug" :equipos="$equipos ?? []" />
                     </div>
 
-                    <div class="overflow-x-auto custom-scroll">
-                        <table class="w-full border-collapse">
-                            <thead>
-                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 bg-slate-50/30">
-                                    <th class="px-6 py-3 text-left">Tipo de Equipo</th>
-                                    <th class="px-2 py-3 text-center">Cant.</th>
-                                    <th class="px-4 py-3 text-left">Observación</th>
-                                    <th class="px-4 py-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="body_requerimientos">
-                                @forelse (($requerimientos ?? []) as $index => $req)
-                                    <tr class="group/row hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none">
-                                        <td class="px-6 py-4">
-                                            <input type="text" name="requerimientos[{{ $index }}][descripcion]" value="{{ $req->descripcion }}" class="input-table-text" required list="list_equipos_master" placeholder="Seleccione...">
-                                        </td>
-                                        <td class="px-2 py-4 text-center">
-                                            <input type="number" name="requerimientos[{{ $index }}][cantidad]" value="{{ $req->cantidad ?? 1 }}" class="input-table-text text-center font-bold" min="1">
-                                        </td>
-                                        <td class="px-4 py-4">
-                                            <input type="text" name="requerimientos[{{ $index }}][observacion]" value="{{ $req->observacion }}" class="input-table-text" placeholder="Motivo del requerimiento...">
-                                        </td>
-                                        <td class="px-4 py-4 text-center">
-                                            <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover/row:opacity-100">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                            </button>
-                                        </td>
+                    {{-- REQUERIMIENTO DE EQUIPOS (manual, equipos que aun no tiene el consultorio) --}}
+                    <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
+                        <div class="flex items-center justify-between gap-3 mb-6 border-b border-slate-100 pb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
+                                    0
+                                </div>
+                                <div>
+                                    <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
+                                        REQUERIMIENTO DE EQUIPOS
+                                    </h3>
+                                    <p class="text-xs text-slate-400 font-semibold">Equipos que el consultorio necesita y todavía no tiene</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="addRequerimientoRow()"
+                                    class="group flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
+                                <i data-lucide="plus-circle" class="w-4 h-4 group-hover:rotate-90 transition-transform duration-300"></i>
+                                Añadir Requerimiento
+                            </button>
+                        </div>
+
+                        <div class="overflow-x-auto custom-scroll">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 bg-slate-50/30">
+                                        <th class="px-6 py-3 text-left">Tipo de Equipo</th>
+                                        <th class="px-2 py-3 text-center">Cant.</th>
+                                        <th class="px-4 py-3 text-left">Observación</th>
+                                        <th class="px-4 py-3"></th>
                                     </tr>
-                                @empty
-                                    <tr id="no_data_requerimientos">
-                                        <td colspan="4" class="px-6 py-8 text-center text-xs font-bold text-slate-400 uppercase">
-                                            Sin requerimientos registrados
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody id="body_requerimientos">
+                                    @forelse (($requerimientos ?? []) as $index => $req)
+                                        <tr class="group/row hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none">
+                                            <td class="px-6 py-4">
+                                                <input type="text" name="requerimientos[{{ $index }}][descripcion]" value="{{ $req->descripcion }}" class="input-table-text" required list="list_equipos_master" placeholder="Seleccione...">
+                                            </td>
+                                            <td class="px-2 py-4 text-center">
+                                                <input type="number" name="requerimientos[{{ $index }}][cantidad]" value="{{ $req->cantidad ?? 1 }}" class="input-table-text text-center font-bold" min="1">
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <input type="text" name="requerimientos[{{ $index }}][observacion]" value="{{ $req->observacion }}" class="input-table-text" placeholder="Motivo del requerimiento...">
+                                            </td>
+                                            <td class="px-4 py-4 text-center">
+                                                <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover/row:opacity-100">
+                                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr id="no_data_requerimientos">
+                                            <td colspan="4" class="px-6 py-8 text-center text-xs font-bold text-slate-400 uppercase">
+                                                Sin requerimientos registrados
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- RESUMEN DE SOLO LECTURA: equipo de cómputo heredado del físico vinculado --}}
+                <div id="seccion_equipos_heredado" data-vinculado-cargado="{{ $vinculadoInicial }}" class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 {{ $comparteEquipoInicial ? '' : 'hidden' }}">
+                    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-5">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="link" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
+                                Equipo de Cómputo Compartido
+                            </h3>
+                            <p class="text-xs text-slate-400 font-semibold">
+                                Este consultorio comparte el equipo de <strong>{{ $tituloVinculado ?? 'el consultorio físico vinculado' }}</strong>. Edítelo allí; aquí solo se muestra de referencia.
+                            </p>
+                        </div>
+                    </div>
+
+                    <p id="seccion_equipos_heredado_pendiente" class="hidden text-[10px] text-indigo-700 font-bold uppercase italic mb-4">
+                        Guarde los cambios y vuelva a abrir este consultorio para ver el equipo actualizado del físico seleccionado.
+                    </p>
+
+                    <div id="seccion_equipos_heredado_resumen">
+                        @if(($equiposHeredados ?? collect())->isEmpty())
+                            <p class="text-xs font-bold text-slate-400 uppercase text-center py-6">Ese consultorio físico aún no tiene equipos registrados</p>
+                        @else
+                            <div class="overflow-x-auto custom-scroll">
+                                <table class="w-full border-collapse">
+                                    <thead>
+                                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 bg-slate-50/30">
+                                            <th class="px-6 py-3 text-left">Equipo</th>
+                                            <th class="px-2 py-3 text-center">Cant.</th>
+                                            <th class="px-4 py-3 text-left">Estado</th>
+                                            <th class="px-4 py-3 text-left">Propiedad</th>
+                                            <th class="px-4 py-3 text-left">N° Serie</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($equiposHeredados as $eqH)
+                                            <tr class="border-b border-slate-50 last:border-none">
+                                                <td class="px-6 py-3 text-xs font-bold text-slate-700">{{ $eqH->descripcion }}</td>
+                                                <td class="px-2 py-3 text-center text-xs font-bold text-slate-700">{{ $eqH->cantidad ?? 1 }}</td>
+                                                <td class="px-4 py-3 text-xs font-bold text-slate-700">{{ $eqH->estado }}</td>
+                                                <td class="px-4 py-3 text-xs font-bold text-slate-700">{{ $eqH->propio }}</td>
+                                                <td class="px-4 py-3 text-xs font-bold text-slate-700">{{ $eqH->nro_serie ?: '—' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+
+                        @if(($requerimientosHeredados ?? collect())->isNotEmpty())
+                            <div class="overflow-x-auto custom-scroll mt-5 pt-5 border-t border-slate-100">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Requerimiento de equipos (heredado)</p>
+                                <table class="w-full border-collapse">
+                                    <thead>
+                                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 bg-slate-50/30">
+                                            <th class="px-6 py-3 text-left">Tipo de Equipo</th>
+                                            <th class="px-2 py-3 text-center">Cant.</th>
+                                            <th class="px-4 py-3 text-left">Observación</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($requerimientosHeredados as $reqH)
+                                            <tr class="border-b border-slate-50 last:border-none">
+                                                <td class="px-6 py-3 text-xs font-bold text-slate-700">{{ $reqH->descripcion }}</td>
+                                                <td class="px-2 py-3 text-center text-xs font-bold text-slate-700">{{ $reqH->cantidad ?? 1 }}</td>
+                                                <td class="px-4 py-3 text-xs font-bold text-slate-700">{{ $reqH->observacion ?: '—' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
                 {{-- 3.- TIPO DE CONECTIVIDAD (siempre visible: un consultorio puede no
                      tener equipo de computo y aun asi necesitar registrar si cuenta
-                     o no con conectividad en el ambiente, ej. "SIN CONECTIVIDAD") --}}
-                <div id="container_tipo_conectividad">
+                     o no con conectividad en el ambiente, ej. "SIN CONECTIVIDAD").
+                     Se oculta solo cuando es FUNCIONAL vinculado a un físico, porque
+                     en ese caso la conectividad se hereda (ver seccion_infra_heredada). --}}
+                <div id="container_tipo_conectividad" class="{{ $tieneVinculoInicial ? 'hidden' : '' }}">
                     <x-tipo-conectividad num="3" :contenido="$contenido" />
                 </div>
 
@@ -533,6 +711,66 @@
     </div>
 
     <script>
+        // ── VINCULACIÓN CON CONSULTORIO FÍSICO (consultorios FUNCIONAL) ──
+        function toggleVinculado() {
+            const tipo = document.getElementById('select_tipo_consultorio').value;
+            const esFuncional = tipo === 'FUNCIONAL';
+            document.getElementById('container_vinculado').classList.toggle('hidden', !esFuncional);
+            if (!esFuncional) {
+                document.getElementById('select_vinculado').value = '';
+            }
+            toggleInfraHeredada();
+        }
+
+        function toggleInfraHeredada() {
+            const vinculado = document.getElementById('select_vinculado').value;
+            const heredada = !!vinculado;
+            document.getElementById('seccion_infra_editable').classList.toggle('hidden', heredada);
+            document.getElementById('container_tipo_conectividad').classList.toggle('hidden', heredada);
+            document.getElementById('container_comparte_equipo').classList.toggle('hidden', !heredada);
+
+            const seccionInfraHeredada = document.getElementById('seccion_infra_heredada');
+            seccionInfraHeredada.classList.toggle('hidden', !heredada);
+            // El resumen con los datos reales del físico solo está disponible para el
+            // vínculo que ya estaba guardado al cargar la página; si el usuario acaba
+            // de cambiar el selector, se avisa que debe guardar para verlo actualizado.
+            const yaCargado = heredada && vinculado === seccionInfraHeredada.dataset.vinculadoCargado;
+            document.getElementById('seccion_infra_heredada_resumen').classList.toggle('hidden', !yaCargado);
+            document.getElementById('seccion_infra_heredada_pendiente').classList.toggle('hidden', !heredada || yaCargado);
+
+            if (!heredada) setComparteEquipo('NO');
+        }
+
+        function setComparteEquipo(valor) {
+            document.querySelectorAll('input[name="contenido[comparte_equipo_con_fisico]"]').forEach(r => { r.checked = (r.value === valor); });
+            document.querySelectorAll('#container_comparte_equipo label').forEach(l => {
+                l.classList.remove('border-indigo-500', 'bg-indigo-100', 'text-indigo-800', 'border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm');
+                l.classList.add('border-slate-200', 'bg-white', 'text-slate-600');
+            });
+            const activo = document.querySelector(`#container_comparte_equipo label[data-valor="${valor}"]`);
+            if (activo) {
+                activo.classList.remove('border-slate-200', 'bg-white', 'text-slate-600');
+                if (valor === 'SI') {
+                    activo.classList.add('border-indigo-500', 'bg-indigo-100', 'text-indigo-800', 'shadow-sm');
+                } else {
+                    activo.classList.add('border-slate-400', 'bg-slate-100', 'text-slate-700', 'shadow-sm');
+                }
+            }
+            const compartido = valor === 'SI';
+            document.getElementById('seccion_equipos_editable').classList.toggle('hidden', compartido);
+
+            const seccionEquiposHeredado = document.getElementById('seccion_equipos_heredado');
+            seccionEquiposHeredado.classList.toggle('hidden', !compartido);
+            // Igual que con la infraestructura: el resumen real del equipo del físico
+            // solo está disponible para el vínculo que ya estaba guardado al cargar la
+            // página; si el usuario recién marcó "comparte" o cambió el físico, se
+            // avisa que debe guardar para ver el equipo actualizado.
+            const vinculadoActual = document.getElementById('select_vinculado').value;
+            const yaCargado = compartido && vinculadoActual === seccionEquiposHeredado.dataset.vinculadoCargado;
+            document.getElementById('seccion_equipos_heredado_resumen').classList.toggle('hidden', !yaCargado);
+            document.getElementById('seccion_equipos_heredado_pendiente').classList.toggle('hidden', !compartido || yaCargado);
+        }
+
         const MAX_EVIDENCIAS = 10;
         let evidenciaCounter = parseInt(document.getElementById('container_evidencias')?.dataset.count || '0', 10);
 
