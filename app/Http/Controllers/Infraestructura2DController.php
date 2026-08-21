@@ -459,23 +459,72 @@ class Infraestructura2DController extends Controller
             $totalEquipos = array_sum(array_column($equipos, 'cantidad'));
 
             // ── 3. Conectividad y sistemas ──
-            $utiliza_sihce     = mb_strtoupper(trim((string)($content['utiliza_sihce'] ?? '')), 'UTF-8');
             $tipo_conectividad = mb_strtoupper(trim((string)($content['tipo_conectividad'] ?? '')), 'UTF-8');
 
             /*
-             * Sistema que usa actualmente el consultorio (pregunta propia de los
-             * consultorios dinámicos). Se normaliza al mismo subtype que dibuja
-             * el croquis para poder sincronizar el ícono automáticamente.
+             * Sistemas de información utilizados: sección "SISTEMAS DE
+             * INFORMACIÓN UTILIZADOS" de la ficha del consultorio, una lista
+             * libre (nombre + observación), ya no un único desplegable. Cada
+             * nombre se normaliza a un subtype conocido —mismo lenguaje que
+             * dibuja el croquis— para que se sincronice con su ícono propio;
+             * lo que no calza con ningún sistema conocido (incluido "OTRO")
+             * cae en un subtype genérico, mostrando igual el texto que se
+             * escribió en la ficha.
              */
-            $sistemaActualLabel = mb_strtoupper(trim((string)($content['sistema_actual'] ?? '')), 'UTF-8');
             $mapaSistemas = [
-                'TUA'           => 'tua',
-                'SIHCE'         => 'sihce',
-                'SISMED'        => 'sismed',
-                'HISMINSA'      => 'hisminsa',
-                'SIS GALENPLUS' => 'sisgalenplus',
+                'HIS (SISTEMA DE INFORMACIÓN DE SALUD)' => ['slug' => 'his', 'label' => 'HIS'],
+                'HIS'                                    => ['slug' => 'his', 'label' => 'HIS'],
+                'SIS (SEGURO INTEGRAL DE SALUD)'         => ['slug' => 'sis', 'label' => 'SIS'],
+                'SISMED'                                 => ['slug' => 'sismed', 'label' => 'SISMED'],
+                'WAWARED'                                => ['slug' => 'wawared', 'label' => 'WAWARED'],
+                'RENIPRESS'                               => ['slug' => 'renipress', 'label' => 'RENIPRESS'],
+                'SIHCE MINSA'                             => ['slug' => 'sihce', 'label' => 'SIHCE MINSA'],
+                'SIHCE'                                   => ['slug' => 'sihce', 'label' => 'SIHCE MINSA'],
+                'NOTISP'                                  => ['slug' => 'notisp', 'label' => 'NOTISP'],
+                'SIGA'                                    => ['slug' => 'siga', 'label' => 'SIGA'],
+                'SIAF'                                    => ['slug' => 'siaf', 'label' => 'SIAF'],
+                'REFCON (REFERENCIA Y CONTRARREFERENCIA)' => ['slug' => 'refcon', 'label' => 'REFCON'],
+                'REFCON'                                  => ['slug' => 'refcon', 'label' => 'REFCON'],
+                'TELESALUD'                               => ['slug' => 'telesalud', 'label' => 'TELESALUD'],
+                'SICOVID'                                 => ['slug' => 'sicovid', 'label' => 'SICOVID'],
+                'SIS GALENPLUS'                           => ['slug' => 'sisgalenplus', 'label' => 'SIS GALENPLUS'],
+                'EXA PACS'                                => ['slug' => 'exapacs', 'label' => 'EXA PACS'],
             ];
-            $sistemaActual = $mapaSistemas[$sistemaActualLabel] ?? '';
+
+            $sistemas = [];
+            $sistemasUtilizados = is_array($content['sistemas_utilizados'] ?? null) ? $content['sistemas_utilizados'] : [];
+            foreach ($sistemasUtilizados as $sis) {
+                $nombreCrudo = trim((string)($sis['nombre'] ?? ''));
+                if ($nombreCrudo === '' || mb_strtoupper($nombreCrudo, 'UTF-8') === 'OTRO') {
+                    if ($nombreCrudo !== '') {
+                        $sistemas[] = ['slug' => 'sistema_otro', 'label' => mb_strtoupper($nombreCrudo, 'UTF-8')];
+                    }
+                    continue;
+                }
+                $nombreNormalizado = mb_strtoupper($nombreCrudo, 'UTF-8');
+                $match = $mapaSistemas[$nombreNormalizado] ?? ['slug' => 'sistema_otro', 'label' => $nombreNormalizado];
+                $sistemas[] = $match;
+            }
+
+            // Compatibilidad con actas antiguas: si esta ficha nunca llegó a
+            // usar la lista nueva pero sí tiene el campo único de antes
+            // ("¿Utiliza SIHCE?" / "Sistema actual"), se sigue mostrando su
+            // ícono para no perder lo que ya estaba dibujado en el croquis.
+            if (empty($sistemas)) {
+                $sistemaActualLabel = mb_strtoupper(trim((string)($content['sistema_actual'] ?? '')), 'UTF-8');
+                $mapaSistemasLegacy = [
+                    'TUA'           => ['slug' => 'tua', 'label' => 'TUA'],
+                    'SIHCE'         => ['slug' => 'sihce', 'label' => 'SIHCE MINSA'],
+                    'SISMED'        => ['slug' => 'sismed', 'label' => 'SISMED'],
+                    'HISMINSA'      => ['slug' => 'hisminsa', 'label' => 'HISMINSA'],
+                    'SIS GALENPLUS' => ['slug' => 'sisgalenplus', 'label' => 'SIS GALENPLUS'],
+                ];
+                if (isset($mapaSistemasLegacy[$sistemaActualLabel])) {
+                    $sistemas[] = $mapaSistemasLegacy[$sistemaActualLabel];
+                } elseif (mb_strtoupper(trim((string)($content['utiliza_sihce'] ?? '')), 'UTF-8') === 'SI') {
+                    $sistemas[] = ['slug' => 'sihce', 'label' => 'SIHCE MINSA'];
+                }
+            }
 
             /*
              * Aire acondicionado: pregunta propia de la ficha del consultorio
@@ -569,8 +618,7 @@ class Infraestructura2DController extends Controller
                 'cantidad'          => $cantidad,
                 'equipos'           => $equipos,        // [{ tipo, estado, cantidad, descripcion }]
                 'total_equipos'     => $totalEquipos,
-                'utiliza_sihce'     => $utiliza_sihce,
-                'sistema_actual'    => $sistemaActual,   // 'tua'|'sihce'|'sismed'|'hisminsa'|'sisgalenplus'|''
+                'sistemas'          => $sistemas,        // [{ slug, label }] — "Sistemas de Información Utilizados"
                 'aire_acondicionado' => $aireAcondicionado,
                 'cantidad_puntos_red' => $cantidadPuntosRed,
                 'sin_punto_red'     => $sinPuntoRed,
