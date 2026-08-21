@@ -967,14 +967,21 @@
             });
 
             fetch(EVIDENCIA_MOVIL_URLS.qr)
-                .then(r => r.json())
-                .then(data => {
+                .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                .then(({ ok, data }) => {
                     const cont = document.getElementById('ev_movil_qr_container');
-                    if (cont) cont.innerHTML = data.qr_html;
+                    if (!cont) return;
+                    if (!ok || !data.qr_html) {
+                        // El servidor sí respondió, pero con un error: se muestra el motivo real
+                        // (queda visible sin necesitar la consola del navegador para diagnosticarlo).
+                        cont.innerHTML = `<div class="text-rose-500 text-[11px] text-center">${data.message || 'No se pudo generar el código QR. Intente de nuevo.'}</div>`;
+                        return;
+                    }
+                    cont.innerHTML = data.qr_html;
                 })
                 .catch(() => {
                     const cont = document.getElementById('ev_movil_qr_container');
-                    if (cont) cont.innerHTML = '<div class="text-rose-500 text-[11px] text-center">No se pudo generar el código QR. Intente de nuevo.</div>';
+                    if (cont) cont.innerHTML = '<div class="text-rose-500 text-[11px] text-center">No se pudo conectar con el servidor. Verifique su conexión e intente de nuevo.</div>';
                 });
 
             if (pollingEvidenciaMovil) clearInterval(pollingEvidenciaMovil);
@@ -1073,6 +1080,11 @@
         });
 
         document.getElementById('form-monitoreo-final').onsubmit = function (e) {
+            // Al guardar, se corta el sondeo del código QR de evidencia móvil
+            // (el servidor también lo cierra) para no seguir consultando de
+            // más una vez que la evaluación ya quedó guardada.
+            if (pollingEvidenciaMovil) clearInterval(pollingEvidenciaMovil);
+
             let faltantes = [];
 
             // 1. DATOS GENERALES

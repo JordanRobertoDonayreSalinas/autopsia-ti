@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MonitoreoModulos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -30,25 +31,61 @@ class EvidenciaMovilController extends Controller
      */
     public function generarQr(Request $request, $id, $slug)
     {
-        MonitoreoModulos::where('cabecera_monitoreo_id', $id)
-            ->where('modulo_nombre', $slug)
-            ->firstOrFail();
+        try {
+            MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+                ->where('modulo_nombre', $slug)
+                ->firstOrFail();
 
-        $token = Str::random(40);
+            // Si ya había un QR activo para este consultorio, se invalida:
+            // solo debe haber uno vigente a la vez (evita códigos viejos
+            // sueltos que sigan aceptando fotos después de generar uno nuevo).
+            $this->cerrarActivo($id, $slug);
 
-        Cache::put("evidencia_movil_{$token}", [
-            'cabecera_monitoreo_id' => $id,
-            'slug' => $slug,
-        ], now()->addMinutes(self::MINUTOS_VIGENCIA));
+            $token = Str::random(40);
 
-        $url = route('evidencia.movil.mostrar', ['token' => $token]);
-        $qrImage = QrCode::size(220)->color(30, 41, 59)->generate($url);
+            Cache::put("evidencia_movil_{$token}", [
+                'cabecera_monitoreo_id' => $id,
+                'slug' => $slug,
+            ], now()->addMinutes(self::MINUTOS_VIGENCIA));
+            Cache::put($this->claveActiva($id, $slug), $token, now()->addMinutes(self::MINUTOS_VIGENCIA));
 
-        return response()->json([
-            'token' => $token,
-            'url' => $url,
-            'qr_html' => (string) $qrImage,
-        ]);
+            $url = route('evidencia.movil.mostrar', ['token' => $token]);
+            // Formato SVG explícito: liviano y no depende de Imagick/GD,
+            // que puede no estar disponible en el servidor.
+            $qrImage = QrCode::format('svg')->size(220)->color(30, 41, 59)->generate($url);
+
+            return response()->json([
+                'token' => $token,
+                'url' => $url,
+                'qr_html' => (string) $qrImage,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Error al generar QR de evidencia móvil (acta {$id}, módulo {$slug}): " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo generar el código QR: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * (Autenticado — se llama internamente al guardar el formulario del
+     * consultorio.) Cierra/invalida el código QR activo de este consultorio,
+     * si lo hay, para que no quede sobrecargando el sistema con sondeos ni
+     * aceptando fotos nuevas después de guardada la evaluación.
+     */
+    public function cerrarActivo($id, $slug): void
+    {
+        $token = Cache::pull($this->claveActiva($id, $slug));
+        if ($token) {
+            Cache::forget("evidencia_movil_{$token}");
+        }
+    }
+
+    private function claveActiva($id, $slug): string
+    {
+        return "evidencia_movil_activo_{$id}_{$slug}";
     }
 
     /**

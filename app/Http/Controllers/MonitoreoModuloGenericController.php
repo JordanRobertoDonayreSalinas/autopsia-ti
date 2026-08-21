@@ -394,6 +394,11 @@ class MonitoreoModuloGenericController extends Controller
 
             DB::commit();
 
+            // Al guardar el formulario, se cierra el código QR de evidencia
+            // móvil activo para este consultorio (si lo hay): ya no debe
+            // seguir aceptando fotos ni ser sondeado, para no sobrecargar.
+            app(EvidenciaMovilController::class)->cerrarActivo($id, $slug);
+
             return redirect()
                 ->route('usuario.monitoreo.modulos', $id)
                 ->with('success', 'Evaluación del consultorio guardada correctamente.');
