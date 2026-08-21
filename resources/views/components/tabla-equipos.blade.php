@@ -874,15 +874,21 @@
             const elProveedor = document.getElementById(`dx_proveedor_${modulo}`);
             const elVelocidadRed = document.getElementById(`dx_velocidad_red_${modulo}`);
 
-            if (elModelo) elModelo.textContent = marcaModelo;
-            if (elCpu) elCpu.textContent = cpuNombre;
-            if (elRam) elRam.textContent = hw.ram || '--';
-            if (elDisco) elDisco.textContent = hw.disco || '--';
-            if (elGpu) elGpu.textContent = gpuNombre;
-            if (elSo) elSo.textContent = hw.so || '--';
+            if (elModelo) elModelo.value = marcaModelo;
+            if (elCpu) elCpu.value = cpuNombre;
+            if (elRam) elRam.value = hw.ram || '';
+            if (elDisco) elDisco.value = hw.disco || '';
+            if (elGpu) elGpu.value = gpuNombre;
+            if (elSo) elSo.value = hw.so || '';
             if (elTipoRed) elTipoRed.textContent = hw.tipo_red || 'SIN CONEXIÓN';
             if (elProveedor) elProveedor.textContent = hw.proveedor_internet || 'No Identificado';
             if (elVelocidadRed) elVelocidadRed.textContent = hw.velocidad_red || '--';
+
+            const badge = document.getElementById(`dx_badge_${modulo}`);
+            if (badge) {
+                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-full';
+                badge.innerHTML = '<span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Autodetectado';
+            }
 
             panel.classList.remove('hidden');
         }
