@@ -173,8 +173,8 @@
                                 <th class="px-4 py-3">Establecimiento</th>
                                 <th class="px-4 py-3">Tipo</th>
                                 <th class="px-4 py-3">Módulo</th>
-                                <th class="px-4 py-3">Servicio</th>
                                 <th class="px-4 py-3">Departamento</th>
+                                <th class="px-4 py-3">Servicio</th>
                                 <th class="px-4 py-3">Consultorio</th>
                                 <th class="px-4 py-3 text-center">Cant.</th>
                                 <th class="px-4 py-3">Descripción</th>
@@ -189,7 +189,14 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            @foreach($equipos as $equipo)
+                            @foreach($equipos as $item)
+                                @php
+                                    // $item es {equipo, modulo_efectivo}: un mismo equipo compartido
+                                    // puede aparecer varias veces, una por cada consultorio funcional
+                                    // vinculado que lo comparte (ver ReporteEquiposController).
+                                    $equipo = $item->equipo;
+                                    $moduloEfectivo = $item->modulo_efectivo;
+                                @endphp
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         {{ $equipo->cabecera->fecha ? \Carbon\Carbon::parse($equipo->cabecera->fecha)->format('d/m/Y') : 'N/A' }}
@@ -207,16 +214,16 @@
                                             {{ $tipo }}
                                         </span>
                                     </td>
-                                    @php $esModuloFijo = ModuloHelper::esModuloFijo($equipo->modulo); @endphp
+                                    @php $esModuloFijo = ModuloHelper::esModuloFijo($moduloEfectivo); @endphp
                                     <td class="px-4 py-3 text-slate-600">
-                                        {{ $esModuloFijo ? ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) : '—' }}
+                                        {{ $esModuloFijo ? ModuloHelper::getNombreModulo($equipo->cabecera, $moduloEfectivo) : '—' }}
                                     </td>
-                                    @php $datosConsultorio = ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo); @endphp
-                                    <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['servicio_asociado'] ?: '—' }}</td>
+                                    @php $datosConsultorio = ModuloHelper::getDatosConsultorio($equipo->cabecera, $moduloEfectivo); @endphp
                                     <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['departamento_asociado'] ?: '—' }}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['servicio_asociado'] ?: '—' }}</td>
                                     <td class="px-4 py-3">
                                         @if(!$esModuloFijo)
-                                            <span class="block font-bold text-slate-700 mb-1">{{ ModuloHelper::getNombreModulo($equipo->cabecera, $equipo->modulo) }}</span>
+                                            <span class="block font-bold text-slate-700 mb-1">{{ ModuloHelper::getNombreModulo($equipo->cabecera, $moduloEfectivo) }}</span>
                                         @endif
                                         @if($datosConsultorio['tipo_consultorio'] === 'FUNCIONAL')
                                             <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 whitespace-nowrap">FUNCIONAL</span>
@@ -248,7 +255,7 @@
                                     <td class="px-4 py-3 text-slate-500 font-mono">{{ $equipo->nro_serie ?: '—' }}</td>
                                     <td class="px-4 py-3 text-slate-500">{{ $equipo->observacion ?: '—' }}</td>
                                     <td class="px-4 py-3">
-                                        @php $conect = ModuloHelper::getConectividadActa($equipo->cabecera, $equipo->modulo); @endphp
+                                        @php $conect = ModuloHelper::getConectividadActa($equipo->cabecera, $moduloEfectivo); @endphp
                                         <span class="text-slate-500">{{ $conect['tipo'] }}</span>
                                     </td>
                                     <td class="px-4 py-3">

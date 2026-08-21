@@ -81,12 +81,18 @@ class EvidenciaMovilController extends Controller
         $token = Cache::pull($this->claveActiva($id, $slug));
         if ($token) {
             Cache::forget("evidencia_movil_{$token}");
+            Cache::forget($this->clavePendientes($token));
         }
     }
 
     private function claveActiva($id, $slug): string
     {
         return "evidencia_movil_activo_{$id}_{$slug}";
+    }
+
+    private function clavePendientes(string $token): string
+    {
+        return "evidencia_movil_pendientes_{$token}";
     }
 
     /**
@@ -104,20 +110,21 @@ class EvidenciaMovilController extends Controller
 
         $contenido = $detalle->contenido ?? [];
         $tituloConsultorio = $contenido['titulo_consultorio'] ?? 'Consultorio';
-        $evidencias = $contenido['evidencias'] ?? [];
 
         return view('wizard.evidencia-movil', [
             'token' => $token,
             'tituloConsultorio' => $tituloConsultorio,
-            'evidencias' => $evidencias,
+            'evidenciasGuardadas' => $contenido['evidencias'] ?? [],
+            'evidenciasPendientes' => Cache::get($this->clavePendientes($token), []),
             'maxEvidencias' => self::MAX_EVIDENCIAS,
         ]);
     }
 
     /**
-     * (Público, sin login.) Sube una foto + descripción y la adjunta de
-     * inmediato al consultorio: no espera a que se guarde el formulario
-     * completo en la laptop, la foto queda a salvo apenas se toma.
+     * (Público, sin login.) Sube una foto + descripción. El archivo se
+     * guarda ya mismo en disco (para no perderlo), pero queda como
+     * "pendiente" hasta que el auditor guarde el formulario completo en la
+     * laptop: recién ahí se adjunta de verdad al consultorio.
      */
     public function subir(Request $request, $token)
     {
@@ -138,39 +145,41 @@ class EvidenciaMovilController extends Controller
             ->where('modulo_nombre', $slug)
             ->firstOrFail();
 
-        $contenido = $detalle->contenido ?? [];
-        $evidencias = $contenido['evidencias'] ?? [];
+        $evidenciasGuardadas = $detalle->contenido['evidencias'] ?? [];
+        $pendientes = Cache::get($this->clavePendientes($token), []);
+        $totalActual = count($evidenciasGuardadas) + count($pendientes);
 
-        if (count($evidencias) >= self::MAX_EVIDENCIAS) {
+        if ($totalActual >= self::MAX_EVIDENCIAS) {
             return response()->json(['success' => false, 'message' => 'Ya se alcanzó el máximo de ' . self::MAX_EVIDENCIAS . ' fotos para este consultorio.'], 422);
         }
 
         $slugLimpio = Str::slug($slug, '_');
-        $numFoto = count($evidencias) + 1;
+        $numFoto = $totalActual + 1;
         $extension = strtolower($request->file('foto')->getClientOriginalExtension() ?: 'jpg');
         $nombreEstandar = "evidencia_acta_{$id}_{$slugLimpio}_{$numFoto}_" . date('Ymd_His') . '_' . uniqid() . '.' . $extension;
         $path = $request->file('foto')->storeAs('evidencias_monitoreo', $nombreEstandar, 'public');
 
-        $evidencias[] = [
+        $pendientes[] = [
             'path' => $path,
             'descripcion' => mb_strtoupper(trim($request->input('descripcion'))),
         ];
+        Cache::put($this->clavePendientes($token), $pendientes, now()->addMinutes(self::MINUTOS_VIGENCIA));
 
-        $contenido['evidencias'] = $evidencias;
-        $detalle->update(['contenido' => $contenido]);
+        $totalNuevo = count($evidenciasGuardadas) + count($pendientes);
 
         return response()->json([
             'success' => true,
             'path' => $path,
-            'total' => count($evidencias),
-            'restantes' => self::MAX_EVIDENCIAS - count($evidencias),
+            'total' => $totalNuevo,
+            'restantes' => self::MAX_EVIDENCIAS - $totalNuevo,
         ]);
     }
 
     /**
-     * (Público, sin login.) Elimina una foto ya subida (identificada por su
-     * ruta) directamente desde el celular. La laptop detecta el borrado en
-     * el siguiente sondeo y quita esa tarjeta de su propia galería.
+     * (Público, sin login.) Quita una foto pendiente (todavía no guardada
+     * en el formulario) directamente desde el celular. Las fotos ya
+     * guardadas en el consultorio no se pueden borrar desde aquí: eso se
+     * hace desde la laptop y también requiere guardar el formulario.
      */
     public function eliminar(Request $request, $token)
     {
@@ -183,55 +192,52 @@ class EvidenciaMovilController extends Controller
             'path' => 'required|string',
         ]);
 
-        $id = $datos['cabecera_monitoreo_id'];
-        $slug = $datos['slug'];
-
-        $detalle = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
-            ->where('modulo_nombre', $slug)
-            ->firstOrFail();
-
-        $contenido = $detalle->contenido ?? [];
-        $evidencias = $contenido['evidencias'] ?? [];
         $pathABorrar = $request->input('path');
+        $pendientes = Cache::get($this->clavePendientes($token), []);
 
-        $evidenciasFiltradas = array_values(array_filter(
-            $evidencias,
+        $pendientesFiltradas = array_values(array_filter(
+            $pendientes,
             fn($ev) => ($ev['path'] ?? null) !== $pathABorrar
         ));
 
-        if (count($evidenciasFiltradas) === count($evidencias)) {
-            return response()->json(['success' => false, 'message' => 'Esa foto ya no existe (puede que se haya eliminado desde la computadora).'], 404);
+        if (count($pendientesFiltradas) === count($pendientes)) {
+            return response()->json(['success' => false, 'message' => 'Esa foto ya no está pendiente (puede que ya se haya guardado o quitado desde la computadora).'], 404);
         }
 
         if (Storage::disk('public')->exists($pathABorrar)) {
             Storage::disk('public')->delete($pathABorrar);
         }
 
-        $contenido['evidencias'] = $evidenciasFiltradas;
-        $detalle->update(['contenido' => $contenido]);
+        Cache::put($this->clavePendientes($token), $pendientesFiltradas, now()->addMinutes(self::MINUTOS_VIGENCIA));
+
+        $id = $datos['cabecera_monitoreo_id'];
+        $slug = $datos['slug'];
+        $detalle = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+            ->where('modulo_nombre', $slug)
+            ->first();
+        $totalGuardadas = count($detalle->contenido['evidencias'] ?? []);
+        $totalNuevo = $totalGuardadas + count($pendientesFiltradas);
 
         return response()->json([
             'success' => true,
-            'total' => count($evidenciasFiltradas),
-            'restantes' => self::MAX_EVIDENCIAS - count($evidenciasFiltradas),
+            'total' => $totalNuevo,
+            'restantes' => self::MAX_EVIDENCIAS - $totalNuevo,
         ]);
     }
 
     /**
-     * (Autenticado, desde la laptop.) Sondeo: la lista actual de evidencias
-     * del consultorio, para que el formulario detecte fotos nuevas subidas
-     * desde el celular y las inserte en pantalla sin recargar la página.
+     * (Autenticado, desde la laptop.) Sondeo: las fotos pendientes subidas
+     * desde el celular (todavía no guardadas), para que el formulario las
+     * inserte en pantalla sin recargar la página. Al guardar el formulario
+     * quedan adjuntas de verdad al consultorio.
      */
     public function estado($id, $slug)
     {
-        $detalle = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
-            ->where('modulo_nombre', $slug)
-            ->firstOrFail();
-
-        $contenido = $detalle->contenido ?? [];
+        $token = Cache::get($this->claveActiva($id, $slug));
+        $pendientes = $token ? Cache::get($this->clavePendientes($token), []) : [];
 
         return response()->json([
-            'evidencias' => $contenido['evidencias'] ?? [],
+            'pendientes' => $pendientes,
         ]);
     }
 }

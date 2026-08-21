@@ -18,17 +18,17 @@
     <div class="bg-slate-800 p-4 text-center">
       <h1 class="text-white font-black text-base uppercase tracking-tight">📷 Evidencia Fotográfica</h1>
       <p class="text-indigo-300 text-sm font-bold mt-1">{{ $tituloConsultorio }}</p>
-      <p class="text-slate-400 text-[11px] mt-1">Las fotos se suben directo, sin pasar por la computadora</p>
+      <p class="text-slate-400 text-[11px] mt-1">Las fotos se envían a la computadora, pero recién quedan guardadas cuando allí se guarde el formulario</p>
     </div>
 
     <div class="p-5 space-y-4">
       <div class="flex items-center justify-between bg-indigo-50 rounded-xl px-4 py-2.5">
-        <span class="text-[11px] font-black text-indigo-700 uppercase">Fotos subidas</span>
-        <span id="contador" class="text-sm font-black text-indigo-700">{{ count($evidencias) }} / {{ $maxEvidencias }}</span>
+        <span class="text-[11px] font-black text-indigo-700 uppercase">Fotos (guardadas + pendientes)</span>
+        <span id="contador" class="text-sm font-black text-indigo-700">{{ count($evidenciasGuardadas) + count($evidenciasPendientes) }} / {{ $maxEvidencias }}</span>
       </div>
 
       {{-- Paso 1: tomar / elegir foto --}}
-      <div id="paso_captura" class="{{ count($evidencias) >= $maxEvidencias ? 'hidden' : '' }}">
+      <div id="paso_captura" class="{{ (count($evidenciasGuardadas) + count($evidenciasPendientes)) >= $maxEvidencias ? 'hidden' : '' }}">
         <label for="input_foto" class="block cursor-pointer">
           <div class="border-2 border-dashed border-indigo-300 rounded-2xl bg-indigo-50/60 h-48 flex flex-col items-center justify-center gap-2 text-center px-4">
             <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl">📷</div>
@@ -39,10 +39,10 @@
         <input type="file" id="input_foto" accept="image/*" class="hidden" onchange="mostrarPreview(this)">
       </div>
 
-      <div id="max_alcanzado" class="{{ count($evidencias) >= $maxEvidencias ? '' : 'hidden' }}">
+      <div id="max_alcanzado" class="{{ (count($evidenciasGuardadas) + count($evidenciasPendientes)) >= $maxEvidencias ? '' : 'hidden' }}">
         <div class="border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 h-24 flex flex-col items-center justify-center gap-1 text-center px-4">
           <p class="text-xs font-black text-slate-500 uppercase">Máximo de {{ $maxEvidencias }} fotos alcanzado</p>
-          <p class="text-[10px] font-bold text-slate-400">Elimine alguna de abajo para poder subir otra</p>
+          <p class="text-[10px] font-bold text-slate-400">Elimine alguna pendiente de abajo para poder subir otra</p>
         </div>
       </div>
 
@@ -69,33 +69,51 @@
 
       <div id="mensaje_estado" class="hidden text-center text-xs font-bold rounded-xl p-3"></div>
 
-      {{-- Galería: fotos ya subidas para este consultorio, con opción de eliminar --}}
+      {{-- Pendientes: subidas desde este celular, todavía sin guardar en la laptop --}}
       <div>
-        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Fotos de este consultorio</label>
-        <div id="galeria" class="space-y-2">
-          @forelse ($evidencias as $ev)
-            <div class="flex items-center gap-3 bg-slate-50 rounded-xl p-2 border border-slate-100" data-path="{{ $ev['path'] }}">
+        <label class="block text-[10px] font-black text-amber-600 uppercase mb-1">Pendientes de guardar en la computadora</label>
+        <div id="galeria_pendientes" class="space-y-2">
+          @forelse ($evidenciasPendientes as $ev)
+            <div class="flex items-center gap-3 bg-amber-50 rounded-xl p-2 border border-amber-200" data-path="{{ $ev['path'] }}">
               <img src="{{ asset('storage/' . $ev['path']) }}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
               <div class="min-w-0 flex-1">
                 <p class="text-[11px] font-bold text-slate-700 truncate">{{ $ev['descripcion'] ?: 'Sin descripción' }}</p>
-                <p class="text-[9px] font-black text-emerald-600 uppercase">✓ Subida</p>
+                <p class="text-[9px] font-black text-amber-600 uppercase">⏳ Pendiente de guardar</p>
               </div>
-              <button onclick="eliminarFoto('{{ $ev['path'] }}', this)" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition flex-shrink-0" title="Eliminar foto">
+              <button onclick="eliminarFoto('{{ $ev['path'] }}', this)" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition flex-shrink-0" title="Quitar foto pendiente">
                 🗑️
               </button>
             </div>
           @empty
-            <p id="galeria_vacia" class="text-center text-[11px] font-bold text-slate-400 py-2">Todavía no hay fotos subidas</p>
+            <p id="pendientes_vacia" class="text-center text-[11px] font-bold text-slate-400 py-2">Ninguna foto pendiente todavía</p>
           @endforelse
         </div>
       </div>
+
+      {{-- Ya guardadas: parte oficial del consultorio, no se pueden borrar desde el celular --}}
+      @if (count($evidenciasGuardadas) > 0)
+        <div>
+          <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Ya guardadas en el consultorio</label>
+          <div class="space-y-2">
+            @foreach ($evidenciasGuardadas as $ev)
+              <div class="flex items-center gap-3 bg-slate-50 rounded-xl p-2 border border-slate-100">
+                <img src="{{ asset('storage/' . $ev['path']) }}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] font-bold text-slate-700 truncate">{{ $ev['descripcion'] ?: 'Sin descripción' }}</p>
+                  <p class="text-[9px] font-black text-emerald-600 uppercase">✓ Guardada</p>
+                </div>
+              </div>
+            @endforeach
+          </div>
+        </div>
+      @endif
     </div>
   </div>
 
   <script>
     const TOKEN = @json($token);
     const MAX_EVIDENCIAS = @json($maxEvidencias);
-    let contador = @json(count($evidencias));
+    let contador = @json(count($evidenciasGuardadas) + count($evidenciasPendientes));
     let archivoActual = null;
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -108,7 +126,7 @@
     const btnSubir = document.getElementById('btn_subir');
     const contadorEl = document.getElementById('contador');
     const mensajeEstado = document.getElementById('mensaje_estado');
-    const galeria = document.getElementById('galeria');
+    const galeriaPendientes = document.getElementById('galeria_pendientes');
 
     function actualizarEstadoCaptura() {
       const alTope = contador >= MAX_EVIDENCIAS;
@@ -145,26 +163,26 @@
       setTimeout(() => mensajeEstado.classList.add('hidden'), 4000);
     }
 
-    function agregarAGaleria(path, descripcion, dataUrl) {
-      const vacia = document.getElementById('galeria_vacia');
+    function agregarAPendientes(path, descripcion, dataUrl) {
+      const vacia = document.getElementById('pendientes_vacia');
       if (vacia) vacia.remove();
 
       const item = document.createElement('div');
-      item.className = 'flex items-center gap-3 bg-slate-50 rounded-xl p-2 border border-slate-100';
+      item.className = 'flex items-center gap-3 bg-amber-50 rounded-xl p-2 border border-amber-200';
       item.dataset.path = path;
       item.innerHTML = `
         <img src="${dataUrl}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0">
         <div class="min-w-0 flex-1">
           <p class="text-[11px] font-bold text-slate-700 truncate">${descripcion || 'Sin descripción'}</p>
-          <p class="text-[9px] font-black text-emerald-600 uppercase">✓ Subida</p>
+          <p class="text-[9px] font-black text-amber-600 uppercase">⏳ Pendiente de guardar</p>
         </div>
-        <button onclick="eliminarFoto('${path}', this)" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition flex-shrink-0" title="Eliminar foto">🗑️</button>
+        <button onclick="eliminarFoto('${path}', this)" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition flex-shrink-0" title="Quitar foto pendiente">🗑️</button>
       `;
-      galeria.prepend(item);
+      galeriaPendientes.prepend(item);
     }
 
     function eliminarFoto(path, btnEl) {
-      if (!confirm('¿Eliminar esta foto? Esta acción no se puede deshacer.')) return;
+      if (!confirm('¿Quitar esta foto pendiente? Todavía no estaba guardada en el consultorio.')) return;
 
       btnEl.disabled = true;
       btnEl.textContent = '...';
@@ -182,18 +200,18 @@
           if (!ok || !data.success) {
             btnEl.disabled = false;
             btnEl.textContent = '🗑️';
-            return mostrarMensaje(data.message || 'No se pudo eliminar la foto.', 'error');
+            return mostrarMensaje(data.message || 'No se pudo quitar la foto.', 'error');
           }
 
           contador = data.total;
           contadorEl.textContent = `${contador} / ${MAX_EVIDENCIAS}`;
           actualizarEstadoCaptura();
-          mostrarMensaje('Foto eliminada.', 'ok');
+          mostrarMensaje('Foto pendiente quitada.', 'ok');
 
-          const item = document.querySelector(`#galeria [data-path="${CSS.escape(path)}"]`);
+          const item = document.querySelector(`#galeria_pendientes [data-path="${CSS.escape(path)}"]`);
           if (item) item.remove();
-          if (galeria.children.length === 0) {
-            galeria.innerHTML = '<p id="galeria_vacia" class="text-center text-[11px] font-bold text-slate-400 py-2">Todavía no hay fotos subidas</p>';
+          if (galeriaPendientes.children.length === 0) {
+            galeriaPendientes.innerHTML = '<p id="pendientes_vacia" class="text-center text-[11px] font-bold text-slate-400 py-2">Ninguna foto pendiente todavía</p>';
           }
         })
         .catch(() => {
@@ -234,8 +252,8 @@
 
           contador = data.total;
           contadorEl.textContent = `${contador} / ${MAX_EVIDENCIAS}`;
-          agregarAGaleria(data.path, descripcion, previewImg.src);
-          mostrarMensaje('¡Foto subida! Ya aparece en la computadora.', 'ok');
+          agregarAPendientes(data.path, descripcion, previewImg.src);
+          mostrarMensaje('¡Foto enviada! Recuerda guardar el formulario en la computadora para que quede guardada.', 'ok');
 
           archivoActual = null;
           inputFoto.value = '';
