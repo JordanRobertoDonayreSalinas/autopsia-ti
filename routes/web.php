@@ -12,6 +12,7 @@ use App\Http\Controllers\CronogramaActividadesController;
 use App\Http\Controllers\DnieVerificadorController;
 use App\Http\Controllers\EditMonitoreoController;
 use App\Http\Controllers\EstablecimientoController;
+use App\Http\Controllers\EvidenciaMovilController;
 use App\Http\Controllers\FirmaMovilController;
 use App\Http\Controllers\FirmasMonitoreoController;
 use App\Http\Controllers\Infraestructura2DController;
@@ -50,6 +51,10 @@ Route::controller(LoginController::class)->group(function () {
 // --- RUTAS DE FIRMA MÓVIL (PÚBLICAS) ---
 Route::get('/firmar/{token}', [FirmaMovilController::class, 'viewMobilePad'])->name('firma.movil');
 Route::post('/firmar/save/{token}', [FirmaMovilController::class, 'saveMobileSignature'])->name('firma.movil.save');
+
+// --- RUTAS DE EVIDENCIA MÓVIL (PÚBLICAS): subir fotos de un consultorio desde el celular via QR ---
+Route::get('/evidencia-movil/{token}', [EvidenciaMovilController::class, 'mostrar'])->name('evidencia.movil.mostrar');
+Route::post('/evidencia-movil/{token}/subir', [EvidenciaMovilController::class, 'subir'])->name('evidencia.movil.subir');
 
 // --- RUTAS PÚBLICAS DE ASISTENCIA Y AUTO-DETECCIÓN ---
 Route::prefix('asistencia-reunion')->name('asistencia.')->group(function () {
@@ -252,6 +257,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'showConsultorio'])->name('consultorio.show');
             Route::post('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'storeConsultorio'])->name('consultorio.store');
             Route::get('/{id}/consultorio/{slug}/pdf', [MonitoreoModuloGenericController::class, 'pdfConsultorio'])->name('consultorio.pdf');
+            Route::get('/{id}/consultorio/{slug}/evidencia-movil/qr', [EvidenciaMovilController::class, 'generarQr'])->name('consultorio.evidencia-movil.qr');
+            Route::get('/{id}/consultorio/{slug}/evidencia-movil/estado', [EvidenciaMovilController::class, 'estado'])->name('consultorio.evidencia-movil.estado');
             Route::get('/{id}/pdf-por-servicio/{servicio}', [MonitoreoModuloGenericController::class, 'pdfPorServicio'])->name('consultorio.pdf-servicio');
             Route::delete('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'destroyConsultorio'])->name('consultorio.destroy');
 

@@ -646,11 +646,18 @@
                                 <label class="block text-slate-700 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
                                     <i data-lucide="camera" class="w-4 h-4 text-slate-400"></i> Fotografías / Evidencia Adjunta (Máximo 10, Opcional)
                                 </label>
-                                <button type="button" id="btn_add_evidencia" onclick="addEvidenciaRow()"
-                                        class="group flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md active:scale-95">
-                                    <i data-lucide="plus-circle" class="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300"></i>
-                                    Añadir Fotografía
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" id="btn_evidencia_movil" onclick="abrirEvidenciaMovil()"
+                                            class="group flex items-center gap-1.5 px-3.5 py-2 bg-white text-indigo-600 border-2 border-indigo-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-sm active:scale-95">
+                                        <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+                                        Desde el Celular
+                                    </button>
+                                    <button type="button" id="btn_add_evidencia" onclick="addEvidenciaRow()"
+                                            class="group flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md active:scale-95">
+                                        <i data-lucide="plus-circle" class="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-300"></i>
+                                        Añadir Fotografía
+                                    </button>
+                                </div>
                             </div>
 
                             @php
@@ -844,6 +851,116 @@
         }
 
         document.addEventListener('DOMContentLoaded', updateBtnAddEvidenciaState);
+
+        // ── EVIDENCIA DESDE EL CELULAR (código QR) ──
+        // Genera un token+QR que abre una página móvil de carga de fotos ya
+        // vinculada a este consultorio; mientras el modal está abierto, se
+        // sondea el servidor y las fotos que van llegando desde el celular
+        // se insertan aquí en vivo, sin recargar la página.
+        const STORAGE_BASE = '{{ asset('storage') }}';
+        const EVIDENCIA_MOVIL_URLS = {
+            qr: '{{ route('usuario.monitoreo.consultorio.evidencia-movil.qr', [$acta->id, $slug]) }}',
+            estado: '{{ route('usuario.monitoreo.consultorio.evidencia-movil.estado', [$acta->id, $slug]) }}',
+        };
+        let pollingEvidenciaMovil = null;
+
+        function abrirEvidenciaMovil() {
+            Swal.fire({
+                title: '📷 Cargar Fotos desde el Celular',
+                html: `
+                    <div class="text-left space-y-3 text-xs font-semibold text-slate-600">
+                        <div id="ev_movil_qr_container" class="flex justify-center p-4 bg-white rounded-2xl border border-slate-200 min-h-[180px] items-center">
+                            <div class="text-slate-400 text-[11px]">Generando código QR...</div>
+                        </div>
+                        <p class="text-slate-500 text-[11px] text-center">
+                            Escanee este código con la cámara de su celular. Se abrirá una página para tomar fotos con descripción; aparecerán aquí automáticamente, sin transferir nada a mano.
+                        </p>
+                        <div id="ev_movil_status" class="p-2.5 bg-indigo-50 rounded-xl text-center text-[10px] font-bold text-indigo-600 flex items-center justify-center gap-2">
+                            <div class="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            Esperando fotos...
+                        </div>
+                    </div>
+                `,
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'Cerrar',
+                customClass: { popup: 'rounded-[2.5rem] p-6 max-w-sm' },
+                willClose: () => {
+                    if (pollingEvidenciaMovil) clearInterval(pollingEvidenciaMovil);
+                }
+            });
+
+            fetch(EVIDENCIA_MOVIL_URLS.qr)
+                .then(r => r.json())
+                .then(data => {
+                    const cont = document.getElementById('ev_movil_qr_container');
+                    if (cont) cont.innerHTML = data.qr_html;
+                })
+                .catch(() => {
+                    const cont = document.getElementById('ev_movil_qr_container');
+                    if (cont) cont.innerHTML = '<div class="text-rose-500 text-[11px] text-center">No se pudo generar el código QR. Intente de nuevo.</div>';
+                });
+
+            if (pollingEvidenciaMovil) clearInterval(pollingEvidenciaMovil);
+            pollingEvidenciaMovil = setInterval(sondearEvidenciaMovil, 4000);
+        }
+
+        function sondearEvidenciaMovil() {
+            fetch(EVIDENCIA_MOVIL_URLS.estado)
+                .then(r => r.json())
+                .then(data => {
+                    const evidencias = data.evidencias || [];
+                    const pathsActuales = new Set(
+                        Array.from(document.querySelectorAll('#container_evidencias .evidencia-card input[name*="[path_existente]"]'))
+                            .map(input => input.value)
+                    );
+
+                    let nuevas = 0;
+                    evidencias.forEach(ev => {
+                        if (!pathsActuales.has(ev.path)) {
+                            agregarEvidenciaDesdeMovil(ev.path, ev.descripcion || '');
+                            nuevas++;
+                        }
+                    });
+
+                    const statusEl = document.getElementById('ev_movil_status');
+                    if (statusEl && nuevas > 0) {
+                        statusEl.innerHTML = `<span class="text-emerald-600">✓ ${evidencias.length} foto(s) recibida(s) del celular</span>`;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function agregarEvidenciaDesdeMovil(path, descripcion) {
+            const total = document.querySelectorAll('#container_evidencias .evidencia-card').length;
+            if (total >= MAX_EVIDENCIAS) return;
+
+            const idx = evidenciaCounter++;
+            const container = document.getElementById('container_evidencias');
+            const card = document.createElement('div');
+            card.className = 'evidencia-card bg-emerald-50 rounded-2xl border-2 border-emerald-300 p-3 shadow-sm';
+            card.dataset.idx = idx;
+            const descripcionSegura = (descripcion || '').replace(/"/g, '&quot;');
+            card.innerHTML = `
+                <input type="hidden" name="evidencias[${idx}][path_existente]" value="${path}">
+                <div class="relative group">
+                    <img src="${STORAGE_BASE}/${path}" alt="Evidencia desde celular" class="h-40 w-full rounded-xl object-cover shadow-inner bg-white">
+                    <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase shadow flex items-center gap-1">
+                        <i data-lucide="smartphone" class="w-2.5 h-2.5"></i> Celular
+                    </span>
+                    <button type="button" onclick="removeEvidenciaRow(${idx})"
+                        class="absolute top-2 right-2 p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:scale-105 active:scale-95 z-30" title="Quitar fotografía">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+                <input type="text" name="evidencias[${idx}][descripcion]" value="${descripcionSegura}"
+                       placeholder="Descripción de la foto..."
+                       class="w-full mt-2 px-3 py-2 bg-white border-2 border-emerald-200 focus:border-emerald-600 rounded-xl font-bold text-[11px] text-slate-700 outline-none transition-all">
+            `;
+            container.appendChild(card);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateBtnAddEvidenciaState();
+        }
 
         function toggleSihceAndDocs(val) {
             const dj = document.getElementById('div_firmo_dj');
