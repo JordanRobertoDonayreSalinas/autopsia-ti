@@ -37,18 +37,23 @@ class EvidenciaMovilController extends Controller
                 ->where('modulo_nombre', $slug)
                 ->firstOrFail();
 
-            // Si ya había un QR activo para este consultorio, se invalida:
-            // solo debe haber uno vigente a la vez (evita códigos viejos
-            // sueltos que sigan aceptando fotos después de generar uno nuevo).
-            $this->cerrarActivo($id, $slug);
+            // Si ya hay un QR activo y vigente para este consultorio, se
+            // reutiliza el MISMO token en vez de invalidarlo: cerrar el
+            // modal en la laptop (para revisar el formulario, por ejemplo)
+            // y volver a abrirlo NO debe romper la conexión con el celular
+            // ni perder fotos que se hayan subido mientras tanto. El código
+            // QR solo se invalida de verdad al guardar el formulario
+            // (ver cerrarActivo(), llamado desde storeConsultorio()).
+            $token = Cache::get($this->claveActiva($id, $slug));
+            if (!$token || !Cache::has("evidencia_movil_{$token}")) {
+                $token = Str::random(40);
 
-            $token = Str::random(40);
-
-            Cache::put("evidencia_movil_{$token}", [
-                'cabecera_monitoreo_id' => $id,
-                'slug' => $slug,
-            ], now()->addMinutes(self::MINUTOS_VIGENCIA));
-            Cache::put($this->claveActiva($id, $slug), $token, now()->addMinutes(self::MINUTOS_VIGENCIA));
+                Cache::put("evidencia_movil_{$token}", [
+                    'cabecera_monitoreo_id' => $id,
+                    'slug' => $slug,
+                ], now()->addMinutes(self::MINUTOS_VIGENCIA));
+                Cache::put($this->claveActiva($id, $slug), $token, now()->addMinutes(self::MINUTOS_VIGENCIA));
+            }
 
             $url = route('evidencia.movil.mostrar', ['token' => $token]);
             // Formato SVG explícito: liviano y no depende de Imagick/GD,

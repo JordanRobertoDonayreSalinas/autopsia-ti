@@ -84,11 +84,17 @@ class EvidenciaMovilFijoController extends Controller
             $cfg = $this->config($tipo);
             $cfg['model']::findOrFail($id);
 
-            $this->cerrarActivo($tipo, $id);
-
-            $token = Str::random(40);
-            Cache::put("evidencia_movil_fijo_{$token}", ['tipo' => $tipo, 'id' => $id], now()->addMinutes(self::MINUTOS_VIGENCIA));
-            Cache::put($this->claveActiva($tipo, $id), $token, now()->addMinutes(self::MINUTOS_VIGENCIA));
+            // Igual que en el flujo de consultorios: si ya hay un QR activo y
+            // vigente, se reutiliza el mismo token en vez de invalidarlo —
+            // cerrar y volver a abrir el modal no debe romper la conexión
+            // con el celular. Solo se cierra de verdad al guardar el
+            // formulario (ver cerrarActivo()).
+            $token = Cache::get($this->claveActiva($tipo, $id));
+            if (!$token || !Cache::has("evidencia_movil_fijo_{$token}")) {
+                $token = Str::random(40);
+                Cache::put("evidencia_movil_fijo_{$token}", ['tipo' => $tipo, 'id' => $id], now()->addMinutes(self::MINUTOS_VIGENCIA));
+                Cache::put($this->claveActiva($tipo, $id), $token, now()->addMinutes(self::MINUTOS_VIGENCIA));
+            }
 
             $url = route('evidencia.movil.fijo.mostrar', ['token' => $token]);
             $qrImage = QrCode::format('svg')->size(220)->color(30, 41, 59)->generate($url);
