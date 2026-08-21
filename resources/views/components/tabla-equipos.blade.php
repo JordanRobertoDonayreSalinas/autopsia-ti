@@ -24,6 +24,7 @@
             }
         }
     }
+    $dxEsAutodetectado = !empty($savedDxdiag['autodetectado']);
 @endphp
 
 <div class="bg-white border border-slate-200 shadow-sm rounded-[2.5rem] overflow-hidden transition-all hover:shadow-lg group/container">
@@ -45,7 +46,12 @@
                 <i data-lucide="zap" class="w-4 h-4 text-amber-100 group-hover:scale-110 transition-transform"></i>
                 Auto-detectar Hardware
             </button>
-            <button type="button" onclick="addEquipRow('{{$modulo}}')" 
+            <button type="button" onclick="window.togglePanelEspecificacionesManual('{{$modulo}}')"
+                    class="group flex items-center gap-2 px-4 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                Ingresar a Mano
+            </button>
+            <button type="button" onclick="addEquipRow('{{$modulo}}')"
                     class="group flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
                 <i data-lucide="plus-circle" class="w-4 h-4 group-hover:rotate-90 transition-transform duration-300"></i> 
                 Añadir Equipo
@@ -169,12 +175,12 @@
                 </div>
                 <div>
                     <h4 class="text-xs font-black uppercase tracking-wider text-slate-800">Especificaciones Técnicas del Sistema (Diagnóstico DxDiag)</h4>
-                    <p class="text-[10px] text-slate-400 font-bold">Información interna autodetectada del equipo</p>
+                    <p class="text-[10px] text-slate-400 font-bold">Autodetectada, o ingresada a mano leyendo el <code>dxdiag</code> nativo de Windows</p>
                 </div>
             </div>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-full">
-                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                Autodetectado
+            <span id="dx_badge_{{ $modulo }}" class="inline-flex items-center gap-1.5 px-3 py-1 {{ $dxEsAutodetectado ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800' }} text-[10px] font-black uppercase rounded-full">
+                <span class="w-2 h-2 {{ $dxEsAutodetectado ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-500' }} rounded-full"></span>
+                {{ $dxEsAutodetectado ? 'Autodetectado' : 'Manual' }}
             </span>
         </div>
 
@@ -183,9 +189,11 @@
                 <div class="p-2 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0 mt-0.5">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                 </div>
-                <div class="min-w-0">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Equipo / Modelo</span>
-                    <span id="dx_modelo_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['modelo'] ?? '--' }}</span>
+                <div class="min-w-0 flex-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Equipo / Modelo</span>
+                    <input type="text" id="dx_modelo_{{ $modulo }}" value="{{ $savedDxdiag['modelo'] ?? '' }}" placeholder="Ej: PC de Escritorio"
+                        oninput="window.actualizarEspecificacionesManual('{{ $modulo }}')"
+                        class="w-full text-xs font-black text-slate-800 outline-none border-b border-transparent focus:border-indigo-400 bg-transparent">
                 </div>
             </div>
 
@@ -193,9 +201,11 @@
                 <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0 mt-0.5">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>
                 </div>
-                <div class="min-w-0">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Procesador</span>
-                    <span id="dx_cpu_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['procesador'] ?? '--' }}</span>
+                <div class="min-w-0 flex-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Procesador</span>
+                    <input type="text" id="dx_cpu_{{ $modulo }}" value="{{ $savedDxdiag['procesador'] ?? '' }}" placeholder="Ej: Intel Core i5"
+                        oninput="window.actualizarEspecificacionesManual('{{ $modulo }}')"
+                        class="w-full text-xs font-black text-slate-800 outline-none border-b border-transparent focus:border-indigo-400 bg-transparent">
                 </div>
             </div>
 
@@ -203,9 +213,11 @@
                 <div class="p-2 bg-purple-50 text-purple-600 rounded-xl flex-shrink-0 mt-0.5">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 19v-3M10 19v-3M14 19v-3M18 19v-3M6 8V5M10 8V5M14 8V5M18 8V5"/><rect x="2" y="8" width="20" height="8" rx="2"/></svg>
                 </div>
-                <div class="min-w-0">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Memoria RAM</span>
-                    <span id="dx_ram_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['ram'] ?? '--' }}</span>
+                <div class="min-w-0 flex-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Memoria RAM</span>
+                    <input type="text" id="dx_ram_{{ $modulo }}" value="{{ $savedDxdiag['ram'] ?? '' }}" placeholder="Ej: 8 GB"
+                        oninput="window.actualizarEspecificacionesManual('{{ $modulo }}')"
+                        class="w-full text-xs font-black text-slate-800 outline-none border-b border-transparent focus:border-indigo-400 bg-transparent">
                 </div>
             </div>
 
@@ -213,9 +225,11 @@
                 <div class="p-2 bg-teal-50 text-teal-600 rounded-xl flex-shrink-0 mt-0.5">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
                 </div>
-                <div class="min-w-0">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Almacenamiento (Disco/SSD)</span>
-                    <span id="dx_disco_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['disco'] ?? '--' }}</span>
+                <div class="min-w-0 flex-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Almacenamiento (Disco/SSD)</span>
+                    <input type="text" id="dx_disco_{{ $modulo }}" value="{{ $savedDxdiag['disco'] ?? '' }}" placeholder="Ej: 500 GB HDD"
+                        oninput="window.actualizarEspecificacionesManual('{{ $modulo }}')"
+                        class="w-full text-xs font-black text-slate-800 outline-none border-b border-transparent focus:border-indigo-400 bg-transparent">
                 </div>
             </div>
 
@@ -223,9 +237,11 @@
                 <div class="p-2 bg-amber-50 text-amber-600 rounded-xl flex-shrink-0 mt-0.5">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 </div>
-                <div class="min-w-0">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Tarjeta de Video / Gráficos</span>
-                    <span id="dx_gpu_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['gpu'] ?? '--' }}</span>
+                <div class="min-w-0 flex-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Tarjeta de Video / Gráficos</span>
+                    <input type="text" id="dx_gpu_{{ $modulo }}" value="{{ $savedDxdiag['gpu'] ?? '' }}" placeholder="Ej: Intel(R) Graphics"
+                        oninput="window.actualizarEspecificacionesManual('{{ $modulo }}')"
+                        class="w-full text-xs font-black text-slate-800 outline-none border-b border-transparent focus:border-indigo-400 bg-transparent">
                 </div>
             </div>
 
@@ -233,9 +249,11 @@
                 <div class="p-2 bg-rose-50 text-rose-600 rounded-xl flex-shrink-0 mt-0.5">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                 </div>
-                <div class="min-w-0">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Sistema Operativo</span>
-                    <span id="dx_so_{{ $modulo }}" class="text-xs font-black text-slate-800 break-words whitespace-normal leading-tight block">{{ $savedDxdiag['so'] ?? '--' }}</span>
+                <div class="min-w-0 flex-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Sistema Operativo</span>
+                    <input type="text" id="dx_so_{{ $modulo }}" value="{{ $savedDxdiag['so'] ?? '' }}" placeholder="Ej: Windows 10 Pro"
+                        oninput="window.actualizarEspecificacionesManual('{{ $modulo }}')"
+                        class="w-full text-xs font-black text-slate-800 outline-none border-b border-transparent focus:border-indigo-400 bg-transparent">
                 </div>
             </div>
         </div>
@@ -552,7 +570,7 @@
                             <ol class="text-amber-700 text-[10.5px] leading-relaxed list-decimal list-inside mt-1.5 space-y-0.5">
                                 <li><strong>Win + R</strong>, escriba <strong>dxdiag</strong> y presione Enter</li>
                                 <li>En la pestaña "Sistema" lea Modelo, Procesador, RAM y Sistema Operativo</li>
-                                <li>Digite esos datos manualmente en los campos de la tabla de abajo</li>
+                                <li>Cierre esta ventana y pulse <strong>"Ingresar a Mano"</strong> para digitarlos</li>
                             </ol>
                         </div>
                     </div>
@@ -970,6 +988,62 @@
                 console.error(e);
             }
         }, 1000);
+    };
+
+    // --- ESPECIFICACIONES TÉCNICAS INGRESADAS A MANO (sin auto-detección) ---
+    // Cuando la PC del consultorio no tiene internet, el auditor lee los datos
+    // directamente de dxdiag (Win+R > dxdiag) y los digita aquí.
+    window.togglePanelEspecificacionesManual = function(modulo) {
+        const panel = document.getElementById(`panel_especificaciones_dxdiag_${modulo}`);
+        if (!panel) return;
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const primerCampo = document.getElementById(`dx_modelo_${modulo}`);
+        if (primerCampo) primerCampo.focus();
+    };
+
+    window.actualizarEspecificacionesManual = function(modulo) {
+        const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+        const specs = {
+            modelo: getVal(`dx_modelo_${modulo}`),
+            procesador: getVal(`dx_cpu_${modulo}`),
+            ram: getVal(`dx_ram_${modulo}`),
+            disco: getVal(`dx_disco_${modulo}`),
+            gpu: getVal(`dx_gpu_${modulo}`),
+            so: getVal(`dx_so_${modulo}`),
+            autodetectado: false,
+            fecha: new Date().toISOString(),
+        };
+
+        const body = document.getElementById(`body_equipos_${modulo}`);
+        if (!body) return;
+
+        // Buscar la fila del equipo de cómputo principal (CPU/LAPTOP/ALL-IN-ONE/etc.)
+        // para adjuntarle estas especificaciones; si no existe ninguna todavía, se
+        // crea una fila CPU en blanco (mismo criterio que la auto-detección).
+        let filaEncontrada = null;
+        for (const r of body.querySelectorAll('tr')) {
+            const inputDesc = r.querySelector('input[name*="[descripcion]"]');
+            if (!inputDesc) continue;
+            const desc = inputDesc.value.trim().toUpperCase().replace(/-/g, ' ');
+            if (['CPU', 'LAPTOP', 'ALL IN ONE', 'AIO', 'COMPUTADORA', 'PC'].some(k => desc.includes(k))) {
+                filaEncontrada = r;
+                break;
+            }
+        }
+
+        if (!filaEncontrada) {
+            window.agregarFilaConDatos(modulo, 'CPU', specs.modelo ? `MARCA/MODELO: ${specs.modelo}` : '', 'OPERATIVO', 'EXCLUSIVO', specs);
+        } else {
+            const inputSpecs = filaEncontrada.querySelector('input[name*="[especificaciones]"]');
+            if (inputSpecs) inputSpecs.value = JSON.stringify(specs);
+        }
+
+        const badge = document.getElementById(`dx_badge_${modulo}`);
+        if (badge) {
+            badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 text-[10px] font-black uppercase rounded-full';
+            badge.innerHTML = '<span class="w-2 h-2 bg-indigo-500 rounded-full"></span> Manual';
+        }
     };
 
     window.agregarFilaConDatos = function(modulo, descripcion, observacion, estado = 'OPERATIVO', propio = 'EXCLUSIVO', especificaciones = null) {
