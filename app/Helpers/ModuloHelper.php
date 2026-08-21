@@ -178,53 +178,125 @@ class ModuloHelper
         }
 
         $detalles = $cabecera->detalles;
+        $detalle = self::resolverDetalleModulo($detalles, $modulo);
 
-        // Mapa inverso para buscar el slug interno a partir del nombre amigable o viceversa
-        $mapaModulos = self::getTodosLosModulos();
-        $slugBuscado = $modulo ? strtolower(trim($modulo)) : null;
-
-        // Si $modulo es un nombre amigable (ej: "Consulta Externa: Psicología"), buscar su slug
-        if ($modulo) {
-            // Normalizamos ambos para una comparación segura
-            $mapaNormalizado = array_map(function ($val) {
-                return strtolower(trim($val));
-            }, $mapaModulos);
-
-            $moduloNormalizado = strtolower(trim($modulo));
-
-            if (in_array($moduloNormalizado, $mapaNormalizado)) {
-                $slugBuscado = array_search($moduloNormalizado, $mapaNormalizado);
+        if ($detalle && is_array($detalle->contenido)) {
+            $resultado = self::extraerConectividad($detalle->contenido);
+            if ($resultado) {
+                return $resultado;
             }
-        }
 
-        // 1) Buscar primero en el módulo específico del equipo usando el slug
-        if ($slugBuscado) {
-            $detalle = $detalles->firstWhere('modulo_nombre', $slugBuscado);
-            if (!$detalle) {
-                // intentar también case sensitive o exacto si vino directamente como slug ej CONSULTA_PSICOLOGIA
-                $detalle = $detalles->firstWhere('modulo_nombre', strtolower($modulo));
-            }
-            if (!$detalle) {
-                $detalle = $detalles->firstWhere('modulo_nombre', $modulo);
-            }
-            if ($detalle && is_array($detalle->contenido)) {
-                $resultado = self::extraerConectividad($detalle->contenido);
+            // Si es FUNCIONAL vinculado a un consultorio físico, la conectividad
+            // se hereda de ahí (nunca se pregunta en el funcional): resolverla
+            // antes de caer al fallback genérico de abajo, que de otro modo
+            // podría atribuirle la conectividad de un consultorio no relacionado.
+            $detalleVinculado = self::resolverDetalleVinculado($detalles, $detalle);
+            if ($detalleVinculado && is_array($detalleVinculado->contenido)) {
+                $resultado = self::extraerConectividad($detalleVinculado->contenido);
                 if ($resultado) {
                     return $resultado;
                 }
             }
         }
 
-        // 2) Fallback: buscar en cualquier módulo que tenga tipo_conectividad
-        foreach ($detalles as $detalle) {
-            if (!is_array($detalle->contenido))
+        // Fallback: buscar en cualquier módulo que tenga tipo_conectividad
+        foreach ($detalles as $d) {
+            if (!is_array($d->contenido))
                 continue;
-            $resultado = self::extraerConectividad($detalle->contenido);
+            $resultado = self::extraerConectividad($d->contenido);
             if ($resultado) {
                 return $resultado;
             }
         }
 
         return $vacio;
+    }
+
+    /**
+     * Encuentra el registro de módulo (mon_monitoreo_modulos) que corresponde
+     * a un slug o nombre amigable de módulo, dentro de la colección de
+     * detalles de una cabecera.
+     */
+    private static function resolverDetalleModulo($detalles, ?string $modulo)
+    {
+        if (!$modulo) {
+            return null;
+        }
+
+        $slugBuscado = strtolower(trim($modulo));
+
+        // Si $modulo es un nombre amigable (ej: "Consulta Externa: Psicología"), buscar su slug
+        $mapaNormalizado = array_map(fn($val) => strtolower(trim($val)), self::getTodosLosModulos());
+        if (in_array($slugBuscado, $mapaNormalizado)) {
+            $slugBuscado = array_search($slugBuscado, $mapaNormalizado);
+        }
+
+        return $detalles->firstWhere('modulo_nombre', $slugBuscado)
+            ?? $detalles->firstWhere('modulo_nombre', strtolower($modulo))
+            ?? $detalles->firstWhere('modulo_nombre', $modulo);
+    }
+
+    /**
+     * Si el detalle dado es un consultorio FUNCIONAL vinculado a un físico,
+     * devuelve el registro de ese físico dentro de la misma colección de
+     * detalles (o null si no aplica o no se encuentra).
+     */
+    private static function resolverDetalleVinculado($detalles, $detalle)
+    {
+        if (!$detalle || !is_array($detalle->contenido)) {
+            return null;
+        }
+
+        $tipoConsultorio = strtoupper($detalle->contenido['tipo_consultorio'] ?? '');
+        if ($tipoConsultorio !== 'FUNCIONAL') {
+            return null;
+        }
+
+        $vinculadoSlug = trim($detalle->contenido['consultorio_vinculado'] ?? '');
+        if (!$vinculadoSlug) {
+            return null;
+        }
+
+        return $detalles->firstWhere('modulo_nombre', $vinculadoSlug);
+    }
+
+    /**
+     * Datos del consultorio (servicio/departamento asociado, tipo físico o
+     * funcional, y a qué consultorio físico está vinculado si aplica) para
+     * mostrar en reportes junto a los equipos de cada módulo.
+     */
+    public static function getDatosConsultorio($cabecera, ?string $modulo = null): array
+    {
+        $vacio = [
+            'servicio_asociado' => '',
+            'departamento_asociado' => '',
+            'tipo_consultorio' => '',
+            'vinculado_a' => '',
+        ];
+
+        if (!$cabecera || !$cabecera->detalles) {
+            return $vacio;
+        }
+
+        $detalles = $cabecera->detalles;
+        $detalle = self::resolverDetalleModulo($detalles, $modulo);
+
+        if (!$detalle || !is_array($detalle->contenido)) {
+            return $vacio;
+        }
+
+        $contenido = $detalle->contenido;
+        $vinculadoTitulo = '';
+        $detalleVinculado = self::resolverDetalleVinculado($detalles, $detalle);
+        if ($detalleVinculado && is_array($detalleVinculado->contenido)) {
+            $vinculadoTitulo = $detalleVinculado->contenido['titulo_consultorio'] ?? $detalleVinculado->modulo_nombre;
+        }
+
+        return [
+            'servicio_asociado' => strtoupper($contenido['servicio_asociado'] ?? ''),
+            'departamento_asociado' => strtoupper($contenido['departamento_asociado'] ?? ''),
+            'tipo_consultorio' => strtoupper($contenido['tipo_consultorio'] ?? ''),
+            'vinculado_a' => strtoupper($vinculadoTitulo),
+        ];
     }
 }

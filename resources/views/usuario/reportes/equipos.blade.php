@@ -173,8 +173,14 @@
                                 <th class="px-4 py-3">Establecimiento</th>
                                 <th class="px-4 py-3">Tipo</th>
                                 <th class="px-4 py-3">Módulo</th>
+                                <th class="px-4 py-3">Servicio</th>
+                                <th class="px-4 py-3">Departamento</th>
+                                <th class="px-4 py-3">Consultorio</th>
                                 <th class="px-4 py-3 text-center">Cant.</th>
                                 <th class="px-4 py-3">Descripción</th>
+                                <th class="px-4 py-3">Propiedad</th>
+                                <th class="px-4 py-3">N° Serie</th>
+                                <th class="px-4 py-3">Observación</th>
                                 <th class="px-4 py-3">Conexión</th>
                                 <th class="px-4 py-3">Fuente WiFi</th>
                                 <th class="px-4 py-3">Proveedor</th>
@@ -203,8 +209,26 @@
                                     <td class="px-4 py-3 text-slate-600">
                                         {{ ModuloHelper::getNombreAmigable($equipo->modulo) ?? 'N/A' }}
                                     </td>
+                                    @php $datosConsultorio = ModuloHelper::getDatosConsultorio($equipo->cabecera, $equipo->modulo); @endphp
+                                    <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['servicio_asociado'] ?: '—' }}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{ $datosConsultorio['departamento_asociado'] ?: '—' }}</td>
+                                    <td class="px-4 py-3">
+                                        @if($datosConsultorio['tipo_consultorio'] === 'FUNCIONAL')
+                                            <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 whitespace-nowrap">FUNCIONAL</span>
+                                            @if($datosConsultorio['vinculado_a'])
+                                                <span class="block text-[10px] text-slate-400 mt-0.5">→ {{ $datosConsultorio['vinculado_a'] }}</span>
+                                            @endif
+                                        @elseif($datosConsultorio['tipo_consultorio'])
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 whitespace-nowrap">FÍSICO</span>
+                                        @else
+                                            <span class="text-slate-400">—</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-center font-bold text-slate-800">{{ $equipo->cantidad ?? 0 }}</td>
                                     <td class="px-4 py-3 text-slate-600">{{ $equipo->descripcion ?? 'N/A' }}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{ $equipo->propio ?: '—' }}</td>
+                                    <td class="px-4 py-3 text-slate-500 font-mono">{{ $equipo->nro_serie ?: '—' }}</td>
+                                    <td class="px-4 py-3 text-slate-500">{{ $equipo->observacion ?: '—' }}</td>
                                     <td class="px-4 py-3">
                                         @php $conect = ModuloHelper::getConectividadActa($equipo->cabecera, $equipo->modulo); @endphp
                                         <span class="text-slate-500">{{ $conect['tipo'] }}</span>
