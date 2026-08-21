@@ -285,9 +285,36 @@ class ReunionController extends Controller
                 }
             }
 
+            // Absorber fotos pendientes subidas desde el celular (QR): ya están en
+            // disco (subidas por EvidenciaMovilFijoController::subir()), solo se
+            // asignan a la primera casilla libre que no se acaba de llenar arriba.
+            $fotosPendientesMovil = $request->input('fotos_pendientes_movil', []);
+            if (is_array($fotosPendientesMovil)) {
+                foreach ($fotosPendientesMovil as $pathPendiente) {
+                    if (empty($pathPendiente)) {
+                        continue;
+                    }
+                    $valorGuardado = 'storage/' . $pathPendiente;
+                    if (empty($data['foto_1']) && empty($reunion->foto_1)) {
+                        $data['foto_1'] = $valorGuardado;
+                    } elseif (empty($data['foto_2']) && empty($reunion->foto_2)) {
+                        $data['foto_2'] = $valorGuardado;
+                    } elseif (isset($data['foto_1']) && empty($data['foto_1'])) {
+                        $data['foto_1'] = $valorGuardado;
+                    } elseif (isset($data['foto_2']) && empty($data['foto_2'])) {
+                        $data['foto_2'] = $valorGuardado;
+                    }
+                }
+            }
+
             $reunion->update($data);
 
             DB::commit();
+
+            // Al guardar, se cierra el código QR de evidencia móvil activo (si lo
+            // hay) para esta acta de reunión.
+            app(EvidenciaMovilFijoController::class)->cerrarActivo('reunion', $id);
+
             return redirect()->route('usuario.reuniones.index')->with('success', 'Acta de reunión actualizada correctamente.');
 
         } catch (\Exception $e) {

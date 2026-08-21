@@ -78,6 +78,23 @@ class EditMonitoreoController extends Controller
                 }
             }
 
+            // 3.1 ABSORBER FOTOS PENDIENTES SUBIDAS DESDE EL CELULAR (QR): ya están
+            // en disco (subidas por EvidenciaMovilFijoController::subir()), solo se
+            // asignan a la primera casilla libre que no se acaba de llenar arriba.
+            $fotosPendientesMovil = $request->input('fotos_pendientes_movil', []);
+            if (is_array($fotosPendientesMovil)) {
+                foreach ($fotosPendientesMovil as $pathPendiente) {
+                    if (empty($pathPendiente)) {
+                        continue;
+                    }
+                    if (empty($monitoreo->foto1)) {
+                        $monitoreo->foto1 = $pathPendiente;
+                    } elseif (empty($monitoreo->foto2)) {
+                        $monitoreo->foto2 = $pathPendiente;
+                    }
+                }
+            }
+
             // 4. ACTUALIZAR CABECERA DEL ACTA
             $monitoreo->establecimiento_id = $request->establecimiento_id;
             $monitoreo->fecha = $request->fecha;
@@ -115,6 +132,10 @@ class EditMonitoreoController extends Controller
             }
 
             DB::commit();
+
+            // Al guardar, se cierra el código QR de evidencia móvil activo (si lo
+            // hay) para esta acta, igual que en consultorios/RR.HH.
+            app(EvidenciaMovilFijoController::class)->cerrarActivo('acta', $id);
 
             // 6. FLUJO DE REDIRECCIÓN DINÁMICO
             if ($request->input('redirect_to') === 'modulos') {

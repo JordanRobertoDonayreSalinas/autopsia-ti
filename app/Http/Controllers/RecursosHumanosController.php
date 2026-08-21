@@ -112,13 +112,29 @@ class RecursosHumanosController extends Controller
         $profesiones = $this->getProfesionesDisponibles();
         $periodosSerums = $this->getPeriodosSerums();
 
+        // Formato nuevo: contenido['evidencias'] = [['path'=>...,'descripcion'=>...], ...]
+        // (mismo formato que usan los consultorios dinámicos). Si no existe
+        // todavía, se migra desde el formato viejo (foto_1/foto_2, 2 casillas
+        // fijas sin descripción) para no perder evidencia ya cargada.
+        $evidencias = [];
+        if (!empty($contenido['evidencias']) && is_array($contenido['evidencias'])) {
+            $evidencias = $contenido['evidencias'];
+        } else {
+            foreach (['foto_1', 'foto_2'] as $campoViejo) {
+                if (!empty($contenido[$campoViejo])) {
+                    $evidencias[] = ['path' => $contenido[$campoViejo], 'descripcion' => ''];
+                }
+            }
+        }
+
         return view('usuario.monitoreo.modulos.rrhh', compact(
             'acta',
             'detalle',
             'trabajadores',
             'servicios',
             'profesiones',
-            'periodosSerums'
+            'periodosSerums',
+            'evidencias'
         ));
     }
 
@@ -229,55 +245,69 @@ class RecursosHumanosController extends Controller
             $contenido['total_trabajadores'] = count($trabajadoresNormalizados);
             $contenido['fecha_actualizacion'] = date('Y-m-d H:i:s');
 
-            // Procesar Foto 1 (Reemplazo / Eliminación / Mantenimiento)
-            $foto1Anterior = $detalle->contenido['foto_1'] ?? null;
-            if ($request->hasFile('foto_1')) {
-                if ($foto1Anterior && Storage::disk('public')->exists($foto1Anterior)) {
-                    Storage::disk('public')->delete($foto1Anterior);
-                }
-                $file1 = $request->file('foto_1');
-                $ext1 = strtolower($file1->getClientOriginalExtension() ?: 'jpg');
-                $nombreFoto1 = "evidencia_acta_{$id}_rrhh_foto1_".date('Ymd_His').'.'.$ext1;
-                $path1 = $file1->storeAs('evidencias_rrhh', $nombreFoto1, 'public');
-                $contenido['foto_1'] = $path1;
+            // Evidencia fotográfica: mismo formato de lista contenido['evidencias'] =
+            // [['path'=>...,'descripcion'=>...], ...] que usan los consultorios
+            // dinámicos (hasta 10 fotos, con QR desde el celular). Las fotos viejas
+            // en foto_1/foto_2 (formato anterior, 2 casillas fijas sin descripción)
+            // se migran una sola vez para no perderlas.
+            $evidenciasAnteriores = [];
+            if (!empty($detalle->contenido['evidencias']) && is_array($detalle->contenido['evidencias'])) {
+                $evidenciasAnteriores = $detalle->contenido['evidencias'];
             } else {
-                $foto1Actual = $request->input('foto_1_actual');
-                if (empty($foto1Actual)) {
-                    if ($foto1Anterior && Storage::disk('public')->exists($foto1Anterior)) {
-                        Storage::disk('public')->delete($foto1Anterior);
+                foreach (['foto_1', 'foto_2'] as $campoViejo) {
+                    if (!empty($detalle->contenido[$campoViejo])) {
+                        $evidenciasAnteriores[] = ['path' => $detalle->contenido[$campoViejo], 'descripcion' => ''];
                     }
-                    $contenido['foto_1'] = null;
-                } else {
-                    $contenido['foto_1'] = $foto1Actual;
+                }
+            }
+            $pathsAnteriores = array_filter(array_column($evidenciasAnteriores, 'path'));
+
+            $evidenciasInput = $request->input('evidencias', []);
+            $evidenciasFiles = $request->file('evidencias', []);
+            $evidenciasFinal = [];
+
+            if (is_array($evidenciasInput)) {
+                foreach ($evidenciasInput as $idx => $ev) {
+                    if (count($evidenciasFinal) >= 10) {
+                        break;
+                    }
+
+                    $descripcion = mb_strtoupper(trim($ev['descripcion'] ?? ''));
+                    $pathExistente = $ev['path_existente'] ?? null;
+                    $archivoNuevo = $evidenciasFiles[$idx]['foto'] ?? null;
+
+                    if ($archivoNuevo instanceof \Illuminate\Http\UploadedFile) {
+                        if ($pathExistente && Storage::disk('public')->exists($pathExistente)) {
+                            Storage::disk('public')->delete($pathExistente);
+                        }
+                        $extension = strtolower($archivoNuevo->getClientOriginalExtension() ?: 'jpg');
+                        $numFoto = count($evidenciasFinal) + 1;
+                        $nombreEstandar = "evidencia_acta_{$id}_rrhh_{$numFoto}_".date('Ymd_His').'_'.uniqid().'.'.$extension;
+                        $path = $archivoNuevo->storeAs('evidencias_rrhh', $nombreEstandar, 'public');
+                        $evidenciasFinal[] = ['path' => $path, 'descripcion' => $descripcion];
+                    } elseif ($pathExistente) {
+                        $evidenciasFinal[] = ['path' => $pathExistente, 'descripcion' => $descripcion];
+                    }
                 }
             }
 
-            // Procesar Foto 2 (Reemplazo / Eliminación / Mantenimiento)
-            $foto2Anterior = $detalle->contenido['foto_2'] ?? null;
-            if ($request->hasFile('foto_2')) {
-                if ($foto2Anterior && Storage::disk('public')->exists($foto2Anterior)) {
-                    Storage::disk('public')->delete($foto2Anterior);
-                }
-                $file2 = $request->file('foto_2');
-                $ext2 = strtolower($file2->getClientOriginalExtension() ?: 'jpg');
-                $nombreFoto2 = "evidencia_acta_{$id}_rrhh_foto2_".date('Ymd_His').'.'.$ext2;
-                $path2 = $file2->storeAs('evidencias_rrhh', $nombreFoto2, 'public');
-                $contenido['foto_2'] = $path2;
-            } else {
-                $foto2Actual = $request->input('foto_2_actual');
-                if (empty($foto2Actual)) {
-                    if ($foto2Anterior && Storage::disk('public')->exists($foto2Anterior)) {
-                        Storage::disk('public')->delete($foto2Anterior);
-                    }
-                    $contenido['foto_2'] = null;
-                } else {
-                    $contenido['foto_2'] = $foto2Actual;
+            $pathsFinal = array_column($evidenciasFinal, 'path');
+            foreach ($pathsAnteriores as $pOld) {
+                if (!in_array($pOld, $pathsFinal, true) && Storage::disk('public')->exists($pOld)) {
+                    Storage::disk('public')->delete($pOld);
                 }
             }
+
+            $contenido['evidencias'] = $evidenciasFinal;
+            unset($contenido['foto_1'], $contenido['foto_2']);
 
             $detalle->update(['contenido' => $contenido]);
 
             DB::commit();
+
+            // Al guardar, se cierra el código QR de evidencia móvil activo (si lo
+            // hay) para este RR.HH, igual que en los consultorios dinámicos.
+            app(EvidenciaMovilController::class)->cerrarActivo($id, 'rrhh');
 
             return redirect()->route('usuario.monitoreo.rrhh.index', $id)
                 ->with('success', 'Padrón de RR.HH guardado correctamente con '.count($trabajadoresNormalizados).' trabajador(es).');

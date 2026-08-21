@@ -243,7 +243,12 @@
 
                 {{-- IMÁGENES --}}
                 <div class="section-card">
-                    <div class="section-header">&#128247; Evidencia Fotográfica (máx. 2)</div>
+                    <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                        <span>&#128247; Evidencia Fotográfica (máx. 2)</span>
+                        <x-evidencia-fotografica-fija
+                            :qr-url="route('usuario.reuniones.evidencia-movil.qr', $reunion->id)"
+                            :estado-url="route('usuario.reuniones.evidencia-movil.estado', $reunion->id)" />
+                    </div>
                     <div class="section-body">
                         {{-- Fotos Guardadas Previamente --}}
                         <div class="flex gap-4 mb-4" id="server-images-container">

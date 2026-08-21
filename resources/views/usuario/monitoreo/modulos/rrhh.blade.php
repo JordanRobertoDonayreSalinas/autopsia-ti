@@ -487,7 +487,7 @@
                 </div>
             </div>
 
-            {{-- 3. SECCIÓN: EVIDENCIA FOTOGRÁFICA (2 FOTOS) --}}
+            {{-- 3. SECCIÓN: EVIDENCIA FOTOGRÁFICA --}}
             <div class="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 mb-8">
                 <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
                     <span class="w-9 h-9 rounded-2xl bg-violet-600 text-white flex items-center justify-center font-black text-sm">
@@ -495,85 +495,16 @@
                     </span>
                     <div>
                         <h3 class="text-slate-900 font-black text-lg uppercase tracking-tight">Evidencia Fotográfica de RR.HH</h3>
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Cargue hasta 2 fotografías del área de personal, rol de turnos o documentación</p>
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-wider">Fotografías del área de personal, rol de turnos o documentación</p>
                     </div>
                 </div>
 
-                {{-- INPUTS OCULTOS DE FOTOS EXISTENTES --}}
-                <input type="hidden" name="foto_1_actual" id="foto_1_actual" value="{{ $contenido['foto_1'] ?? '' }}">
-                <input type="hidden" name="foto_2_actual" id="foto_2_actual" value="{{ $contenido['foto_2'] ?? '' }}">
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {{-- FOTO 1 --}}
-                    <div class="space-y-3">
-                        <label class="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-wider">
-                            <span class="w-2.5 h-2.5 rounded-full bg-violet-600"></span> Evidencia Fotográfica #1
-                        </label>
-                        <div class="relative h-72 rounded-[2rem] border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center transition-all hover:bg-violet-50/30 hover:border-violet-300 group">
-                            <template x-if="images.img1">
-                                <div class="relative w-full h-full">
-                                    <img :src="images.img1" class="h-full w-full object-cover rounded-[2rem]">
-                                    <button type="button" @click="removeImage('img1', 'input_foto_1', 'foto_1_actual')"
-                                        class="absolute top-3 right-3 p-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-all shadow-lg hover:scale-110 active:scale-95" title="Eliminar foto">
-                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                    </button>
-                                    <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                                        <p class="text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                                            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Fotografía Cargada
-                                        </p>
-                                    </div>
-                                </div>
-                            </template>
-                            <template x-if="!images.img1">
-                                <div class="flex flex-col items-center gap-3 text-slate-400 group-hover:text-violet-600 transition-colors p-6 text-center">
-                                    <div class="p-4 rounded-2xl bg-white shadow-md group-hover:scale-110 transition-transform">
-                                        <i data-lucide="image-plus" class="w-8 h-8 text-violet-500"></i>
-                                    </div>
-                                    <div>
-                                        <span class="text-xs font-black uppercase tracking-wider block">Seleccionar Foto 1</span>
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase mt-0.5 block">JPG, PNG (Máx 5MB)</span>
-                                    </div>
-                                </div>
-                            </template>
-                            <input type="file" name="foto_1" id="input_foto_1" accept="image/*" @change="previewImage($event, 'img1')" class="absolute inset-0 opacity-0 cursor-pointer z-10">
-                        </div>
-                    </div>
-
-                    {{-- FOTO 2 --}}
-                    <div class="space-y-3">
-                        <label class="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 tracking-wider">
-                            <span class="w-2.5 h-2.5 rounded-full bg-violet-600"></span> Evidencia Fotográfica #2
-                        </label>
-                        <div class="relative h-72 rounded-[2rem] border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center transition-all hover:bg-violet-50/30 hover:border-violet-300 group">
-                            <template x-if="images.img2">
-                                <div class="relative w-full h-full">
-                                    <img :src="images.img2" class="h-full w-full object-cover rounded-[2rem]">
-                                    <button type="button" @click="removeImage('img2', 'input_foto_2', 'foto_2_actual')"
-                                        class="absolute top-3 right-3 p-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-all shadow-lg hover:scale-110 active:scale-95" title="Eliminar foto">
-                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                    </button>
-                                    <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                                        <p class="text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                                            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Fotografía Cargada
-                                        </p>
-                                    </div>
-                                </div>
-                            </template>
-                            <template x-if="!images.img2">
-                                <div class="flex flex-col items-center gap-3 text-slate-400 group-hover:text-violet-600 transition-colors p-6 text-center">
-                                    <div class="p-4 rounded-2xl bg-white shadow-md group-hover:scale-110 transition-transform">
-                                        <i data-lucide="image-plus" class="w-8 h-8 text-violet-500"></i>
-                                    </div>
-                                    <div>
-                                        <span class="text-xs font-black uppercase tracking-wider block">Seleccionar Foto 2</span>
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase mt-0.5 block">JPG, PNG (Máx 5MB)</span>
-                                    </div>
-                                </div>
-                            </template>
-                            <input type="file" name="foto_2" id="input_foto_2" accept="image/*" @change="previewImage($event, 'img2')" class="absolute inset-0 opacity-0 cursor-pointer z-10">
-                        </div>
-                    </div>
-                </div>
+                <x-evidencia-fotografica
+                    :evidencias="$evidencias"
+                    :qr-url="route('usuario.monitoreo.rrhh.evidencia-movil.qr', $acta->id)"
+                    :estado-url="route('usuario.monitoreo.rrhh.evidencia-movil.estado', $acta->id)"
+                    :max="10"
+                    label="Fotografías de RR.HH" />
             </div>
 
             {{-- 4. OBSERVACIONES GENERALES DE RR.HH --}}
@@ -585,7 +516,7 @@
                     <h3 class="text-slate-900 font-black text-sm uppercase tracking-tight">Observaciones o Notas de Recursos Humanos</h3>
                 </div>
                 <textarea name="observaciones" rows="3" placeholder="Ingrese notas adicionales o incidencias encontradas en la distribución de personal..."
-                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-slate-800 font-bold uppercase outline-none focus:border-violet-500 text-xs">{{ $contenido['observaciones'] ?? '' }}</textarea>
+                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-slate-800 font-bold uppercase outline-none focus:border-violet-500 text-xs">{{ $detalle->contenido['observaciones'] ?? '' }}</textarea>
             </div>
 
             {{-- BOTÓN FINAL DE GUARDAR TODO --}}
@@ -646,25 +577,6 @@ function rrhhManager() {
         }),
         serviciosCatalogo: serviciosLista,
         profesionesCatalogo: profesionesLista,
-        images: {
-            img1: '{{ !empty($contenido['foto_1']) ? asset('storage/'.$contenido['foto_1']) : null }}',
-            img2: '{{ !empty($contenido['foto_2']) ? asset('storage/'.$contenido['foto_2']) : null }}'
-        },
-        previewImage(event, key) {
-            const file = event.target.files[0];
-            if (file) {
-                this.images[key] = URL.createObjectURL(file);
-                this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
-            }
-        },
-        removeImage(key, inputId, actualId) {
-            this.images[key] = null;
-            const fileInput = document.getElementById(inputId);
-            if (fileInput) fileInput.value = '';
-            const actualInput = document.getElementById(actualId);
-            if (actualInput) actualInput.value = '';
-            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
-        },
         form: {
             id: '',
             servicio: 'MEDICINA',

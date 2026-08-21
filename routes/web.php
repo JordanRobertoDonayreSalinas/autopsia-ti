@@ -14,6 +14,7 @@ use App\Http\Controllers\DnieVerificadorController;
 use App\Http\Controllers\EditMonitoreoController;
 use App\Http\Controllers\EstablecimientoController;
 use App\Http\Controllers\EvidenciaMovilController;
+use App\Http\Controllers\EvidenciaMovilFijoController;
 use App\Http\Controllers\FirmaMovilController;
 use App\Http\Controllers\FirmasMonitoreoController;
 use App\Http\Controllers\Infraestructura2DController;
@@ -57,6 +58,11 @@ Route::post('/firmar/save/{token}', [FirmaMovilController::class, 'saveMobileSig
 Route::get('/evidencia-movil/{token}', [EvidenciaMovilController::class, 'mostrar'])->name('evidencia.movil.mostrar');
 Route::post('/evidencia-movil/{token}/subir', [EvidenciaMovilController::class, 'subir'])->name('evidencia.movil.subir');
 Route::post('/evidencia-movil/{token}/eliminar', [EvidenciaMovilController::class, 'eliminar'])->name('evidencia.movil.eliminar');
+
+// --- RUTAS DE EVIDENCIA MÓVIL FIJA (PÚBLICAS): igual, pero para objetivos de 2 casillas fijas sin descripción (portada del acta, actas de reunión) ---
+Route::get('/evidencia-movil-fijo/{token}', [EvidenciaMovilFijoController::class, 'mostrar'])->name('evidencia.movil.fijo.mostrar');
+Route::post('/evidencia-movil-fijo/{token}/subir', [EvidenciaMovilFijoController::class, 'subir'])->name('evidencia.movil.fijo.subir');
+Route::post('/evidencia-movil-fijo/{token}/eliminar', [EvidenciaMovilFijoController::class, 'eliminar'])->name('evidencia.movil.fijo.eliminar');
 
 // --- RUTAS PÚBLICAS DE ASISTENCIA Y AUTO-DETECCIÓN ---
 Route::prefix('asistencia-reunion')->name('asistencia.')->group(function () {
@@ -134,6 +140,13 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{reunion}', [ReunionController::class, 'update'])->name('update');
             Route::post('/{id}/anular', [ReunionController::class, 'anular'])->name('anular');
             Route::get('/{reunion}/pdf', [ReunionController::class, 'pdf'])->name('pdf');
+
+            // Evidencia móvil (QR) para la evidencia fotográfica (foto_1/foto_2):
+            // solo disponible al editar (el acta de reunión ya existe con ID).
+            Route::get('/{id}/evidencia-movil/qr', [EvidenciaMovilFijoController::class, 'generarQr'])
+                ->name('evidencia-movil.qr')->defaults('tipo', 'reunion');
+            Route::get('/{id}/evidencia-movil/estado', [EvidenciaMovilFijoController::class, 'estado'])
+                ->name('evidencia-movil.estado')->defaults('tipo', 'reunion');
 
             // Firma Visual
             Route::get('/{id}/visual-signature', [App\Http\Controllers\VisualSignatureReunionController::class, 'index'])->name('visual-signature');
@@ -240,6 +253,14 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{id}/actualizar', [EditMonitoreoController::class, 'update'])->name('update');
             Route::post('/{id}/cambiar-autor', [MonitoreoController::class, 'cambiarAutor'])->name('cambiar-autor');
 
+            // Evidencia móvil (QR) para la foto de portada del acta (foto1/foto2):
+            // solo disponible al editar (la foto de portada, junto con el resto
+            // del acta, ya existe con ID en ese momento).
+            Route::get('/{id}/evidencia-movil/qr', [EvidenciaMovilFijoController::class, 'generarQr'])
+                ->name('evidencia-movil.qr')->defaults('tipo', 'acta');
+            Route::get('/{id}/evidencia-movil/estado', [EvidenciaMovilFijoController::class, 'estado'])
+                ->name('evidencia-movil.estado')->defaults('tipo', 'acta');
+
             Route::get('/{id}/salud-mental-panel', [MonitoreoController::class, 'gestionarSaludMental'])->name('salud_mental_group.index');
 
             // Módulo Infraestructura 2D
@@ -260,6 +281,14 @@ Route::middleware(['auth'])->group(function () {
                 Route::get('/{id}', [RecursosHumanosController::class, 'index'])->name('index');
                 Route::post('/{id}', [RecursosHumanosController::class, 'store'])->name('store');
                 Route::get('/{id}/pdf', [RecursosHumanosController::class, 'pdf'])->name('pdf');
+
+                // Evidencia móvil (QR): mismo EvidenciaMovilController genérico que usan los
+                // consultorios dinámicos (opera sobre cualquier MonitoreoModulos por
+                // cabecera+slug); aquí el slug siempre es 'rrhh', fijado vía defaults().
+                Route::get('/{id}/evidencia-movil/qr', [EvidenciaMovilController::class, 'generarQr'])
+                    ->name('evidencia-movil.qr')->defaults('slug', 'rrhh');
+                Route::get('/{id}/evidencia-movil/estado', [EvidenciaMovilController::class, 'estado'])
+                    ->name('evidencia-movil.estado')->defaults('slug', 'rrhh');
             });
 
             // RUTAS DINÁMICAS DE CONSULTORIOS / MÓDULOS

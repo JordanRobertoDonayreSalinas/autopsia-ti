@@ -415,11 +415,16 @@
 
                 {{-- 3. TARJETA: EVIDENCIAS --}}
                 <div class="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/60 border border-slate-100">
-                    <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                        <div class="bg-emerald-500 p-2.5 rounded-xl text-white">
-                            <i data-lucide="camera" class="w-5 h-5"></i>
+                    <div class="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-emerald-500 p-2.5 rounded-xl text-white">
+                                <i data-lucide="camera" class="w-5 h-5"></i>
+                            </div>
+                            <h2 class="text-lg font-bold text-slate-800 uppercase tracking-wide">3. Evidencia Fotográfica</h2>
                         </div>
-                        <h2 class="text-lg font-bold text-slate-800 uppercase tracking-wide">3. Evidencia Fotográfica</h2>
+                        <x-evidencia-fotografica-fija
+                            :qr-url="route('usuario.monitoreo.evidencia-movil.qr', $monitoreo->id)"
+                            :estado-url="route('usuario.monitoreo.evidencia-movil.estado', $monitoreo->id)" />
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
