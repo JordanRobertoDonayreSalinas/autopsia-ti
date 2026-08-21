@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../models/equipo_computo.dart';
+import '../../models/monitoreo_modulo.dart';
 import '../../repositories/acta_repository.dart';
 
 /// Formulario genérico de "consultorio dinámico" — espejo de
@@ -50,6 +51,9 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
   String _tieneTomaEstabilizada = 'NO';
   String _tieneTomaComercial = 'NO';
   String _cuentaPuntoRed = 'NO';
+  String _consultorioVinculado = '';
+  String _comparteEquipoConFisico = 'NO';
+  List<MonitoreoModulo> _otrosConsultorios = [];
   String _tipoConectividad = 'SIN CONECTIVIDAD';
   String _wifiFuente = 'ESTABLECIMIENTO';
   String _operadorServicio = 'WOW';
@@ -75,6 +79,8 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
     final modulo = await _actaRepo.obtenerModulos(widget.actaOfflineId);
     final match = modulo.where((m) => m.moduloNombre == widget.moduloNombre);
     final equipos = await _actaRepo.obtenerEquiposDeModulo(widget.actaOfflineId, widget.moduloNombre);
+    final consultorios = await _actaRepo.obtenerConsultoriosDinamicos(widget.actaOfflineId);
+    _otrosConsultorios = consultorios.where((m) => m.moduloNombre != widget.moduloNombre).toList();
 
     if (match.isNotEmpty) {
       final data = jsonDecode(match.first.contenido) as Map<String, dynamic>;
@@ -98,6 +104,8 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
       _tipoConsultorio = data['tipo_consultorio'] ?? 'FISICO';
       _cuentaElectricidad = data['cuenta_electricidad'] ?? 'NO';
       _cuentaPuntoRed = data['cuenta_punto_red'] ?? 'NO';
+      _consultorioVinculado = data['consultorio_vinculado'] ?? '';
+      _comparteEquipoConFisico = data['comparte_equipo_con_fisico'] ?? 'NO';
       _tipoConectividad = data['tipo_conectividad'] ?? 'SIN CONECTIVIDAD';
       _wifiFuente = data['wifi_fuente'] ?? 'ESTABLECIMIENTO';
       _operadorServicio = data['operador_servicio'] ?? 'WOW';
@@ -115,6 +123,9 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
 
   Future<void> _persistir() async {
     setState(() => _isSaving = true);
+    final esFuncional = _tipoConsultorio == 'FUNCIONAL';
+    final vinculado = esFuncional ? _consultorioVinculado.trim() : '';
+    final comparteEquipo = vinculado.isNotEmpty ? _comparteEquipoConFisico : 'NO';
     final contenido = jsonEncode({
       'titulo_consultorio': _tituloCtrl.text.trim().toUpperCase(),
       'servicio_asociado': _servicioCtrl.text.trim(),
@@ -130,6 +141,8 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
       'tiene_toma_comercial': _tieneTomaComercial,
       'toma_comercial_internas': _tieneTomaComercial == 'SI' ? int.tryParse(_tomaComercialInternasCtrl.text) : null,
       'toma_comercial_externas': _tieneTomaComercial == 'SI' ? int.tryParse(_tomaComercialExternasCtrl.text) : null,
+      'consultorio_vinculado': vinculado,
+      'comparte_equipo_con_fisico': comparteEquipo,
       'cuenta_punto_red': _cuentaPuntoRed,
       'cantidad_puntos_red': _cuentaPuntoRed == 'SI' ? int.tryParse(_cantidadPuntosRedCtrl.text) : null,
       'tipo_conectividad': _tipoConectividad,
@@ -213,47 +226,96 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
                   _campoTexto('Fecha (AAAA-MM-DD)', _fechaCtrl, onDone: _persistir),
                   _pillGroup('Turno', ['MAÑANA', 'TARDE'], _turno, (v) => setState(() => _turno = v)),
                   _dropdown('Tipo de consultorio', _tipoConsultorio, const ['FISICO', 'FUNCIONAL'], (v) => setState(() => _tipoConsultorio = v!)),
+                  if (_tipoConsultorio == 'FUNCIONAL') ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: _otrosConsultorios.any((m) => m.moduloNombre == _consultorioVinculado) ? _consultorioVinculado : '',
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Consultorio físico vinculado (opcional)',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: '', child: Text('Ninguno (funcional independiente)')),
+                        ..._otrosConsultorios.map((m) => DropdownMenuItem(value: m.moduloNombre, child: Text(_tituloDeModulo(m), overflow: TextOverflow.ellipsis))),
+                      ],
+                      onChanged: (v) {
+                        setState(() {
+                          _consultorioVinculado = v ?? '';
+                          if (_consultorioVinculado.isEmpty) _comparteEquipoConFisico = 'NO';
+                        });
+                        _persistir();
+                      },
+                    ),
+                    if (_consultorioVinculado.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'La electricidad, tomas, punto de red y conectividad se heredan automáticamente del físico vinculado (edítelos allí, aquí no se preguntan).',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontStyle: FontStyle.italic),
+                      ),
+                      const SizedBox(height: 8),
+                      _pillGroup('¿Comparte equipo de cómputo con ese físico?', ['SI', 'NO'], _comparteEquipoConFisico, (v) => setState(() => _comparteEquipoConFisico = v)),
+                      if (_comparteEquipoConFisico == 'SI')
+                        const Text(
+                          'No registre equipos abajo: use los que ya tiene el consultorio físico vinculado.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontStyle: FontStyle.italic),
+                        ),
+                    ],
+                  ],
                   _campoTexto('Piso', _pisoCtrl, teclado: TextInputType.number, onDone: _persistir),
-                  _pillGroup('¿Cuenta con electricidad?', ['SI', 'NO'], _cuentaElectricidad, (v) => setState(() => _cuentaElectricidad = v)),
-                  _pillGroup('¿Tiene toma estabilizada (roja-naranja)?', ['SI', 'NO'], _tieneTomaEstabilizada, (v) => setState(() => _tieneTomaEstabilizada = v)),
-                  if (_tieneTomaEstabilizada == 'SI')
-                    Row(children: [
-                      Expanded(child: _campoTexto('Internas', _tomaEstabilizadaInternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _campoTexto('Externas', _tomaEstabilizadaExternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
-                    ]),
-                  _pillGroup('¿Tiene toma comercial (blanco)?', ['SI', 'NO'], _tieneTomaComercial, (v) => setState(() => _tieneTomaComercial = v)),
-                  if (_tieneTomaComercial == 'SI')
-                    Row(children: [
-                      Expanded(child: _campoTexto('Internas', _tomaComercialInternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _campoTexto('Externas', _tomaComercialExternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
-                    ]),
-                  _pillGroup('¿Cuenta con punto de red?', ['SI', 'NO'], _cuentaPuntoRed, (v) => setState(() => _cuentaPuntoRed = v)),
-                  if (_cuentaPuntoRed == 'SI') _campoTexto('Cantidad de puntos de red', _cantidadPuntosRedCtrl, teclado: TextInputType.number, onDone: _persistir),
+                  if (_consultorioVinculado.isEmpty) ...[
+                    _pillGroup('¿Cuenta con electricidad?', ['SI', 'NO'], _cuentaElectricidad, (v) => setState(() => _cuentaElectricidad = v)),
+                    _pillGroup('¿Tiene toma estabilizada (roja-naranja)?', ['SI', 'NO'], _tieneTomaEstabilizada, (v) => setState(() => _tieneTomaEstabilizada = v)),
+                    if (_tieneTomaEstabilizada == 'SI')
+                      Row(children: [
+                        Expanded(child: _campoTexto('Internas', _tomaEstabilizadaInternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _campoTexto('Externas', _tomaEstabilizadaExternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                      ]),
+                    _pillGroup('¿Tiene toma comercial (blanco)?', ['SI', 'NO'], _tieneTomaComercial, (v) => setState(() => _tieneTomaComercial = v)),
+                    if (_tieneTomaComercial == 'SI')
+                      Row(children: [
+                        Expanded(child: _campoTexto('Internas', _tomaComercialInternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _campoTexto('Externas', _tomaComercialExternasCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                      ]),
+                    _pillGroup('¿Cuenta con punto de red?', ['SI', 'NO'], _cuentaPuntoRed, (v) => setState(() => _cuentaPuntoRed = v)),
+                    if (_cuentaPuntoRed == 'SI') _campoTexto('Cantidad de puntos de red', _cantidadPuntosRedCtrl, teclado: TextInputType.number, onDone: _persistir),
+                  ],
                 ]),
                 const SizedBox(height: 16),
                 _seccionEquipos(),
                 const SizedBox(height: 16),
-                _seccion('Tipo de Conectividad', [
-                  _dropdown('Conectividad', _tipoConectividad, const ['WIFI', 'CABLEADO', 'SIN CONECTIVIDAD'], (v) => setState(() => _tipoConectividad = v!)),
-                  if (_tipoConectividad == 'WIFI')
-                    _pillGroup('Fuente de wifi', ['ESTABLECIMIENTO', 'PERSONAL'], _wifiFuente, (v) => setState(() => _wifiFuente = v)),
-                  if (_tipoConectividad != 'SIN CONECTIVIDAD') ...[
-                    _dropdown('Operador de servicio', _operadorServicio, _operadores, (v) => setState(() => _operadorServicio = v!)),
-                    if (_operadorServicio == 'OTROS') _campoTexto('¿Cuál operador?', _operadorOtroCtrl, onDone: _persistir),
-                    Row(children: [
-                      Expanded(child: _campoTexto('Velocidad de descarga', _velocidadDescargaCtrl, teclado: TextInputType.number, onDone: _persistir)),
-                      const SizedBox(width: 8),
-                      SizedBox(width: 100, child: _dropdown('Unidad', _velocidadDescargaUnidad, const ['Mbps', 'Gbps', 'Kbps'], (v) => setState(() => _velocidadDescargaUnidad = v!))),
-                    ]),
-                    Row(children: [
-                      Expanded(child: _campoTexto('Velocidad de subida', _velocidadSubidaCtrl, teclado: TextInputType.number, onDone: _persistir)),
-                      const SizedBox(width: 8),
-                      SizedBox(width: 100, child: _dropdown('Unidad', _velocidadSubidaUnidad, const ['Mbps', 'Gbps', 'Kbps'], (v) => setState(() => _velocidadSubidaUnidad = v!))),
-                    ]),
-                  ],
-                ]),
+                if (_consultorioVinculado.isEmpty)
+                  _seccion('Tipo de Conectividad', [
+                    _dropdown('Conectividad', _tipoConectividad, const ['WIFI', 'CABLEADO', 'SIN CONECTIVIDAD'], (v) => setState(() => _tipoConectividad = v!)),
+                    if (_tipoConectividad == 'WIFI')
+                      _pillGroup('Fuente de wifi', ['ESTABLECIMIENTO', 'PERSONAL'], _wifiFuente, (v) => setState(() => _wifiFuente = v)),
+                    if (_tipoConectividad != 'SIN CONECTIVIDAD') ...[
+                      _dropdown('Operador de servicio', _operadorServicio, _operadores, (v) => setState(() => _operadorServicio = v!)),
+                      if (_operadorServicio == 'OTROS') _campoTexto('¿Cuál operador?', _operadorOtroCtrl, onDone: _persistir),
+                      Row(children: [
+                        Expanded(child: _campoTexto('Velocidad de descarga', _velocidadDescargaCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                        const SizedBox(width: 8),
+                        SizedBox(width: 100, child: _dropdown('Unidad', _velocidadDescargaUnidad, const ['Mbps', 'Gbps', 'Kbps'], (v) => setState(() => _velocidadDescargaUnidad = v!))),
+                      ]),
+                      Row(children: [
+                        Expanded(child: _campoTexto('Velocidad de subida', _velocidadSubidaCtrl, teclado: TextInputType.number, onDone: _persistir)),
+                        const SizedBox(width: 8),
+                        SizedBox(width: 100, child: _dropdown('Unidad', _velocidadSubidaUnidad, const ['Mbps', 'Gbps', 'Kbps'], (v) => setState(() => _velocidadSubidaUnidad = v!))),
+                      ]),
+                    ],
+                  ])
+                else
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(12)),
+                    child: const Text(
+                      'La conectividad de este consultorio se hereda del físico vinculado. Edítela allí.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF4F46E5), fontWeight: FontWeight.w600),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 _seccion('Observaciones', [
                   TextField(
@@ -344,6 +406,16 @@ class _ConsultorioDinamicoScreenState extends State<ConsultorioDinamicoScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  String _tituloDeModulo(MonitoreoModulo m) {
+    try {
+      final data = jsonDecode(m.contenido) as Map<String, dynamic>;
+      final titulo = (data['titulo_consultorio'] as String?)?.trim();
+      return (titulo != null && titulo.isNotEmpty) ? titulo : m.moduloNombre;
+    } catch (_) {
+      return m.moduloNombre;
+    }
   }
 
   Widget _dropdown(String label, String value, List<String> items, ValueChanged<String?> onChanged) {

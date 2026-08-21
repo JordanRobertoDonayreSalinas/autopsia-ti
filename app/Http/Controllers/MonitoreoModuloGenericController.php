@@ -87,6 +87,19 @@ class MonitoreoModuloGenericController extends Controller
         $contenido = $detalle->contenido ?? [];
         $tituloConsultorio = $contenido['titulo_consultorio'] ?? 'CONSULTORIO';
 
+        // Otros consultorios de la misma acta, para el selector de
+        // "Consultorio Físico Vinculado" cuando este es FUNCIONAL.
+        $otrosConsultorios = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+            ->whereNotIn('modulo_nombre', ['infraestructura_2d', 'rrhh', 'config_modulos', $slug])
+            ->get();
+
+        $vinculacion = $this->resolverVinculacion($id, $contenido);
+        $moduloVinculado = $vinculacion['moduloVinculado'];
+        $contenidoVinculado = $vinculacion['contenidoVinculado'];
+        $tituloVinculado = $vinculacion['tituloVinculado'];
+
+        // Equipos y requerimientos propios del módulo (para la tabla editable,
+        // solo se muestra cuando NO comparte equipo con el físico vinculado).
         $equipos = EquipoComputo::where('cabecera_monitoreo_id', $id)
             ->where('modulo', $slug)
             ->get();
@@ -94,6 +107,19 @@ class MonitoreoModuloGenericController extends Controller
         $requerimientos = EquipoRequerimiento::where('cabecera_monitoreo_id', $id)
             ->where('modulo', $slug)
             ->get();
+
+        // Equipos y requerimientos del consultorio físico vinculado (para el
+        // resumen de solo lectura cuando SÍ comparte equipo con él).
+        $equiposHeredados = collect();
+        $requerimientosHeredados = collect();
+        if ($moduloVinculado) {
+            $equiposHeredados = EquipoComputo::where('cabecera_monitoreo_id', $id)
+                ->where('modulo', $vinculacion['slugVinculado'])
+                ->get();
+            $requerimientosHeredados = EquipoRequerimiento::where('cabecera_monitoreo_id', $id)
+                ->where('modulo', $vinculacion['slugVinculado'])
+                ->get();
+        }
 
         // Catálogo de servicios (tabla "ups") para el desplegable de "Servicio
         // del Consultorio". Por ahora sin filtrar por establecimiento: la tabla
@@ -114,7 +140,12 @@ class MonitoreoModuloGenericController extends Controller
             'tituloConsultorio',
             'equipos',
             'requerimientos',
-            'serviciosUps'
+            'serviciosUps',
+            'otrosConsultorios',
+            'contenidoVinculado',
+            'tituloVinculado',
+            'equiposHeredados',
+            'requerimientosHeredados'
         ));
     }
 
@@ -241,6 +272,21 @@ class MonitoreoModuloGenericController extends Controller
                 $contenido['toma_comercial_externas'] = null;
             }
 
+            // Vinculación con consultorio físico: solo tiene sentido si el
+            // propio consultorio es FUNCIONAL. Si no lo es, o si no eligió
+            // ningún vinculo, se limpia todo lo relacionado (incluido si
+            // comparte equipo) para no dejar datos huerfanos.
+            $esFuncional = strtoupper($contenido['tipo_consultorio'] ?? '') === 'FUNCIONAL';
+            $contenido['consultorio_vinculado'] = $esFuncional
+                ? trim($contenido['consultorio_vinculado'] ?? '')
+                : null;
+            if (empty($contenido['consultorio_vinculado'])) {
+                $contenido['consultorio_vinculado'] = null;
+                $contenido['comparte_equipo_con_fisico'] = 'NO';
+            } else {
+                $contenido['comparte_equipo_con_fisico'] = strtoupper($contenido['comparte_equipo_con_fisico'] ?? 'NO') === 'SI' ? 'SI' : 'NO';
+            }
+
             $detalle->update(['contenido' => $contenido]);
 
             // Sincronizar datos del profesional entrevistado si se enviaron
@@ -353,19 +399,30 @@ class MonitoreoModuloGenericController extends Controller
             $contenido = json_decode($contenido, true) ?? [];
         }
 
+        // Si es un consultorio FUNCIONAL vinculado a un físico, la
+        // infraestructura (electricidad/tomas/punto de red/conectividad) del
+        // PDF debe mostrar la del físico, no la propia (nunca se pregunta).
+        $vinculacion = $this->resolverVinculacion($id, $contenido);
+        if ($vinculacion['moduloVinculado']) {
+            $contenido = $this->aplicarInfraHeredada($contenido, $vinculacion['contenidoVinculado']);
+        }
+        $tituloVinculado = $vinculacion['tituloVinculado'];
+
+        $slugEquipos = $this->resolverSlugEquipos($contenido, $slug, $vinculacion['slugVinculado']);
+
         $equipos = EquipoComputo::where('cabecera_monitoreo_id', $id)
-            ->where('modulo', $slug)
+            ->where('modulo', $slugEquipos)
             ->get();
 
         $requerimientos = EquipoRequerimiento::where('cabecera_monitoreo_id', $id)
-            ->where('modulo', $slug)
+            ->where('modulo', $slugEquipos)
             ->get();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
             'isPhpEnabled' => true,
             'isRemoteEnabled' => true,
             'isHtml5ParserEnabled' => true,
-        ])->loadView('usuario.monitoreo.pdf.consultorio_pdf', compact('acta', 'detalle', 'contenido', 'equipos', 'requerimientos', 'slug'));
+        ])->loadView('usuario.monitoreo.pdf.consultorio_pdf', compact('acta', 'detalle', 'contenido', 'equipos', 'requerimientos', 'slug', 'tituloVinculado'));
 
         $pdf->setPaper('a4', 'portrait');
 
@@ -416,14 +473,22 @@ class MonitoreoModuloGenericController extends Controller
                 ? $modulo->contenido
                 : (json_decode($modulo->contenido, true) ?? []);
 
+            $vinculacion = $this->resolverVinculacion($id, $contenido);
+            if ($vinculacion['moduloVinculado']) {
+                $contenido = $this->aplicarInfraHeredada($contenido, $vinculacion['contenidoVinculado']);
+            }
+
+            $slugEquipos = $this->resolverSlugEquipos($contenido, $modulo->modulo_nombre, $vinculacion['slugVinculado']);
+
             $equipos = EquipoComputo::where('cabecera_monitoreo_id', $id)
-                ->where('modulo', $modulo->modulo_nombre)
+                ->where('modulo', $slugEquipos)
                 ->get();
 
             return [
                 'detalle' => $modulo,
                 'contenido' => $contenido,
                 'equipos' => $equipos,
+                'tituloVinculado' => $vinculacion['tituloVinculado'],
             ];
         });
 
@@ -444,6 +509,82 @@ class MonitoreoModuloGenericController extends Controller
             'Pragma' => 'no-cache',
             'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
         ]);
+    }
+
+    /**
+     * Campos de infraestructura del ambiente físico (electricidad, tomas,
+     * punto de red y conectividad) que un consultorio FUNCIONAL hereda de su
+     * consultorio físico vinculado en vez de volver a preguntarlos: ambos
+     * ocupan el mismo ambiente, mismo tomacorriente y mismo punto de red.
+     */
+    private const CAMPOS_INFRA_HEREDABLES = [
+        'cuenta_electricidad',
+        'tiene_toma_estabilizada', 'toma_estabilizada_internas', 'toma_estabilizada_externas',
+        'tiene_toma_comercial', 'toma_comercial_internas', 'toma_comercial_externas',
+        'cuenta_punto_red', 'cantidad_puntos_red',
+        'requiere_mas_puntos_red', 'cantidad_puntos_red_requerido', 'observacion_requerimiento_punto_red',
+        'tipo_conectividad', 'wifi_fuente', 'operador_servicio', 'operador_otro',
+        'velocidad_descarga', 'velocidad_descarga_unidad', 'velocidad_subida', 'velocidad_subida_unidad',
+    ];
+
+    /**
+     * Resuelve el consultorio físico vinculado a un módulo FUNCIONAL, si aplica.
+     * Devuelve el módulo vinculado (o null si no aplica / no existe) y su
+     * contenido, para que el llamador decida qué heredar (infraestructura
+     * siempre; equipo de cómputo solo si el usuario marcó que lo comparte).
+     */
+    private function resolverVinculacion($id, array $contenido): array
+    {
+        $esFuncional = strtoupper($contenido['tipo_consultorio'] ?? '') === 'FUNCIONAL';
+        $slugVinculado = $esFuncional ? trim($contenido['consultorio_vinculado'] ?? '') : '';
+
+        if (empty($slugVinculado)) {
+            return ['moduloVinculado' => null, 'contenidoVinculado' => [], 'tituloVinculado' => null, 'slugVinculado' => null];
+        }
+
+        $moduloVinculado = MonitoreoModulos::where('cabecera_monitoreo_id', $id)
+            ->where('modulo_nombre', $slugVinculado)
+            ->first();
+
+        if (!$moduloVinculado) {
+            return ['moduloVinculado' => null, 'contenidoVinculado' => [], 'tituloVinculado' => null, 'slugVinculado' => null];
+        }
+
+        $contenidoVinculado = $moduloVinculado->contenido ?? [];
+
+        return [
+            'moduloVinculado' => $moduloVinculado,
+            'contenidoVinculado' => $contenidoVinculado,
+            'tituloVinculado' => $contenidoVinculado['titulo_consultorio'] ?? $slugVinculado,
+            'slugVinculado' => $slugVinculado,
+        ];
+    }
+
+    /**
+     * Aplica la herencia de infraestructura (electricidad/tomas/punto de
+     * red/conectividad) sobre una copia de $contenido, sin tocar los campos
+     * propios del módulo (título, servicio, departamento, piso, etc.).
+     */
+    private function aplicarInfraHeredada(array $contenido, array $contenidoVinculado): array
+    {
+        foreach (self::CAMPOS_INFRA_HEREDABLES as $campo) {
+            $contenido[$campo] = $contenidoVinculado[$campo] ?? null;
+        }
+
+        return $contenido;
+    }
+
+    /**
+     * Devuelve el slug del módulo del que se deben leer los equipos de
+     * cómputo y requerimientos: el propio, salvo que el consultorio sea
+     * FUNCIONAL, esté vinculado a un físico y haya marcado que comparte
+     * equipo con él.
+     */
+    private function resolverSlugEquipos(array $contenido, string $slugPropio, ?string $slugVinculado): string
+    {
+        $comparte = strtoupper($contenido['comparte_equipo_con_fisico'] ?? 'NO') === 'SI';
+
+        return ($slugVinculado && $comparte) ? $slugVinculado : $slugPropio;
     }
 
     /**
