@@ -448,16 +448,90 @@
                     </div>
                 </div>
 
+                {{-- SISTEMAS DE INFORMACIÓN UTILIZADOS EN EL CONSULTORIO --}}
+                <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
+                    <div class="flex items-center justify-between gap-3 mb-6 border-b border-slate-100 pb-5">
+                        <div class="flex items-center gap-3">
+                            <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
+                                2
+                            </div>
+                            <div>
+                                <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
+                                    SISTEMAS DE INFORMACIÓN UTILIZADOS
+                                </h3>
+                                <p class="text-xs text-slate-400 font-semibold">Software / sistemas institucionales que el personal usa dentro de este consultorio</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addSistemaRow()"
+                                class="group flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
+                            <i data-lucide="plus-circle" class="w-4 h-4 group-hover:rotate-90 transition-transform duration-300"></i>
+                            Añadir Sistema
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scroll">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 bg-slate-50/30">
+                                    <th class="px-6 py-3 text-left">Sistema / Software</th>
+                                    <th class="px-4 py-3 text-left">Observación</th>
+                                    <th class="px-4 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="body_sistemas">
+                                @php $sistemasUtilizados = $contenido['sistemas_utilizados'] ?? []; @endphp
+                                @forelse ($sistemasUtilizados as $index => $sis)
+                                    <tr class="group/row hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none">
+                                        <td class="px-6 py-4">
+                                            <input type="text" name="contenido[sistemas_utilizados][{{ $index }}][nombre]" value="{{ $sis['nombre'] ?? '' }}" class="input-table-text" required list="list_sistemas_master" placeholder="Seleccione o escriba...">
+                                        </td>
+                                        <td class="px-4 py-4">
+                                            <input type="text" name="contenido[sistemas_utilizados][{{ $index }}][observacion]" value="{{ $sis['observacion'] ?? '' }}" class="input-table-text" placeholder="Observación (opcional)...">
+                                        </td>
+                                        <td class="px-4 py-4 text-center">
+                                            <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover/row:opacity-100">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr id="no_data_sistemas">
+                                        <td colspan="3" class="px-6 py-8 text-center text-xs font-bold text-slate-400 uppercase">
+                                            Sin sistemas registrados
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <datalist id="list_sistemas_master">
+                    <option value="HIS (SISTEMA DE INFORMACIÓN DE SALUD)">
+                    <option value="SIS (SEGURO INTEGRAL DE SALUD)">
+                    <option value="SISMED">
+                    <option value="WAWARED">
+                    <option value="RENIPRESS">
+                    <option value="HISTORIA CLÍNICA ELECTRÓNICA (HCE)">
+                    <option value="NOTISP">
+                    <option value="SIGA">
+                    <option value="SIAF">
+                    <option value="REFCON (REFERENCIA Y CONTRARREFERENCIA)">
+                    <option value="TELESALUD">
+                    <option value="SICOVID">
+                    <option value="OTRO">
+                </datalist>
+
                 {{-- EQUIPOS DE CÓMPUTO Y SU REQUERIMIENTO: solo editables aquí cuando el
                      consultorio NO comparte equipo con su físico vinculado. Cuando sí lo
                      comparte, se muestra un resumen de solo lectura con el equipo del físico
                      (ver bloque "seccion_equipos_heredado" más abajo). --}}
                 <div id="seccion_equipos_editable" class="{{ $comparteEquipoInicial ? 'hidden' : '' }}">
-                    {{-- 2.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
+                    {{-- 3.- EQUIPOS DE CÓMPUTO E IMPRESORA --}}
                     <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
                         <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-5">
                             <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
-                                2
+                                3
                             </div>
                             <div>
                                 <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
@@ -614,14 +688,14 @@
                      Se oculta solo cuando es FUNCIONAL vinculado a un físico, porque
                      en ese caso la conectividad se hereda (ver seccion_infra_heredada). --}}
                 <div id="container_tipo_conectividad" class="{{ $tieneVinculoInicial ? 'hidden' : '' }}">
-                    <x-tipo-conectividad num="3" :contenido="$contenido" />
+                    <x-tipo-conectividad num="4" :contenido="$contenido" />
                 </div>
 
-                {{-- 4.- OBSERVACIONES Y EVIDENCIAS --}}
+                {{-- 5.- OBSERVACIONES Y EVIDENCIAS --}}
                 <div class="monitoreo-section bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 transition-all hover:shadow-md">
                     <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-5">
                         <div class="section-number bg-gradient-to-r from-blue-600 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-sm shadow-md shadow-indigo-100">
-                            4
+                            5
                         </div>
                         <div>
                             <h3 class="text-slate-900 font-black text-base sm:text-lg uppercase tracking-tight">
@@ -1181,6 +1255,31 @@
                 </td>
                 <td class="px-4 py-4">
                     <input type="text" name="requerimientos[${uniqueId}][observacion]" class="input-table-text" placeholder="Motivo del requerimiento...">
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover/row:opacity-100">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            `;
+            body.appendChild(row);
+            if (window.refreshLucide) window.refreshLucide();
+        }
+
+        function addSistemaRow() {
+            const body = document.getElementById('body_sistemas');
+            const noDataRow = document.getElementById('no_data_sistemas');
+            if (noDataRow) noDataRow.remove();
+
+            const uniqueId = Date.now();
+            const row = document.createElement('tr');
+            row.className = 'group/row hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none';
+            row.innerHTML = `
+                <td class="px-6 py-4">
+                    <input type="text" name="contenido[sistemas_utilizados][${uniqueId}][nombre]" class="input-table-text" required list="list_sistemas_master" placeholder="Seleccione o escriba...">
+                </td>
+                <td class="px-4 py-4">
+                    <input type="text" name="contenido[sistemas_utilizados][${uniqueId}][observacion]" class="input-table-text" placeholder="Observación (opcional)...">
                 </td>
                 <td class="px-4 py-4 text-center">
                     <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover/row:opacity-100">

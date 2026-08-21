@@ -296,6 +296,22 @@ class MonitoreoModuloGenericController extends Controller
                 $contenido['comparte_equipo_con_fisico'] = strtoupper($contenido['comparte_equipo_con_fisico'] ?? 'NO') === 'SI' ? 'SI' : 'NO';
             }
 
+            // Sistemas de información utilizados en el consultorio: lista dinámica
+            // (igual que requerimiento de equipos), se filtra vacíos y se reindexa.
+            $sistemasInput = $contenido['sistemas_utilizados'] ?? [];
+            $sistemasNormalizados = [];
+            if (is_array($sistemasInput)) {
+                foreach ($sistemasInput as $sis) {
+                    if (!empty($sis['nombre'])) {
+                        $sistemasNormalizados[] = [
+                            'nombre' => mb_strtoupper(trim($sis['nombre'])),
+                            'observacion' => mb_strtoupper(trim($sis['observacion'] ?? '')),
+                        ];
+                    }
+                }
+            }
+            $contenido['sistemas_utilizados'] = $sistemasNormalizados;
+
             $detalle->update(['contenido' => $contenido]);
 
             // Sincronizar datos del profesional entrevistado si se enviaron
