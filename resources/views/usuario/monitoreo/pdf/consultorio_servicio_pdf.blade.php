@@ -102,10 +102,15 @@
 
         <div class="top-accent"></div>
 
-        {{-- BANNER DE SERVICIO --}}
+        {{-- BANNER: detecta si es agrupación por Servicio o por Departamento --}}
+        @php
+            $esPorDep      = empty($servicio) && !empty($departamento ?? null);
+            $bannerLabel   = $esPorDep ? 'Reporte Consolidado por Departamento' : 'Reporte Consolidado por Servicio';
+            $bannerValor   = $esPorDep ? ($departamento ?? '') : ($servicio ?? '');
+        @endphp
         <div class="service-banner">
-            <span class="service-banner-label">Reporte Consolidado por Servicio</span>
-            <span class="service-banner-value">{{ $servicio }}</span>
+            <span class="service-banner-label">{{ $bannerLabel }}</span>
+            <span class="service-banner-value">{{ $bannerValor }}</span>
             <span class="service-banner-meta">
                 Consultorio {{ $idx + 1 }} de {{ count($consultorios) }}
                 &nbsp;&bull;&nbsp;

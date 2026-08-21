@@ -69,45 +69,106 @@
             </div>
         @endif
 
-        {{-- REPORTES CONSOLIDADOS POR SERVICIO --}}
+        {{-- REPORTES CONSOLIDADOS: Interactivo por Servicio / Departamento --}}
         @php
-            $serviciosDetectados = [];
-            foreach($consultoriosDinamicos as $c) {
-                $cc = is_array($c->contenido) ? $c->contenido : (json_decode($c->contenido, true) ?? []);
+            $serviciosDetectados    = [];
+            $departamentosDetectados = [];
+            foreach ($consultoriosDinamicos as $c) {
+                $cc  = is_array($c->contenido) ? $c->contenido : (json_decode($c->contenido, true) ?? []);
                 $svc = mb_strtoupper(trim($cc['servicio_asociado'] ?? ''));
-                if ($svc !== '') {
-                    $serviciosDetectados[$svc] = ($serviciosDetectados[$svc] ?? 0) + 1;
-                }
+                $dep = mb_strtoupper(trim($cc['departamento_asociado'] ?? ''));
+                if ($svc !== '') { $serviciosDetectados[$svc]     = ($serviciosDetectados[$svc] ?? 0) + 1; }
+                if ($dep !== '') { $departamentosDetectados[$dep] = ($departamentosDetectados[$dep] ?? 0) + 1; }
             }
             ksort($serviciosDetectados);
+            ksort($departamentosDetectados);
+            $tieneServicio    = count($serviciosDetectados) > 0;
+            $tieneDepartamento = count($departamentosDetectados) > 0;
         @endphp
 
-        @if(count($serviciosDetectados) > 0)
-        <div class="mb-10 bg-white rounded-[2rem] border border-indigo-100 shadow-lg overflow-hidden">
-            <div class="flex items-center gap-4 px-7 py-5 border-b border-indigo-50 bg-gradient-to-r from-indigo-50 to-white">
-                <div class="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
-                    <i data-lucide="layers" class="w-5 h-5"></i>
+        @if($tieneServicio || $tieneDepartamento)
+        <div x-data="{ tab: '{{ $tieneServicio ? 'servicio' : 'departamento' }}' }"
+             class="mb-10 bg-white rounded-[2rem] border border-indigo-100 shadow-lg overflow-hidden">
+
+            {{-- CABECERA CON ÍCONO + TABS --}}
+            <div class="flex items-center justify-between gap-4 px-7 py-5 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-white">
+                <div class="flex items-center gap-4 min-w-0">
+                    <div class="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
+                        <i data-lucide="file-stack" class="w-5 h-5"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-slate-900 font-black text-sm uppercase tracking-tight">Reportes Consolidados</h3>
+                        <p class="text-slate-400 text-[11px] font-semibold mt-0.5">Un PDF por agrupación — incluye todos sus consultorios</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="text-slate-900 font-black text-sm uppercase tracking-tight">Reportes Consolidados por Servicio</h3>
-                    <p class="text-slate-400 text-[11px] font-semibold mt-0.5">
-                        {{ count($serviciosDetectados) }} {{ count($serviciosDetectados) === 1 ? 'servicio detectado' : 'servicios detectados' }} en esta acta — un PDF por servicio, agrupa todos sus consultorios
-                    </p>
+
+                {{-- TABS (solo si hay ambos tipos) --}}
+                @if($tieneServicio && $tieneDepartamento)
+                <div class="flex items-center gap-1 bg-slate-100 rounded-xl p-1 flex-shrink-0">
+                    <button @click="tab = 'servicio'"
+                            :class="tab === 'servicio' ? 'bg-white text-indigo-700 shadow-sm font-black' : 'text-slate-500 font-semibold hover:text-slate-700'"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] uppercase tracking-wide transition-all">
+                        <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+                        Por Servicio
+                        <span class="ml-1 bg-indigo-100 text-indigo-700 rounded-md px-1.5 py-0.5 text-[9px] font-black">{{ count($serviciosDetectados) }}</span>
+                    </button>
+                    <button @click="tab = 'departamento'"
+                            :class="tab === 'departamento' ? 'bg-white text-violet-700 shadow-sm font-black' : 'text-slate-500 font-semibold hover:text-slate-700'"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] uppercase tracking-wide transition-all">
+                        <i data-lucide="building-2" class="w-3.5 h-3.5"></i>
+                        Por Departamento
+                        <span class="ml-1 bg-violet-100 text-violet-700 rounded-md px-1.5 py-0.5 text-[9px] font-black">{{ count($departamentosDetectados) }}</span>
+                    </button>
+                </div>
+                @endif
+            </div>
+
+            {{-- PANEL: POR SERVICIO --}}
+            @if($tieneServicio)
+            <div x-show="tab === 'servicio'" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="px-7 py-5">
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">
+                    <i data-lucide="stethoscope" class="w-3 h-3 inline mr-1 text-indigo-400"></i>
+                    {{ count($serviciosDetectados) }} {{ count($serviciosDetectados) === 1 ? 'servicio' : 'servicios' }} detectados — descarga el PDF de cada uno:
+                </p>
+                <div class="flex flex-wrap gap-3">
+                    @foreach($serviciosDetectados as $svcNombre => $svcCount)
+                        <a href="{{ route('usuario.monitoreo.consultorio.pdf-servicio', [$acta->id, urlencode($svcNombre)]) }}?v={{ time() }}"
+                           target="_blank"
+                           class="group inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] uppercase tracking-wide shadow-md hover:shadow-indigo-200 transition-all hover:scale-105">
+                            <i data-lucide="file-down" class="w-4 h-4 opacity-80 group-hover:opacity-100"></i>
+                            <span>{{ $svcNombre }}</span>
+                            <span class="bg-white/20 rounded-lg px-2 py-0.5 text-[10px] font-black">
+                                {{ $svcCount }} {{ $svcCount === 1 ? 'consultorio' : 'consultorios' }}
+                            </span>
+                        </a>
+                    @endforeach
                 </div>
             </div>
-            <div class="px-7 py-5 flex flex-wrap gap-3">
-                @foreach($serviciosDetectados as $svcNombre => $svcCount)
-                    <a href="{{ route('usuario.monitoreo.consultorio.pdf-servicio', [$acta->id, urlencode($svcNombre)]) }}?v={{ time() }}"
-                       target="_blank"
-                       class="group inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] uppercase tracking-wide shadow-md hover:shadow-indigo-200 transition-all hover:scale-105">
-                        <i data-lucide="file-down" class="w-4 h-4 opacity-80 group-hover:opacity-100"></i>
-                        <span>{{ $svcNombre }}</span>
-                        <span class="bg-white/20 rounded-lg px-2 py-0.5 text-[10px] font-black">
-                            {{ $svcCount }} {{ $svcCount === 1 ? 'consultorio' : 'consultorios' }}
-                        </span>
-                    </a>
-                @endforeach
+            @endif
+
+            {{-- PANEL: POR DEPARTAMENTO --}}
+            @if($tieneDepartamento)
+            <div x-show="tab === 'departamento'" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0" class="px-7 py-5">
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">
+                    <i data-lucide="building-2" class="w-3 h-3 inline mr-1 text-violet-400"></i>
+                    {{ count($departamentosDetectados) }} {{ count($departamentosDetectados) === 1 ? 'departamento' : 'departamentos' }} detectados — descarga el PDF de cada uno:
+                </p>
+                <div class="flex flex-wrap gap-3">
+                    @foreach($departamentosDetectados as $depNombre => $depCount)
+                        <a href="{{ route('usuario.monitoreo.consultorio.pdf-departamento', [$acta->id, urlencode($depNombre)]) }}?v={{ time() }}"
+                           target="_blank"
+                           class="group inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-violet-600 hover:bg-violet-700 text-white font-black text-[11px] uppercase tracking-wide shadow-md hover:shadow-violet-200 transition-all hover:scale-105">
+                            <i data-lucide="file-down" class="w-4 h-4 opacity-80 group-hover:opacity-100"></i>
+                            <span>{{ $depNombre }}</span>
+                            <span class="bg-white/20 rounded-lg px-2 py-0.5 text-[10px] font-black">
+                                {{ $depCount }} {{ $depCount === 1 ? 'consultorio' : 'consultorios' }}
+                            </span>
+                        </a>
+                    @endforeach
+                </div>
             </div>
+            @endif
+
         </div>
         @endif
 

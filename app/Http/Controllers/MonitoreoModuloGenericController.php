@@ -32,7 +32,7 @@ class MonitoreoModuloGenericController extends Controller
         if (empty($slugBase)) {
             $slugBase = 'consultorio';
         }
-        $slug = $slugBase . '_' . time();
+        $slug = $slugBase.'_'.time();
 
         // Crear registro inicial en mon_monitoreo_modulos
         MonitoreoModulos::create([
@@ -98,6 +98,7 @@ class MonitoreoModuloGenericController extends Controller
             ->get()
             ->filter(function ($m) {
                 $c = $m->contenido ?? [];
+
                 return strtoupper($c['tipo_consultorio'] ?? '') !== 'FUNCIONAL';
             })
             ->values();
@@ -174,7 +175,7 @@ class MonitoreoModuloGenericController extends Controller
                 ->firstOrFail();
 
             // Preservar o actualizar el título del consultorio
-            if (!empty($contenido['titulo_consultorio'])) {
+            if (! empty($contenido['titulo_consultorio'])) {
                 $contenido['titulo_consultorio'] = mb_strtoupper(trim($contenido['titulo_consultorio']));
             } elseif (isset($detalle->contenido['titulo_consultorio'])) {
                 $contenido['titulo_consultorio'] = $detalle->contenido['titulo_consultorio'];
@@ -188,13 +189,13 @@ class MonitoreoModuloGenericController extends Controller
             $slugLimpio = Str::slug($slug, '_');
 
             $evidenciasAnteriores = [];
-            if (!empty($detalle->contenido['evidencias']) && is_array($detalle->contenido['evidencias'])) {
+            if (! empty($detalle->contenido['evidencias']) && is_array($detalle->contenido['evidencias'])) {
                 $evidenciasAnteriores = $detalle->contenido['evidencias'];
             } else {
                 for ($i = 1; $i <= 3; $i++) {
-                    $pOld = $detalle->contenido['evidencia_path_' . $i]
+                    $pOld = $detalle->contenido['evidencia_path_'.$i]
                         ?? ($i === 1 ? ($detalle->contenido['evidencia_path'] ?? null) : null);
-                    if (!empty($pOld)) {
+                    if (! empty($pOld)) {
                         $evidenciasAnteriores[] = ['path' => $pOld, 'descripcion' => ''];
                     }
                 }
@@ -222,7 +223,7 @@ class MonitoreoModuloGenericController extends Controller
                         }
                         $extension = strtolower($archivoNuevo->getClientOriginalExtension() ?: 'jpg');
                         $numFoto = count($evidenciasFinal) + 1;
-                        $nombreEstandar = "evidencia_acta_{$id}_{$slugLimpio}_{$numFoto}_" . date('Ymd_His') . '_' . uniqid() . '.' . $extension;
+                        $nombreEstandar = "evidencia_acta_{$id}_{$slugLimpio}_{$numFoto}_".date('Ymd_His').'_'.uniqid().'.'.$extension;
                         $path = $archivoNuevo->storeAs('evidencias_monitoreo', $nombreEstandar, 'public');
                         $evidenciasFinal[] = ['path' => $path, 'descripcion' => $descripcion];
                     } elseif ($pathExistente) {
@@ -236,7 +237,7 @@ class MonitoreoModuloGenericController extends Controller
             // o se reemplazo) se borra fisicamente del disco.
             $pathsFinal = array_column($evidenciasFinal, 'path');
             foreach ($pathsAnteriores as $pOld) {
-                if (!in_array($pOld, $pathsFinal, true) && Storage::disk('public')->exists($pOld)) {
+                if (! in_array($pOld, $pathsFinal, true) && Storage::disk('public')->exists($pOld)) {
                     Storage::disk('public')->delete($pOld);
                 }
             }
@@ -302,7 +303,7 @@ class MonitoreoModuloGenericController extends Controller
             $sistemasNormalizados = [];
             if (is_array($sistemasInput)) {
                 foreach ($sistemasInput as $sis) {
-                    if (!empty($sis['nombre'])) {
+                    if (! empty($sis['nombre'])) {
                         $sistemasNormalizados[] = [
                             'nombre' => mb_strtoupper(trim($sis['nombre'])),
                             'observacion' => mb_strtoupper(trim($sis['observacion'] ?? '')),
@@ -320,7 +321,7 @@ class MonitoreoModuloGenericController extends Controller
                 ?? $contenido['busqueda_temporal']
                 ?? null;
 
-            if ($prof && !empty($prof['doc'])) {
+            if ($prof && ! empty($prof['doc'])) {
                 Profesional::updateOrCreate(
                     ['doc' => trim($prof['doc'])],
                     [
@@ -346,9 +347,9 @@ class MonitoreoModuloGenericController extends Controller
 
             if (is_array($equiposData)) {
                 foreach ($equiposData as $eq) {
-                    if (!empty($eq['descripcion'])) {
+                    if (! empty($eq['descripcion'])) {
                         $especificaciones = $eq['especificaciones'] ?? null;
-                        if (is_string($especificaciones) && !empty(trim($especificaciones))) {
+                        if (is_string($especificaciones) && ! empty(trim($especificaciones))) {
                             $decoded = json_decode($especificaciones, true);
                             if (json_last_error() === JSON_ERROR_NONE) {
                                 $especificaciones = $decoded;
@@ -380,7 +381,7 @@ class MonitoreoModuloGenericController extends Controller
 
             if (is_array($requerimientosData)) {
                 foreach ($requerimientosData as $req) {
-                    if (!empty($req['descripcion'])) {
+                    if (! empty($req['descripcion'])) {
                         EquipoRequerimiento::create([
                             'cabecera_monitoreo_id' => $id,
                             'modulo' => $slug,
@@ -404,12 +405,12 @@ class MonitoreoModuloGenericController extends Controller
                 ->with('success', 'Evaluación del consultorio guardada correctamente.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Error al guardar consultorio {$slug} para el acta #{$id}: " . $e->getMessage());
+            Log::error("Error al guardar consultorio {$slug} para el acta #{$id}: ".$e->getMessage());
 
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Error al guardar el consultorio: ' . $e->getMessage());
+                ->with('error', 'Error al guardar el consultorio: '.$e->getMessage());
         }
     }
 
@@ -458,7 +459,7 @@ class MonitoreoModuloGenericController extends Controller
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Consultorio_' . $slug . '_Acta_' . $id . '.pdf"',
+            'Content-Disposition' => 'inline; filename="Consultorio_'.$slug.'_Acta_'.$id.'.pdf"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
             'Pragma' => 'no-cache',
             'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
@@ -495,8 +496,6 @@ class MonitoreoModuloGenericController extends Controller
             abort(404, "No se encontraron consultorios para el servicio: {$servicio}");
         }
 
-
-
         // Cargar los equipos de cada módulo y preparar los datos para la vista
         $consultorios = $modulosFiltrados->map(function ($modulo) use ($id) {
             $contenido = is_array($modulo->contenido)
@@ -530,11 +529,88 @@ class MonitoreoModuloGenericController extends Controller
 
         $pdf->setPaper('a4', 'portrait');
 
-        $nombreArchivo = 'Servicio_' . \Str::slug($servicio) . '_Acta_' . $id . '.pdf';
+        $nombreArchivo = 'Servicio_'.\Str::slug($servicio).'_Acta_'.$id.'.pdf';
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $nombreArchivo . '"',
+            'Content-Disposition' => 'inline; filename="'.$nombreArchivo.'"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
+        ]);
+    }
+
+    /**
+     * Genera un PDF consolidado con todos los consultorios de un mismo departamento.
+     *
+     * @param  string  $id  ID del acta de monitoreo
+     * @param  string  $departamento  Nombre del departamento (URL-encoded)
+     */
+    public function pdfPorDepartamento($id, $departamento)
+    {
+        $departamento = mb_strtoupper(trim(urldecode($departamento)));
+
+        $acta = CabeceraMonitoreo::with(['establecimiento', 'equipo'])->findOrFail($id);
+
+        $todosModulos = MonitoreoModulos::where('cabecera_monitoreo_id', $id)->get();
+
+        $modulosFiltrados = $todosModulos->filter(function ($modulo) use ($departamento) {
+            $contenido = is_array($modulo->contenido)
+                ? $modulo->contenido
+                : (json_decode($modulo->contenido, true) ?? []);
+
+            $dep = mb_strtoupper(trim($contenido['departamento_asociado'] ?? ''));
+
+            return $dep === $departamento;
+        })->values();
+
+        if ($modulosFiltrados->isEmpty()) {
+            abort(404, "No se encontraron consultorios para el departamento: {$departamento}");
+        }
+
+        $consultorios = $modulosFiltrados->map(function ($modulo) use ($id) {
+            $contenido = is_array($modulo->contenido)
+                ? $modulo->contenido
+                : (json_decode($modulo->contenido, true) ?? []);
+
+            $vinculacion = $this->resolverVinculacion($id, $contenido);
+            if ($vinculacion['moduloVinculado']) {
+                $contenido = $this->aplicarInfraHeredada($contenido, $vinculacion['contenidoVinculado']);
+            }
+
+            $slugEquipos = $this->resolverSlugEquipos($contenido, $modulo->modulo_nombre, $vinculacion['slugVinculado']);
+
+            $equipos = EquipoComputo::where('cabecera_monitoreo_id', $id)
+                ->where('modulo', $slugEquipos)
+                ->get();
+
+            return [
+                'detalle' => $modulo,
+                'contenido' => $contenido,
+                'equipos' => $equipos,
+                'tituloVinculado' => $vinculacion['tituloVinculado'],
+            ];
+        });
+
+        // Reutiliza la misma vista pasando $departamento; el banner detecta el tipo.
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions([
+            'isPhpEnabled' => true,
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+        ])->loadView('usuario.monitoreo.pdf.consultorio_servicio_pdf', [
+            'acta' => $acta,
+            'servicio' => null,
+            'departamento' => $departamento,
+            'consultorios' => $consultorios,
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        $nombreArchivo = 'Departamento_'.\Str::slug($departamento).'_Acta_'.$id.'.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$nombreArchivo.'"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0',
             'Pragma' => 'no-cache',
             'Expires' => 'Sun, 02 Jan 1990 00:00:00 GMT',
@@ -584,7 +660,7 @@ class MonitoreoModuloGenericController extends Controller
             $moduloVinculado = null;
         }
 
-        if (!$moduloVinculado) {
+        if (! $moduloVinculado) {
             return ['moduloVinculado' => null, 'contenidoVinculado' => [], 'tituloVinculado' => null, 'slugVinculado' => null];
         }
 
@@ -659,7 +735,7 @@ class MonitoreoModuloGenericController extends Controller
 
             return redirect()
                 ->back()
-                ->with('error', 'Error al eliminar el consultorio: ' . $e->getMessage());
+                ->with('error', 'Error al eliminar el consultorio: '.$e->getMessage());
         }
     }
 

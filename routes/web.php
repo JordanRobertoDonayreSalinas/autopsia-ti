@@ -261,6 +261,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}/consultorio/{slug}/evidencia-movil/qr', [EvidenciaMovilController::class, 'generarQr'])->name('consultorio.evidencia-movil.qr');
             Route::get('/{id}/consultorio/{slug}/evidencia-movil/estado', [EvidenciaMovilController::class, 'estado'])->name('consultorio.evidencia-movil.estado');
             Route::get('/{id}/pdf-por-servicio/{servicio}', [MonitoreoModuloGenericController::class, 'pdfPorServicio'])->name('consultorio.pdf-servicio');
+            Route::get('/{id}/pdf-por-departamento/{departamento}', [MonitoreoModuloGenericController::class, 'pdfPorDepartamento'])->name('consultorio.pdf-departamento');
             Route::delete('/{id}/consultorio/{slug}', [MonitoreoModuloGenericController::class, 'destroyConsultorio'])->name('consultorio.destroy');
 
             Route::get('/{id}/pdf-consolidado', [MonitoreoController::class, 'generarPDF'])->name('generarPDF');
