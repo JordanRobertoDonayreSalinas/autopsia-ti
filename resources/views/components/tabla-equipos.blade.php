@@ -564,14 +564,11 @@
 
                         <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200">
                             <p class="text-amber-800 font-bold text-[11px] mb-2">¿Esta PC no tiene internet?</p>
-                            <p class="text-amber-700 text-[10.5px] leading-relaxed">
-                                El escáner no podrá enviar los datos automáticamente. Use el diagnóstico nativo de Windows, sin descargar nada:
+                            <p class="text-amber-700 text-[10.5px] leading-relaxed mb-2">
+                                El escáner no podrá enviar los datos automáticamente. Abra <strong>PowerShell</strong> (Win + X, o Win + R y escriba <strong>powershell</strong>) y pegue este comando, que consulta lo mismo que usa el escáner automático:
                             </p>
-                            <ol class="text-amber-700 text-[10.5px] leading-relaxed list-decimal list-inside mt-1.5 space-y-0.5">
-                                <li><strong>Win + R</strong>, escriba <strong>dxdiag</strong> y presione Enter</li>
-                                <li>En la pestaña "Sistema" lea Modelo, Procesador, RAM y Sistema Operativo</li>
-                                <li>Cierre esta ventana y pulse <strong>"Ingresar a Mano"</strong> para digitarlos</li>
-                            </ol>
+                            <textarea readonly onclick="this.select()" rows="4" class="w-full p-2 bg-slate-900 text-emerald-300 text-[8.5px] font-mono rounded-lg border border-slate-700 resize-none leading-snug" style="white-space: pre-wrap;">$sys=Get-CimInstance Win32_ComputerSystem -Property Manufacturer,Model,TotalPhysicalMemory; $os=(Get-CimInstance Win32_OperatingSystem -Property Caption).Caption; $cpu=(Get-CimInstance Win32_Processor -Property Name | Select-Object -First 1).Name; $ramGB=[math]::round($sys.TotalPhysicalMemory/1GB); $disco=(Get-CimInstance Win32_DiskDrive -Property Model,Size | ForEach-Object { "$($_.Model) ($([math]::round($_.Size/1GB)) GB)" }) -join " + "; $gpu=Get-CimInstance Win32_VideoController -Property Name,AdapterRAM | Select-Object -First 1; $gpuText="$($gpu.Name) ($([math]::round($gpu.AdapterRAM/1MB)) MB VRAM)"; Write-Host "MODELO: $($sys.Manufacturer) $($sys.Model)"; Write-Host "PROCESADOR: $cpu"; Write-Host "RAM: $ramGB GB RAM"; Write-Host "DISCO: $disco"; Write-Host "GPU: $gpuText"; Write-Host "SO: $os"</textarea>
+                            <p class="text-amber-700 text-[10px] font-bold mt-2">Toque el recuadro para seleccionar todo, copie, y péguelo en PowerShell. Luego cierre esta ventana y use <strong>"Ingresar a Mano"</strong> con los 6 datos que aparezcan.</p>
                         </div>
                     </div>
                 `,
