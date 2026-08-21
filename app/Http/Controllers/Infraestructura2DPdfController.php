@@ -139,6 +139,8 @@ class Infraestructura2DPdfController extends Controller
             'ticketera' => 'Ticketera', 'escaner' => 'Escáner', 'lector_dnie' => 'Lector DNIe', 'ups' => 'UPS / Estabilizador',
             'router' => 'Router', 'ap' => 'Access Point', 'switch' => 'Switch',
             'punto_red' => 'Punto de red', 'pozo' => 'Pozo a tierra', 'equipo' => 'Equipo',
+            'panel_solar' => 'Panel solar', 'aire_acondicionado' => 'Aire acondicionado',
+            'toma_estabilizada' => 'Toma estabilizada (roja-naranja)', 'toma_comercial' => 'Toma comercial (blanco)',
         ];
 
         $VIA_LABEL = ['avenida' => 'Avenida', 'jiron' => 'Jirón', 'pasaje' => 'Pasaje'];

@@ -477,6 +477,38 @@ class Infraestructura2DController extends Controller
             ];
             $sistemaActual = $mapaSistemas[$sistemaActualLabel] ?? '';
 
+            /*
+             * Aire acondicionado: pregunta propia de la ficha del consultorio
+             * ("¿El consultorio cuenta con aire acondicionado?"). Si respondió
+             * "SÍ", el croquis coloca automáticamente su ícono en la sala.
+             */
+            $aireAcondicionado = mb_strtoupper(trim((string)($content['aire_acondicionado'] ?? '')), 'UTF-8') === 'SI';
+
+            /*
+             * Punto de red, toma estabilizada (roja-naranja) y toma comercial
+             * (blanco): preguntas propias de la ficha del consultorio. Cada una
+             * ya trae su propia cantidad (o su desglose interna/externa), así
+             * que se normalizan a 0 cuando la pregunta principal es "NO" y el
+             * croquis simplemente no dibuja nada para ese consultorio.
+             */
+            $cuentaPuntoRedRaw = mb_strtoupper(trim((string)($content['cuenta_punto_red'] ?? '')), 'UTF-8');
+            $cuentaPuntoRed = $cuentaPuntoRedRaw === 'SI';
+            $cantidadPuntosRed = $cuentaPuntoRed ? max(0, (int)($content['cantidad_puntos_red'] ?? 0)) : 0;
+            /*
+             * Distingue "la ficha respondió NO" (hay que avisarlo en el croquis)
+             * de "esta pregunta no existe en este módulo" (fijo, sin ficha propia):
+             * en ese segundo caso el valor crudo queda vacío, no en 'NO'.
+             */
+            $sinPuntoRed = $cuentaPuntoRedRaw === 'NO';
+
+            $tieneTomaEstabilizada = mb_strtoupper(trim((string)($content['tiene_toma_estabilizada'] ?? '')), 'UTF-8') === 'SI';
+            $tomaEstabilizadaInternas = $tieneTomaEstabilizada ? max(0, (int)($content['toma_estabilizada_internas'] ?? 0)) : 0;
+            $tomaEstabilizadaExternas = $tieneTomaEstabilizada ? max(0, (int)($content['toma_estabilizada_externas'] ?? 0)) : 0;
+
+            $tieneTomaComercial = mb_strtoupper(trim((string)($content['tiene_toma_comercial'] ?? '')), 'UTF-8') === 'SI';
+            $tomaComercialInternas = $tieneTomaComercial ? max(0, (int)($content['toma_comercial_internas'] ?? 0)) : 0;
+            $tomaComercialExternas = $tieneTomaComercial ? max(0, (int)($content['toma_comercial_externas'] ?? 0)) : 0;
+
             // ── 4. Ambientes declarados por el módulo ──
             $cantidad = (int)($content['nro_consultorios']
                 ?? $content['num_consultorios']
@@ -539,6 +571,13 @@ class Infraestructura2DController extends Controller
                 'total_equipos'     => $totalEquipos,
                 'utiliza_sihce'     => $utiliza_sihce,
                 'sistema_actual'    => $sistemaActual,   // 'tua'|'sihce'|'sismed'|'hisminsa'|'sisgalenplus'|''
+                'aire_acondicionado' => $aireAcondicionado,
+                'cantidad_puntos_red' => $cantidadPuntosRed,
+                'sin_punto_red'     => $sinPuntoRed,
+                'toma_estabilizada_internas' => $tomaEstabilizadaInternas,
+                'toma_estabilizada_externas' => $tomaEstabilizadaExternas,
+                'toma_comercial_internas' => $tomaComercialInternas,
+                'toma_comercial_externas' => $tomaComercialExternas,
                 'tipo_conectividad' => $tipo_conectividad,
                 'tipo_consultorio'  => $tipoConsultorio, // 'FISICO' | 'FUNCIONAL' | '' (módulos fijos)
                 'piso'              => $piso,            // piso declarado en la ficha del consultorio
